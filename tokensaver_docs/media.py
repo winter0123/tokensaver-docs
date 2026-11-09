@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """OCR 없이 AI 입력용 이미지와 오디오를 준비한다."""
 
 import math

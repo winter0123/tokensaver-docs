@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Prepare documents once and return bounded original evidence, never a generated summary."""
 import json
 from pathlib import Path

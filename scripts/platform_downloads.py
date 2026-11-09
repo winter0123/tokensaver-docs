@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Build one offline download per platform, sharing identical runtime files."""
 import zipfile
 from pathlib import Path
@@ -7,7 +9,7 @@ AGENTS = ('claude', 'codex', 'opencode')
 MAC_INSTALL = '''#!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-printf 'TokenSaver Docs — choose your agent\\n1) Claude Code\\n2) Codex\\n3) OpenCode\\nEnter 1, 2 or 3: '
+printf 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nChoose your agent\\n1) Claude Code\\n2) Codex\\n3) OpenCode\\nEnter 1, 2 or 3: '
 read -r choice
 case "$choice" in 1) agent=claude;; 2) agent=codex;; 3) agent=opencode;; *) echo 'Invalid selection'; exit 2;; esac
 task_tmp=$(mktemp -d)
@@ -19,7 +21,9 @@ chmod +x "$task_tmp/bin/tokensaver-docs"
 echo 'Installed. Restart your agent to load TokenSaver Docs.'
 '''
 WINDOWS_INSTALL = '''$ErrorActionPreference = 'Stop'
-Write-Host 'TokenSaver Docs — choose your agent'
+Write-Host 'TokenSaver Docs by winter0123'
+Write-Host 'https://github.com/winter0123/tokensaver-docs'
+Write-Host 'Choose your agent'
 Write-Host '1) Claude Code'
 Write-Host '2) Codex'
 Write-Host '3) OpenCode'
@@ -59,7 +63,7 @@ def create_platform_downloads(folder):
             info.create_system = 3
             info.external_attr = 0o100755 << 16
             archive.writestr(info, MAC_INSTALL if system == 'darwin' else WINDOWS_INSTALL.encode('utf-8-sig'))
-            archive.writestr('README.txt', 'TokenSaver Docs: extract the entire ZIP first.\n'
+            archive.writestr('README.txt', 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nExtract the entire ZIP first.\n'
                 + ('Double-click install.command, or run: sh install.command\n' if system == 'darwin' else 'Open PowerShell in this folder and run: .\\install.ps1\n')
                 + 'Choose 1 (Claude Code), 2 (Codex), or 3 (OpenCode). The selected agent CLI must already be installed.\n'
                 + 'Restart your agent after installation. Do not run the internal common runtime directly.\n')

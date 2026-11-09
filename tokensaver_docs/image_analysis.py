@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Analyze one normalized image frame and reuse verified results."""
 import json
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Run an isolated real-host check; never count CLI fallback as MCP success."""
 import argparse,json,os,re,shutil,subprocess,tempfile
 from pathlib import Path

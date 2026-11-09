@@ -22,3 +22,7 @@ prune docs/superpowers
 exclude docs/work-log-*.md
 exclude docs/handoff-*.md
 exclude docs/work-plan-*.md
+
+include NOTICE AUTHORS.md README.zh-CN.md README.ja.md
+include scripts/platform_downloads.py
+recursive-include assets/readme *.svg

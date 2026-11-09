@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """User-local reusable conversion results. No remote cache or automatic uploads."""
 import copy
 import json

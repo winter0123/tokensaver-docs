@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Explicit, checksum-verified download of a user-selected multilingual Whisper model."""
 import json
 import os

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 import { tool } from '@opencode-ai/plugin';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

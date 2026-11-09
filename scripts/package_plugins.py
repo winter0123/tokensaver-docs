@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Assemble local platform-specific plugin bundles without overwriting prior output."""
 import argparse
 import json
@@ -48,11 +50,11 @@ def main():
             target.mkdir(parents=True)
             shutil.copy2(ROOT / 'plugins/skill/SKILL.md', target / 'SKILL.md')
         if platform == 'claude':
-            write_json(root / '.claude-plugin/plugin.json', {'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'tokensaver-docs contributors'}})
-            write_json(root / '.claude-plugin/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'description': 'TokenSaver Docs document context plugins for coding agents.', 'owner': {'name': 'tokensaver-docs contributors'}, 'plugins': [{'name': 'tokensaver-docs', 'source': './'}]})
+            write_json(root / '.claude-plugin/plugin.json', {'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'winter0123', 'url': 'https://github.com/winter0123'}})
+            write_json(root / '.claude-plugin/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'description': 'TokenSaver Docs document context plugins for coding agents.', 'owner': {'name': 'winter0123', 'url': 'https://github.com/winter0123'}, 'plugins': [{'name': 'tokensaver-docs', 'source': './'}]})
             write_json(root / '.mcp.json', {'mcpServers': {'tokensaver-docs': {'command': '${CLAUDE_PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
         elif platform == 'codex':
-            write_json(root / 'plugin.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', 'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'tokensaver-docs contributors'}})
+            write_json(root / 'plugin.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', 'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'winter0123', 'url': 'https://github.com/winter0123'}})
             write_json(root / 'mcp.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', 'mcpServers': {'tokensaver-docs': {'type': 'stdio', 'command': '${PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
             write_json(root / '.agents/plugins/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'plugins': [{'name': 'tokensaver-docs', 'source': {'source': 'local', 'path': './'}, 'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
         else:
@@ -66,7 +68,8 @@ def main():
                 package.pop('dependencies',None)
             write_json(package_path, package)
         write_json(root/'platform.json',{'os':os_name,'cpu':cpu,'agent':platform,'version':__version__})
-        shutil.copy2(ROOT/'LICENSE',root/'LICENSE')
+        for notice in ('LICENSE', 'NOTICE', 'AUTHORS.md'):
+            shutil.copy2(ROOT/notice,root/notice)
         checks={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
         write_json(root/'checksums.json',checks)
     print(args.output)

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Build one self-contained executable for the current OS and CPU."""
 import argparse
 import os

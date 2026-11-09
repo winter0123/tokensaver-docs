@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """에이전트가 전체 본문 대신 변환 상태와 제한된 근거만 받는 MCP 서버."""
 
 import subprocess

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Deterministic local HTML preparation; models never need to read raw HTML."""
 import base64
 import io

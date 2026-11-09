@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """구조화된 파일의 텍스트를 AI 호출 없이 추출한다."""
 
 import zipfile

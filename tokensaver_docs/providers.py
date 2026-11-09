@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """사람이 선택한 단일 제공자만 호출한다. 키와 응답 본문을 로그에 남기지 않는다."""
 
 import base64

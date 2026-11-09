@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """구간 단위 변환, 충돌 방지, 중단 후 재개."""
 
 import json

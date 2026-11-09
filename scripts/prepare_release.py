@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Validate CI archives and assemble a complete release directory; never publish."""
 import argparse
 import hashlib
@@ -51,6 +53,8 @@ def prepare(artifacts, output, tag):
     for path in create_platform_downloads(output):
         rows.append(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name)
     (output/'checksums.txt').write_text('\n'.join(rows)+'\n',encoding='utf-8')
+    for notice in ('LICENSE', 'NOTICE', 'AUTHORS.md'):
+        shutil.copy2(ROOT/notice,output/notice)
     for script in ('install.sh','install.ps1'):
         shutil.copy2(ROOT/'scripts'/script,output/script)
     (output/'release-notes.md').write_text(

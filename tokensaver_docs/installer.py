@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Install a verified local plugin bundle without requiring Python on the target machine."""
 import hashlib
 import json

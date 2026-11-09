@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """결과와 진행 상태를 원자적으로 저장한다."""
 
 import hashlib
