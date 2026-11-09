@@ -1,9 +1,9 @@
 <p align="center"><img src="assets/readme/hero-en.svg" width="960" alt="TokenSaver Docs — Convert PDF, Word, Excel, HTML, images and audio into reusable Markdown for Codex, Claude Code and OpenCode." /></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-win32-x64.zip"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-arm64.zip"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-x64.zip"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 

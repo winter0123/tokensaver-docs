@@ -1,0 +1,43 @@
+name: Verify public platform downloads
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag
+        required: true
+        default: v0.4.0
+        type: string
+permissions:
+  contents: read
+jobs:
+  downloads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Fetch actual ZIP bytes without authentication
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: python
+        run: |
+          import os, re, time, urllib.request
+          tag = os.environ['RELEASE_TAG']
+          assert re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag)
+          base = 'https://github.com/winter0123/tokensaver-docs/releases/download/' + tag + '/'
+          for platform in ('win32-x64', 'darwin-arm64', 'darwin-x64'):
+              name = 'tokensaver-docs-' + platform + '.zip'
+              for attempt in range(3):
+                  try:
+                      request = urllib.request.Request(base + name + '?download=1', headers={'Range': 'bytes=0-3'})
+                      with urllib.request.urlopen(request, timeout=60) as response:
+                          assert response.status in (200, 206)
+                          assert 'attachment' in response.headers.get('Content-Disposition', '')
+                          assert response.read(4) == b'PK\x03\x04'
+                      print(name + ': public ZIP download PASS', flush=True)
+                      break
+                  except Exception:
+                      if attempt == 2:
+                          raise
+                      time.sleep(3)
