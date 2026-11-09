@@ -23,7 +23,7 @@ macOS：双击 `install.command`，或在解压目录中运行 `sh install.comma
 
 Windows：在解压目录中打开 PowerShell，运行 `.\install.ps1`。如设备策略阻止执行，请遵循该策略；安装程序不会修改执行策略。
 
-需要先安装所选助手的 CLI。安装后重启助手并发送 **“用 tokensaver-docs 将 /文件路径 转换为 Markdown”**。更换模型时发送 **“更改 tokensaver-docs 的图片转换模型”**。
+需要先安装所选助手的 CLI。安装后重启助手并发送 **“把这个 HTML 文件转成 Markdown：/文件路径/policy.html”**。更换模型时发送 **“更改 tokensaver-docs 的图片转换模型”**。
 
 macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已通过自动测试；新的 Windows 统一安装脚本及真实 Windows／Intel 助手安装仍属实验性支持。文件尚未签名或公证。Linux 目前仅提供源码安装。
 
@@ -37,6 +37,22 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## 直接用自然语言提出请求
+
+安装插件并重启助手后，像平时一样提出请求。无需每次输入插件名称或终端命令。
+
+> 把这个 HTML 文件转成 Markdown：/文件路径/policy.html
+
+> 把这个文件夹中的文档转成 Markdown：/文件夹路径
+
+> 提取图片中的文字并添加图片说明，保存为 Markdown：/文件路径/photo.png
+
+> 我想更换转换模型，请告诉我可选的方式。
+
+助手会根据请求，从已安装的技能和工具中选择 TokenSaver Docs。如需首次模型设置或图片处理选择，请回答提示，并确认实际保存路径及部分完成、待检查等状态。
+
+如果助手采用其他方式，可以补充“请用 tokensaver-docs 处理这项任务”。是否自动选择取决于助手，安装本身不能保证每次都会调用。
 
 <a id="source-install"></a>
 

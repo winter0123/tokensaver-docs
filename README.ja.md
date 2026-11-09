@@ -23,7 +23,7 @@ macOS：`install.command` をダブルクリックするか、展開先で `sh i
 
 Windows：展開先で PowerShell を開き、`.\install.ps1` を実行します。端末のポリシーでブロックされる場合は、そのポリシーに従ってください。インストーラは実行ポリシーを変更しません。
 
-利用するエージェントの CLI が必要です。インストール後に再起動し、**「tokensaver-docs で /ファイルのパス を Markdown に変換して」** と依頼します。モデルを変える場合は **「tokensaver-docs の画像変換モデルを変更して」** と依頼してください。
+利用するエージェントの CLI が必要です。インストール後に再起動し、**「この HTML ファイルを Markdown に変換して：/ファイルのパス/policy.html」** と依頼します。モデルを変える場合は **「tokensaver-docs の画像変換モデルを変更して」** と依頼してください。
 
 macOS arm64 の統合インストールはローカルで確認済みです。Windows・Intel Mac のバイナリは自動テスト済みですが、新しい Windows 統合インストーラと実際の Windows・Intel エージェントへのインストールは実験的です。バイナリは未署名・未公証です。Linux は現在ソースインストールのみです。
 
@@ -37,6 +37,22 @@ macOS arm64 の統合インストールはローカルで確認済みです。Wi
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## 自然な言葉で依頼する
+
+プラグインをインストールしてエージェントを再起動したら、普段どおりに依頼します。毎回プラグイン名やターミナルのコマンドを入力する必要はありません。
+
+> この HTML ファイルを Markdown に変換して：/ファイルのパス/policy.html
+
+> このフォルダの文書を Markdown に変換して：/フォルダのパス
+
+> この画像の文字と説明を Markdown にまとめて：/ファイルのパス/photo.png
+
+> 変換モデルを変更したいので、選択肢を教えて。
+
+エージェントは依頼内容に応じて、インストール済みのスキルやツールから TokenSaver Docs を選びます。初回のモデル設定や画像処理について質問されたら回答し、実際の保存先と一部完了・要確認の状態を確認してください。
+
+別の方法が選ばれた場合は「この作業は tokensaver-docs で処理して」と指定できます。自動選択はエージェントの判断に依存し、インストールだけでは毎回の呼び出しを保証できません。
 
 <a id="source-install"></a>
 

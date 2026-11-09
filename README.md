@@ -23,7 +23,7 @@ macOS: double-click `install.command`, or run `sh install.command` in the extrac
 
 Windows: open PowerShell in the extracted folder and run `.\install.ps1`. If device policy blocks it, follow your device policy; the installer does not change it.
 
-Your chosen agent CLI must already be installed. Restart the agent after installation and ask **“Use tokensaver-docs to convert /path/to/file to Markdown.”** To change models, ask **“Change the tokensaver-docs image conversion model.”**
+Your chosen agent CLI must already be installed. Restart the agent after installation and ask **“Convert this HTML file to Markdown: /path/to/policy.html.”** To change models, ask **“Change the tokensaver-docs image conversion model.”**
 
 macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bundle tests; the unified Windows launcher and real Windows/Intel host installation remain experimental. Binaries are unsigned/not notarized. Linux currently has source installation only.
 
@@ -37,6 +37,22 @@ macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bun
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## Use it by asking your agent
+
+Install the plugin, restart your agent, then ask normally. You do not have to type the plugin name or a terminal command.
+
+> Convert this HTML file to Markdown: /path/to/policy.html
+
+> Convert the documents in this folder to Markdown: /path/to/documents
+
+> Extract the text and describe this image in Markdown: /path/to/photo.png
+
+> I want to change the conversion model. Show me my options.
+
+Your agent selects TokenSaver Docs from the installed skills and tools based on your request. Answer any first-use model or image-handling questions, then check the actual saved paths and any partial/review-needed status.
+
+If the agent chooses another approach, you can say “Use tokensaver-docs for this task.” Automatic selection depends on the agent and is not guaranteed just by installing the plugin.
 
 <a id="source-install"></a>
 

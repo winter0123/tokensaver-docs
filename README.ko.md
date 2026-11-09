@@ -23,7 +23,7 @@ macOS: `install.command`를 더블클릭하거나, 압축을 푼 폴더에서 `s
 
 Windows: 압축을 푼 폴더에서 PowerShell을 열고 `.\install.ps1`을 실행하세요. 기기 정책으로 차단되면 해당 정책을 따르세요. 설치 프로그램은 실행 정책을 바꾸지 않습니다.
 
-선택할 에이전트의 CLI가 먼저 설치되어 있어야 합니다. 설치 후 에이전트를 재시작하고 **“tokensaver-docs로 /파일경로를 Markdown으로 변환해줘”**라고 요청하세요. 모델을 바꾸려면 **“tokensaver-docs의 이미지 변환 모델을 변경해줘”**라고 요청하세요.
+선택할 에이전트의 CLI가 먼저 설치되어 있어야 합니다. 설치 후 에이전트를 재시작하고 **“이 HTML 파일을 MD로 만들어줘: /파일경로/안내.html”**라고 요청하세요. 모델을 바꾸려면 **“tokensaver-docs의 이미지 변환 모델을 변경해줘”**라고 요청하세요.
 
 macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac 바이너리 번들 검사는 통과했으나 새 Windows 통합 설치 프로그램과 실제 Windows·Intel 호스트 설치는 실험적입니다. 바이너리는 서명·공증 전입니다. Linux는 현재 소스 설치만 제공합니다.
 
@@ -37,6 +37,22 @@ macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## 말로 요청해서 사용하기
+
+플러그인을 설치하고 에이전트를 재시작한 뒤, 평소처럼 요청하세요. 플러그인 이름이나 터미널 명령을 반드시 입력할 필요는 없습니다.
+
+> 이 HTML 파일을 MD 파일로 만들어줘: /파일경로/안내.html
+
+> 이 폴더의 문서들을 Markdown으로 바꿔줘: /폴더경로
+
+> 이 이미지의 글자와 설명을 Markdown으로 정리해줘: /파일경로/사진.png
+
+> 변환 모델을 바꾸고 싶어. 사용할 수 있는 방법을 알려줘.
+
+에이전트가 요청과 설치된 스킬·도구를 보고 TokenSaver Docs를 선택합니다. 첫 모델 설정이나 이미지 처리 선택이 필요하면 질문에 답하면 됩니다. 실제 저장 경로와 부분완료·확인필요 상태도 확인하세요.
+
+에이전트가 다른 방식으로 처리하려 한다면 “이 작업은 tokensaver-docs로 처리해줘”라고 지정할 수 있습니다. 설치만으로 모든 에이전트의 자동 선택을 보장하지는 않습니다.
 
 <a id="source-install"></a>
 

@@ -2,6 +2,12 @@
 
 Source publication preparation: branded as TokenSaver Docs; source requires Pillow 13 or newer after the dependency audit. Older local preview binaries predate that dependency change and are not public releases.
 
+## Natural-language conversion check — 2026-11-09
+
+- PASS: the published macOS arm64 OpenCode bundle in OpenCode 2.1.3 selected `tokensaver_docs_prepare`, then `tokensaver_docs_read`, for a Korean request to convert a local HTML file to MD. The prompt did not specify the plugin or tool name and did not provide a conversion command. The output preserved the refund deadline and table amount.
+- This fixture had no images and used an isolated configuration where model setup was already deferred. It does not establish first-use consent behavior or every host/model's routing. Codex/Claude natural-language conversations have not been checked by this test. Skill/tool selection remains a host/model decision.
+- README examples now start with ordinary chat requests; source CLI commands remain a separate path. No runtime change or reinstall is needed for this documentation correction.
+
 ## Direct OS download correction — 2026-11-09
 
 - Added three unified platform ZIPs to v0.4.0. README buttons now link directly to Windows x64, macOS arm64 or macOS Intel ZIP assets; Linux is a source-install text link.
