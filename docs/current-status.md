@@ -2,6 +2,12 @@
 
 Source publication preparation: branded as TokenSaver Docs; source requires Pillow 13 or newer after the dependency audit. Older local preview binaries predate that dependency change and are not public releases.
 
+## Direct OS download correction — 2026-11-09
+
+- Added three unified platform ZIPs to v0.4.0. README buttons now link directly to Windows x64, macOS arm64 or macOS Intel ZIP assets; Linux is a source-install text link.
+- Unified archives share identical files and preserve each selected agent bundle byte-for-byte. The installer asks for the agent, reconstructs its bundle, then delegates checksum verification and registration to the existing runtime.
+- PASS: actual macOS arm64 unified archive extraction, OpenCode selection and plugin registration. Source tests verify reconstruction for all nine bundles and launcher success/failure behavior. Windows launcher validation runs where PowerShell is available; real Windows unified installation remains unverified.
+
 ## v0.4.0 public prerelease — 2026-11-09
 
 - Published [v0.4.0](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0): nine agent/platform ZIPs, checksum list, macOS and Windows installers.

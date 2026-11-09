@@ -1,23 +1,34 @@
 <p align="center"><img src="assets/readme/hero-ko.svg" width="960" alt="TokenSaver Docs — PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 바꿔 Codex·Claude Code·OpenCode에서 재사용하세요." /></p>
 
 <p align="center">
-<a href="#download"><img src="assets/readme/download-windows.svg" width="260" alt="Windows x64 download options" /></a>
-<a href="#download"><img src="assets/readme/download-macos.svg" width="260" alt="macOS Apple Silicon and Intel download options" /></a>
-<a href="#source-install"><img src="assets/readme/download-linux.svg" width="260" alt="Linux source installation" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-win32-x64.zip"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-arm64.zip"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-x64.zip"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#download">macOS Intel</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 **PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 바꿔 Codex·Claude Code·OpenCode에서 재사용하세요.**
 
-아래 운영체제 버튼을 누른 뒤 사용할 에이전트의 ZIP을 받으세요. Linux는 현재 소스 설치를 제공합니다.
+운영체제 버튼을 누르면 바로 다운로드되고, 설치 프로그램에서 사용할 에이전트를 선택합니다.
 
 <a id="download"></a>
 
-## 플러그인 다운로드 — v0.4.0 미리보기
+## 다운로드와 설치 — v0.4.0
 
-**내 운영체제와 사용할 에이전트가 만나는 파일을 받으세요.** Python을 따로 설치할 필요가 없습니다.
+위 버튼을 누르면 ZIP이 바로 다운로드됩니다. 전체 압축을 풀고 설치 프로그램을 실행한 뒤 **1 Claude Code / 2 Codex / 3 OpenCode** 중 번호를 선택하세요. Python을 따로 설치할 필요가 없습니다.
+
+macOS: `install.command`를 더블클릭하거나, 압축을 푼 폴더에서 `sh install.command`를 실행하세요.
+
+Windows: 압축을 푼 폴더에서 PowerShell을 열고 `.\install.ps1`을 실행하세요. 기기 정책으로 차단되면 해당 정책을 따르세요. 설치 프로그램은 실행 정책을 바꾸지 않습니다.
+
+선택할 에이전트의 CLI가 먼저 설치되어 있어야 합니다. 설치 후 에이전트를 재시작하고 **“tokensaver-docs로 /파일경로를 Markdown으로 변환해줘”**라고 요청하세요. 모델을 바꾸려면 **“tokensaver-docs의 이미지 변환 모델을 변경해줘”**라고 요청하세요.
+
+macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac 바이너리 번들 검사는 통과했으나 새 Windows 통합 설치 프로그램과 실제 Windows·Intel 호스트 설치는 실험적입니다. 바이너리는 서명·공증 전입니다. Linux는 현재 소스 설치만 제공합니다.
+
+<details>
+<summary>고급: 에이전트별 개별 ZIP</summary>
 
 | 운영체제 | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
@@ -25,18 +36,7 @@
 | macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-x64.zip) |
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
-압축을 풀고 **압축을 푼 폴더에서 터미널을 열어**, 선택한 에이전트의 이름을 넣어 실행하세요.
-
-```sh
-./bin/tokensaver-docs install-plugin . --agent claude
-```
-
-Codex는 `--agent codex`, OpenCode는 `--agent opencode`를 사용합니다. Windows PowerShell에서는 명령 앞부분을 `.\bin\tokensaver-docs.exe`로 바꾸세요. 설치한 뒤 에이전트를 재시작하고 **“tokensaver-docs로 이 파일을 Markdown으로 변환해줘: /파일경로”**라고 요청하세요. 모델 선택은 플러그인이 안내하며, 변경하려면 **“tokensaver-docs의 이미지 변환 모델을 변경해줘”**라고 요청하세요.
-
-macOS arm64는 로컬 설치를 확인했습니다. Intel Mac·Windows는 자동 번들 검사만 통과했으며 실제 에이전트 설치는 실험적입니다. 바이너리는 서명·공증 전입니다. Linux는 아래 소스 설치를 사용하세요. 공식 마켓 등록은 별도 준비 중입니다.
-
-[릴리스 설명·체크섬·설치 스크립트](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0)
-
+</details>
 
 <a id="source-install"></a>
 

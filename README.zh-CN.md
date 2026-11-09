@@ -1,23 +1,34 @@
 <p align="center"><img src="assets/readme/hero-zh-CN.svg" width="960" alt="TokenSaver Docs — 将 PDF、Word、Excel、HTML、图片和音频转换为可重复使用的 Markdown，供 Codex、Claude Code 和 OpenCode 使用。" /></p>
 
 <p align="center">
-<a href="#download"><img src="assets/readme/download-windows.svg" width="260" alt="Windows x64 download options" /></a>
-<a href="#download"><img src="assets/readme/download-macos.svg" width="260" alt="macOS Apple Silicon and Intel download options" /></a>
-<a href="#source-install"><img src="assets/readme/download-linux.svg" width="260" alt="Linux source installation" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-win32-x64.zip"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-arm64.zip"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-x64.zip"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#download">macOS Intel</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 **将 PDF、Word、Excel、HTML、图片和音频转换为可重复使用的 Markdown，供 Codex、Claude Code 和 OpenCode 使用。**
 
-点击操作系统按钮，再选择对应 AI 助手的 ZIP。Linux 目前提供源码安装。
+点击操作系统按钮即可下载，然后在安装程序中选择助手。
 
 <a id="download"></a>
 
-## 下载插件 — v0.4.0 预览版
+## 下载与安装 — v0.4.0
 
-**选择与操作系统、CPU 和 AI 助手匹配的 ZIP。无需单独安装 Python。**
+点击上方按钮会直接下载 ZIP。完整解压后运行安装程序，再选择 **1 Claude Code / 2 Codex / 3 OpenCode**。无需单独安装 Python。
+
+macOS：双击 `install.command`，或在解压目录中运行 `sh install.command`。
+
+Windows：在解压目录中打开 PowerShell，运行 `.\install.ps1`。如设备策略阻止执行，请遵循该策略；安装程序不会修改执行策略。
+
+需要先安装所选助手的 CLI。安装后重启助手并发送 **“用 tokensaver-docs 将 /文件路径 转换为 Markdown”**。更换模型时发送 **“更改 tokensaver-docs 的图片转换模型”**。
+
+macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已通过自动测试；新的 Windows 统一安装脚本及真实 Windows／Intel 助手安装仍属实验性支持。文件尚未签名或公证。Linux 目前仅提供源码安装。
+
+<details>
+<summary>高级：按助手下载单独 ZIP</summary>
 
 | 操作系统 | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
@@ -25,19 +36,7 @@
 | macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-x64.zip) |
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
-解压后，在**解压目录中打开终端**，运行安装命令：
-
-```sh
-./bin/tokensaver-docs install-plugin . --agent claude
-```
-
-Codex 使用 `--agent codex`，OpenCode 使用 `--agent opencode`。Windows PowerShell 中，将可执行文件改为 `.\bin\tokensaver-docs.exe`。需要先安装对应助手的 CLI；安装后重启助手。
-
-向助手发送：**“用 tokensaver-docs 将这个文件转换为 Markdown：/文件路径”**。插件会引导你选择模型。更换模型时发送：**“更改 tokensaver-docs 的图片转换模型”**。
-
-macOS arm64 已在本地验证安装。Intel Mac 和 Windows 已通过自动打包测试，实际助手安装仍属实验性支持。二进制文件尚未签名或公证。Linux 使用下方源码安装。GitHub 发布与官方插件市场收录是不同流程。
-
-[发布说明、校验和与安装脚本](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0)
+</details>
 
 <a id="source-install"></a>
 

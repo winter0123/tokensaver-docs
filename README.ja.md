@@ -1,23 +1,34 @@
 <p align="center"><img src="assets/readme/hero-ja.svg" width="960" alt="TokenSaver Docs — PDF・Word・Excel・HTML・画像・音声を Markdown に変換し、Codex・Claude Code・OpenCode で再利用できます。" /></p>
 
 <p align="center">
-<a href="#download"><img src="assets/readme/download-windows.svg" width="260" alt="Windows x64 download options" /></a>
-<a href="#download"><img src="assets/readme/download-macos.svg" width="260" alt="macOS Apple Silicon and Intel download options" /></a>
-<a href="#source-install"><img src="assets/readme/download-linux.svg" width="260" alt="Linux source installation" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-win32-x64.zip"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-arm64.zip"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-darwin-x64.zip"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#download">macOS Intel</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 **PDF・Word・Excel・HTML・画像・音声を Markdown に変換し、Codex・Claude Code・OpenCode で再利用できます。**
 
-OS のボタンから進み、利用するエージェントの ZIP を選んでください。Linux は現在ソースからのインストールに対応しています。
+OS ボタンを押すと直接ダウンロードされ、インストーラでエージェントを選択できます。
 
 <a id="download"></a>
 
-## プラグインをダウンロード — v0.4.0 プレビュー
+## ダウンロードとインストール — v0.4.0
 
-**OS・CPU・エージェントに合う ZIP を選んでください。Python の別途インストールは不要です。**
+上のボタンを押すと ZIP が直接ダウンロードされます。すべて展開してインストーラを実行し、**1 Claude Code / 2 Codex / 3 OpenCode** から番号を選びます。Python の別途インストールは不要です。
+
+macOS：`install.command` をダブルクリックするか、展開先で `sh install.command` を実行します。
+
+Windows：展開先で PowerShell を開き、`.\install.ps1` を実行します。端末のポリシーでブロックされる場合は、そのポリシーに従ってください。インストーラは実行ポリシーを変更しません。
+
+利用するエージェントの CLI が必要です。インストール後に再起動し、**「tokensaver-docs で /ファイルのパス を Markdown に変換して」** と依頼します。モデルを変える場合は **「tokensaver-docs の画像変換モデルを変更して」** と依頼してください。
+
+macOS arm64 の統合インストールはローカルで確認済みです。Windows・Intel Mac のバイナリは自動テスト済みですが、新しい Windows 統合インストーラと実際の Windows・Intel エージェントへのインストールは実験的です。バイナリは未署名・未公証です。Linux は現在ソースインストールのみです。
+
+<details>
+<summary>詳細：エージェント別の ZIP</summary>
 
 | OS | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
@@ -25,19 +36,7 @@ OS のボタンから進み、利用するエージェントの ZIP を選んで
 | macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-x64.zip) |
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
 
-ZIP を展開し、**展開先のフォルダでターミナルを開いて**実行します。
-
-```sh
-./bin/tokensaver-docs install-plugin . --agent claude
-```
-
-Codex は `--agent codex`、OpenCode は `--agent opencode` を指定します。Windows PowerShell では実行ファイルを `.\bin\tokensaver-docs.exe` に変更してください。利用するエージェントの CLI が必要です。インストール後はエージェントを再起動します。
-
-エージェントに **「tokensaver-docs でこのファイルを Markdown に変換して：/ファイルのパス」** と依頼します。モデル選択はプラグインが案内します。変更する場合は **「tokensaver-docs の画像変換モデルを変更して」** と依頼してください。
-
-macOS arm64 はローカルでインストールを確認済みです。Intel Mac・Windows は自動バンドルテストに合格していますが、実際のエージェントへのインストールは実験的な対応です。バイナリは未署名・未公証です。Linux は以下のソースインストールを使用してください。公式マーケットへの掲載は GitHub リリースとは別です。
-
-[リリースノート・チェックサム・インストーラ](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0)
+</details>
 
 <a id="source-install"></a>
 
