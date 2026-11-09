@@ -2,13 +2,22 @@
 
 Source publication preparation: branded as TokenSaver Docs; source requires Pillow 13 or newer after the dependency audit. Older local preview binaries predate that dependency change and are not public releases.
 
+## v0.4.0 public prerelease — 2026-11-09
+
+- Published [v0.4.0](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0): nine agent/platform ZIPs, checksum list, macOS and Windows installers.
+- [Native CI](https://github.com/winter0123/tokensaver-docs/actions/runs/42567604302) passed on macOS arm64/x64 and Windows x64, including bundled executable and OpenCode tests. All archive contents, version metadata and release asset hashes were checked.
+- macOS arm64: actual plugin registration passed for Codex 0.167.0, Claude Code 2.1.292 and OpenCode 2.1.3. CI-produced executable passed two local document/rendering tests. Installed runtimes served MCP HTML preparation with literal image placeholders.
+- Fresh actual OpenCode 2.1.3 native-tool session: free OpenRouter model analyzed five synthetic images, then reused the same input with zero extra image calls. No source/shell fallback was counted.
+- Windows/Intel Mac real agent installation and actual Codex/Claude model conversations remain unverified. These host combinations are experimental. Linux has source installation only. Official marketplace listings remain separate.
+- Earlier sections below are historical preview records.
+
 ## 0.4.0 complete rename — 2026-11-09
 
 - Package/CLI/plugin identity: `tokensaver-docs`; Python imports and OpenCode tool prefix: `tokensaver_docs`.
 - PASS: [source CI across all six OS/Python combinations](https://github.com/winter0123/tokensaver-docs/actions/runs/42565514725). Local suite: 190 tests, six environment skips, no failures.
 - PASS: rebuilt macOS arm64 executable format/rendering checks (two tests) and bundled OpenCode integration (three tests). Clean wheel contains only the renamed package and skill; dependency audit reports no known vulnerabilities.
 - Existing installations must reinstall under the new ID. Settings and caches use the new name; when upgrading elsewhere, choose a fresh conversion output folder to keep prior Markdown and state untouched. Older local build artifacts were archived outside the checkout.
-- No public binary release, npm/PyPI package, or official marketplace listing has been published. Live vision inference was not repeated for this rename; the records below describe earlier previews.
+- At the rename checkpoint, no public binary was available. The later public prerelease and live recheck are recorded above; npm/PyPI and official marketplace listings remain unpublished.
 
 ## Native OpenCode v2 preparation — 2026-11-09
 

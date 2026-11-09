@@ -1,8 +1,5 @@
 # English documentation
 
-The canonical English guide is now [README.md](README.md).
-Korean documentation is at [README.ko.md](README.ko.md).
+See [README.md](README.md).
 
-The current version is a local preview. For the status of Codex, Claude Code
-and OpenCode installation and public discovery, see the
-[distribution guide](docs/distribution.md).
+[English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md)

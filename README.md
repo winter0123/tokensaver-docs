@@ -1,14 +1,46 @@
-# TokenSaver Docs
+<p align="center"><img src="assets/readme/hero-en.svg" width="960" alt="TokenSaver Docs — Convert PDF, Word, Excel, HTML, images and audio into reusable Markdown for Codex, Claude Code and OpenCode." /></p>
 
-**Turn PDF, Word, Excel, HTML, images, and audio into Markdown. Help AI agents waste fewer tokens reading documents.**
+<p align="center">
+<a href="#download"><img src="assets/readme/download-windows.svg" width="260" alt="Windows x64 download options" /></a>
+<a href="#download"><img src="assets/readme/download-macos.svg" width="260" alt="macOS Apple Silicon and Intel download options" /></a>
+<a href="#source-install"><img src="assets/readme/download-linux.svg" width="260" alt="Linux source installation" /></a>
+</p>
+<p align="center"><a href="#download">macOS Intel</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
-Convert once, reuse the Markdown, and retrieve only the passages you need. Plugins for Codex, Claude Code, and OpenCode are in development. Optionally include visible image text and descriptions using your chosen model.
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-[한국어](README.ko.md) · [Install](#install) · [Choose a model](#choose-or-change-a-model) · [Usage](#usage) · [Supported files](#supported-files)
+**Convert PDF, Word, Excel, HTML, images and audio into reusable Markdown for Codex, Claude Code and OpenCode.**
 
-> **Source CLI preview available.** The commands below do not automatically register an agent plugin. Downloadable plugin releases and official marketplace listings are still in preparation.
+Choose your OS below, then download the ZIP for your agent. Linux currently uses source installation.
 
-## Install
+<a id="download"></a>
+
+## Download the plugin — v0.4.0 preview
+
+**Choose the file matching your OS and agent.** No separate Python installation is needed.
+
+| Operating system | Claude Code | Codex | OpenCode |
+| --- | --- | --- | --- |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
+
+Extract the ZIP, open a terminal **inside the extracted folder**, and install for your chosen agent:
+
+```sh
+./bin/tokensaver-docs install-plugin . --agent claude
+```
+
+For Codex use `--agent codex`; for OpenCode use `--agent opencode`. In Windows PowerShell, replace the executable with `.\bin\tokensaver-docs.exe`. Restart your agent and ask: **“Use tokensaver-docs to convert /path/to/file to Markdown.”** The plugin guides model selection. To change it, ask: **“Change the tokensaver-docs image conversion model.”**
+
+Local installation was checked on macOS arm64. Intel Mac/Windows passed automated bundle tests, but real host installation remains experimental. Binaries are unsigned/not notarized. Linux uses the source install below. Official marketplace listing is a separate process.
+
+[Release notes, checksums, and installer scripts](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0)
+
+
+<a id="source-install"></a>
+
+## Install the source CLI
 
 **Choose your operating system.** Requires Python 3.11+ and Git.
 
@@ -40,7 +72,7 @@ In a new terminal, run the second line again. If activation is blocked, use `& "
 
 ## Choose or change a model
 
-**Choose one service if you want visible image text and descriptions.** Run commands in a terminal with the installed environment activated. Use the same command for initial setup and later changes; your model becomes the saved default.
+**These commands are for source CLI users.** Plugin users can ask their agent to change the model as described above. Choose one service if you want visible image text and descriptions. Run commands in a terminal with the installed environment activated. Use the same command for initial setup and later changes; your model becomes the saved default.
 
 <details>
 <summary><strong>① Claude Code — use your signed-in CLI</strong></summary>

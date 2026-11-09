@@ -1,14 +1,46 @@
-# TokenSaver Docs
+<p align="center"><img src="assets/readme/hero-ko.svg" width="960" alt="TokenSaver Docs — PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 바꿔 Codex·Claude Code·OpenCode에서 재사용하세요." /></p>
 
-**PDF·Word·Excel·HTML·이미지·음성을 Markdown으로. AI가 문서를 읽을 때 낭비하는 토큰을 줄이세요.**
+<p align="center">
+<a href="#download"><img src="assets/readme/download-windows.svg" width="260" alt="Windows x64 download options" /></a>
+<a href="#download"><img src="assets/readme/download-macos.svg" width="260" alt="macOS Apple Silicon and Intel download options" /></a>
+<a href="#source-install"><img src="assets/readme/download-linux.svg" width="260" alt="Linux source installation" /></a>
+</p>
+<p align="center"><a href="#download">macOS Intel</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
-문서를 한 번 변환해 재사용하고, 질문에 필요한 부분만 읽습니다. Codex·Claude Code·OpenCode용 플러그인을 개발하고 있습니다. 이미지 속 글자와 설명도 선택한 모델로 추가할 수 있습니다.
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-[English](README.md) · [설치](#설치) · [모델 선택](#모델-선택변경) · [사용법](#사용법) · [지원 파일](#지원-파일)
+**PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 바꿔 Codex·Claude Code·OpenCode에서 재사용하세요.**
 
-> 현재는 **소스 CLI를 설치해 사용할 수 있는 미리보기**입니다. 아래 명령은 에이전트에 플러그인을 자동 등록하지 않습니다. 다운로드용 플러그인 릴리스와 공식 마켓 등록은 아직 준비 중입니다.
+아래 운영체제 버튼을 누른 뒤 사용할 에이전트의 ZIP을 받으세요. Linux는 현재 소스 설치를 제공합니다.
 
-## 설치
+<a id="download"></a>
+
+## 플러그인 다운로드 — v0.4.0 미리보기
+
+**내 운영체제와 사용할 에이전트가 만나는 파일을 받으세요.** Python을 따로 설치할 필요가 없습니다.
+
+| 운영체제 | Claude Code | Codex | OpenCode |
+| --- | --- | --- | --- |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.0/tokensaver-docs-opencode-win32-x64.zip) |
+
+압축을 풀고 **압축을 푼 폴더에서 터미널을 열어**, 선택한 에이전트의 이름을 넣어 실행하세요.
+
+```sh
+./bin/tokensaver-docs install-plugin . --agent claude
+```
+
+Codex는 `--agent codex`, OpenCode는 `--agent opencode`를 사용합니다. Windows PowerShell에서는 명령 앞부분을 `.\bin\tokensaver-docs.exe`로 바꾸세요. 설치한 뒤 에이전트를 재시작하고 **“tokensaver-docs로 이 파일을 Markdown으로 변환해줘: /파일경로”**라고 요청하세요. 모델 선택은 플러그인이 안내하며, 변경하려면 **“tokensaver-docs의 이미지 변환 모델을 변경해줘”**라고 요청하세요.
+
+macOS arm64는 로컬 설치를 확인했습니다. Intel Mac·Windows는 자동 번들 검사만 통과했으며 실제 에이전트 설치는 실험적입니다. 바이너리는 서명·공증 전입니다. Linux는 아래 소스 설치를 사용하세요. 공식 마켓 등록은 별도 준비 중입니다.
+
+[릴리스 설명·체크섬·설치 스크립트](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0)
+
+
+<a id="source-install"></a>
+
+## 소스 CLI 설치
 
 **내 컴퓨터의 운영체제 하나만 선택하세요.** Python 3.11 이상과 Git이 필요합니다.
 
@@ -40,7 +72,7 @@ python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/wint
 
 ## 모델 선택·변경
 
-**이미지 속 글자와 설명이 필요할 때, 아래 세 가지 중 하나만 선택하세요.** 설치한 환경이 활성화된 터미널에서 실행합니다. 처음 선택할 때와 나중에 변경할 때 같은 명령을 사용하며, 선택한 모델을 기본값으로 저장합니다.
+**아래 명령은 소스 CLI 사용자용입니다.** 플러그인 사용자는 위 안내처럼 에이전트에게 모델 변경을 요청하세요. 이미지 속 글자와 설명이 필요할 때, 아래 세 가지 중 하나만 선택하세요. 설치한 환경이 활성화된 터미널에서 실행합니다. 처음 선택할 때와 나중에 변경할 때 같은 명령을 사용하며, 선택한 모델을 기본값으로 저장합니다.
 
 <details>
 <summary><strong>① Claude Code — 로그인한 CLI의 모델 사용</strong></summary>

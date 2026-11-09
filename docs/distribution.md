@@ -4,9 +4,7 @@ No service or remote MCP server is needed. The tools run on the user's computer.
 The planned distribution uses GitHub for source and versioned release archives.
 PyPI, npm and official plugin directories are separate distribution channels.
 
-Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **No public binary release has been published yet.** The commands below
-are templates for a trusted repository after its release has been published.
-Use only a tag whose release assets have actually been published.
+Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **[v0.4.0 is published as a prerelease](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0).** The commands below use its versioned assets. Windows and Intel Mac passed automated bundle tests; real host installation remains experimental.
 
 ## First public preview: maintainer checklist
 
@@ -29,7 +27,7 @@ These commands describe release preparation; reading this guide does not create 
 
 ## Availability and discovery
 
-The current bundles are local previews. Installing one does not submit it to a
+The current bundles are GitHub prerelease archives. Installing one does not submit it to a
 public plugin directory, and tokensaver-docs is not currently listed for public
 name-based discovery.
 

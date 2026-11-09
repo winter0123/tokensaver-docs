@@ -1,8 +1,6 @@
-# Self-contained plugin preview (0.3.3)
+# Building self-contained plugin bundles
 
-This checkout can build local plugin bundles. GitHub, npm/PyPI and official directory
-publication have not occurred. Do not paste a fictitious owner/repository into an
-installation command and expect a published release to exist.
+GitHub prerelease [v0.4.0](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0) is available. This guide covers maintainer builds; npm/PyPI and official directory listings are not published.
 
 The chosen distribution is GitHub source plus GitHub Releases, with no hosted
 server or required PyPI/npm publication. See [release installation and updates](distribution.md).
