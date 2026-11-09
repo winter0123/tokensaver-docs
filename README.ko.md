@@ -34,15 +34,39 @@ python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/wint
 
 ### 2. 변환 모델 선택 / 변경
 
-터미널에서 다음 명령을 실행하고, **목록에서 원하는 모델 번호를 입력**하세요. 처음 선택할 때와 나중에 변경할 때 같은 명령을 사용합니다. 선택한 모델은 다음 변환에도 사용할 기본값으로 저장됩니다.
+**아래 세 가지 중 사용할 방식 하나만 선택하세요.** 처음 설정할 때와 모델을 변경할 때 같은 명령을 사용합니다. 선택한 모델은 다음 이미지 변환에도 사용할 기본값으로 저장됩니다.
+
+**① Claude Code로 변환하기**
+
+Claude Code CLI가 설치되어 있고 로그인되어 있어야 합니다. 아래 명령을 실행한 뒤, **해당 계정에서 사용할 모델 이름을 입력**하세요. 모델 목록을 번호로 고르는 방식은 아닙니다.
+
+```sh
+tokensaver-docs configure --kind image --provider claude
+```
+
+**② Codex로 변환하기**
+
+Codex CLI가 설치되어 있고 로그인되어 있어야 합니다. 아래 명령을 실행한 뒤, **해당 계정에서 사용할 모델 이름을 입력**하세요. 모델 목록을 번호로 고르는 방식은 아닙니다.
+
+```sh
+tokensaver-docs configure --kind image --provider codex
+```
+
+Claude Code와 Codex는 각각 실행되는 CLI의 로그인·사용량 한도·과금 조건을 따릅니다. 현재 대화 모델을 자동으로 가져오지 않습니다. 이 플러그인은 두 CLI의 모델 목록·이미지 지원 여부를 자동 조회하지 못하므로, 이미지 입력을 지원하는 모델인지 확인하고 선택하세요.
+
+**③ OpenRouter 무료 모델로 변환하기**
+
+`OPENROUTER_API_KEY` 환경변수를 설정한 뒤 아래 명령을 실행하세요. **무료 이미지 입력 지원 후보 목록에서 모델 번호를 입력**하면 됩니다. 실제 사용 가능 여부는 계정과 서비스 상태에 따라 달라질 수 있습니다.
 
 ```sh
 tokensaver-docs configure --kind image --provider openrouter
 ```
 
-OpenRouter 이미지 분석에는 `OPENROUTER_API_KEY` 환경변수 설정이 필요합니다. 키는 에이전트 대화에 입력하지 마세요. 이 명령은 **문서 속 이미지 변환 모델**을 바꾸며, Codex·Claude Code·OpenCode의 대화 모델이나 음성 모델은 바꾸지 않습니다. 이미지 없는 문서의 텍스트 추출에는 모델·API 키가 필요하지 않습니다.
+키는 에이전트 대화에 입력하지 마세요.
 
-현재 설정 확인:
+위 명령은 **문서 속 이미지를 처리할 모델**을 바꿉니다. 에이전트의 대화 모델이나 음성 모델은 바꾸지 않습니다. 이미지 없는 문서의 텍스트 추출에는 모델·API 키가 필요하지 않습니다.
+
+**현재 선택한 모델 확인**
 
 ```sh
 tokensaver-docs setup-model
@@ -56,7 +80,8 @@ tokensaver-docs setup-model
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
 ```
 
-위 명령은 글자를 추출하고 이미지 위치에 `[이미지]`를 남깁니다. **이미지 속 글자와 설명도 넣으려면**, 모델·키를 설정한 뒤 아래 명령을 사용하세요. 이미지가 선택한 제공자로 전송됩니다.
+위 명령은 글자를 추출하고 이미지 위치에 `[이미지]`를 남깁니다. **이미지 속 글자와 설명도 넣으려면**, 선택한 방식의 모델과 로그인 또는 API 키를 준비한 뒤 아래 명령을 사용하세요. 이미지가 선택한 제공자로 전송됩니다.
+Claude Code·Codex처럼 이미지 지원 여부가 자동 확인되지 않는 모델은, 지원 여부를 직접 확인한 경우에만 아래 명령 끝에 `--allow-unverified-model`을 추가하세요. 이 옵션은 이미지 미지원으로 확인된 모델을 허용하지 않습니다.
 
 ```sh
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze

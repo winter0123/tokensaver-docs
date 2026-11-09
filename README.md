@@ -39,15 +39,39 @@ In a new terminal, activate the environment again using the second line. If Powe
 
 ### 2. Choose or change the conversion model
 
-Run this in your terminal, then **enter a model number from the list**. The selected model becomes the default for future image conversions. Use the same command to change it later.
+**Choose one of the three options below.** Use the same command for initial setup and later changes. Your selection is saved as the default image conversion model.
+
+**① Claude Code**
+
+Install and sign in to the Claude Code CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
+
+```sh
+tokensaver-docs configure --kind image --provider claude
+```
+
+**② Codex**
+
+Install and sign in to the Codex CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
+
+```sh
+tokensaver-docs configure --kind image --provider codex
+```
+
+Claude Code and Codex use their respective CLI authentication, usage limits, and billing conditions. The plugin does not copy your current chat model or automatically discover either CLI's model list or vision capability. Choose a model that supports image input.
+
+**③ OpenRouter free models**
+
+Set the `OPENROUTER_API_KEY` environment variable first. Run this, then **enter a number from the free image-input model candidate list**. Actual availability depends on your account and the service.
 
 ```sh
 tokensaver-docs configure --kind image --provider openrouter
 ```
 
-OpenRouter image analysis needs the `OPENROUTER_API_KEY` environment variable. Do not share keys in agent chat. This changes the document image model, not your coding agent's chat model or audio model. Plain document text extraction needs no model or API key.
+Do not share API keys in agent chat.
 
-Check the current model:
+These commands change the **document image model**, not your agent's chat model or audio model. Plain document text extraction needs no model or API key.
+
+**Check the current model**
 
 ```sh
 tokensaver-docs setup-model
@@ -61,7 +85,8 @@ Replace `./documents` with your input path. This extracts text and marks image p
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
 ```
 
-To include visible image text and descriptions, configure your model/key first, then run this. Images are sent to the selected provider:
+To include visible image text and descriptions, configure your model and CLI login or API key first, then run this. Images are sent to the selected provider.
+For models whose image support cannot be verified automatically (including Claude Code/Codex), add `--allow-unverified-model` only after checking image support yourself. This does not override known incompatibility.
 
 ```sh
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
