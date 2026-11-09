@@ -1,17 +1,17 @@
 import hashlib,json,tempfile,unittest
 from pathlib import Path
-from file_to_md.installer import install_bundle,verify_bundle
+from tokensaver_docs.installer import install_bundle,verify_bundle
 
 class InstallerTests(unittest.TestCase):
     def make_claude_bundle(self, root):
         import os, platform, sys
-        from file_to_md import __version__
+        from tokensaver_docs import __version__
         bundle=root/'bundle'
         (bundle/'bin').mkdir(parents=True)
-        exe='file-to-md.exe' if os.name=='nt' else 'file-to-md'
+        exe='tokensaver-docs.exe' if os.name=='nt' else 'tokensaver-docs'
         (bundle/'bin'/exe).write_bytes(b'executable')
         (bundle/'.claude-plugin').mkdir()
-        (bundle/'.claude-plugin/marketplace.json').write_text(json.dumps({'plugins':[{'name':'file-to-md','source':'./'}]}))
+        (bundle/'.claude-plugin/marketplace.json').write_text(json.dumps({'plugins':[{'name':'tokensaver-docs','source':'./'}]}))
         cpu={'amd64':'x64','x86_64':'x64','aarch64':'arm64','arm64':'arm64'}[platform.machine().lower()]
         (bundle/'platform.json').write_text(json.dumps({'os':sys.platform,'cpu':cpu,'agent':'claude','version':__version__}))
         checks={p.relative_to(bundle).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in bundle.rglob('*') if p.is_file()}
@@ -35,7 +35,7 @@ class InstallerTests(unittest.TestCase):
                 if old is not None:
                     catalog.parent.mkdir(parents=True,exist_ok=True)
                     catalog.write_text(old)
-                with patch('file_to_md.installer.subprocess.run',side_effect=subprocess.CalledProcessError(1,'claude')):
+                with patch('tokensaver_docs.installer.subprocess.run',side_effect=subprocess.CalledProcessError(1,'claude')):
                     with self.assertRaises(subprocess.CalledProcessError):
                         install_bundle(bundle,'claude',destination=root/'installed')
                 if old is None:self.assertFalse(catalog.exists())
@@ -45,25 +45,25 @@ class InstallerTests(unittest.TestCase):
         import os
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bundle=root/'bundle';(bundle/'bin').mkdir(parents=True)
-            exe='file-to-md.exe' if os.name=='nt' else 'file-to-md'
+            exe='tokensaver-docs.exe' if os.name=='nt' else 'tokensaver-docs'
             (bundle/'bin'/exe).write_bytes(b'executable')
-            (bundle/'index.js').write_text('export const FileToMdPlugin=()=>({});')
+            (bundle/'index.js').write_text('export const TokenSaverDocsPlugin=()=>({});')
             (bundle/'package.json').write_text('{}')
             import platform,sys
             cpu={'amd64':'x64','x86_64':'x64','aarch64':'arm64','arm64':'arm64'}[platform.machine().lower()]
-            from file_to_md import __version__
+            from tokensaver_docs import __version__
             (bundle/'platform.json').write_text(json.dumps({'os':sys.platform,'cpu':cpu,'agent':'opencode','version':__version__}))
             checks={p.relative_to(bundle).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in bundle.rglob('*') if p.is_file()}
             (bundle/'checksums.json').write_text(json.dumps(checks))
             args=dict(destination=root/'installed',config_dir=root/'config')
             from unittest.mock import patch
             import subprocess
-            for major, expected in [('1', 'FileToMdPlugin'), ('2', 'default')]:
-                with patch('file_to_md.installer.shutil.which', return_value='/usr/bin/opencode'), patch('file_to_md.installer.subprocess.run', return_value=subprocess.CompletedProcess([], 0, f'opencode v{major}.1.3', '')):
+            for major, expected in [('1', 'TokenSaverDocsPlugin'), ('2', 'default')]:
+                with patch('tokensaver_docs.installer.shutil.which', return_value='/usr/bin/opencode'), patch('tokensaver_docs.installer.subprocess.run', return_value=subprocess.CompletedProcess([], 0, f'opencode v{major}.1.3', '')):
                     first=install_bundle(bundle,'opencode',**args)
                     self.assertEqual(install_bundle(bundle,'opencode',**args),first)
-                    self.assertIn('export { '+expected+' }', (root/'config/plugins/file-to-md.js').read_text())
-            shim=root/'config/plugins/file-to-md.js';shim.write_text('// user plugin')
+                    self.assertIn('export { '+expected+' }', (root/'config/plugins/tokensaver-docs.js').read_text())
+            shim=root/'config/plugins/tokensaver-docs.js';shim.write_text('// user plugin')
             with self.assertRaises(ValueError):install_bundle(bundle,'opencode',**args)
             self.assertEqual(shim.read_text(),'// user plugin')
             (bundle/'index.js').write_text('tampered')

@@ -7,7 +7,7 @@
       "query": "환불 신청 기한",
       "expected": "수령 후 7일",
       "full_tokens": 8610,
-      "file_to_md": {
+      "tokensaver_docs": {
         "exit": 0,
         "tokens": 78,
         "fact_found": true
@@ -23,7 +23,7 @@
       "query": "배송 주소 변경",
       "expected": "출고 전",
       "full_tokens": 8610,
-      "file_to_md": {
+      "tokensaver_docs": {
         "exit": 0,
         "tokens": 72,
         "fact_found": true
@@ -39,7 +39,7 @@
       "query": "API timeout limit",
       "expected": "30 seconds",
       "full_tokens": 8610,
-      "file_to_md": {
+      "tokensaver_docs": {
         "exit": 0,
         "tokens": 66,
         "fact_found": true

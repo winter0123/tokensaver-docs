@@ -6,8 +6,8 @@ sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from docx import Document
 from PIL import Image
 import tiktoken
-from file_to_md.engine import convert
-from file_to_md.context import document_context
+from tokensaver_docs.engine import convert
+from tokensaver_docs.context import document_context
 
 with tempfile.TemporaryDirectory() as tmp:
     root=Path(tmp);source=root/'policy.docx';doc=Document()
@@ -15,13 +15,13 @@ with tempfile.TemporaryDirectory() as tmp:
     for i in range(200):doc.add_paragraph(f'Unrelated inventory record {i}. '+('Internal description. '*10))
     doc.save(source)
     start=time.perf_counter()
-    with patch.dict(os.environ,{'FILE_TO_MD_CACHE_DIR':str(root/'cache')}):
+    with patch.dict(os.environ,{'TOKENSAVER_DOCS_CACHE_DIR':str(root/'cache')}):
         convert(source,root/'out',cache_dir=root/'cache')
         first_seconds=time.perf_counter()-start;start=time.perf_counter()
         result=document_context(source,'Refunds',root/'out',max_tokens=500)
         repeated_seconds=time.perf_counter()-start
     image=root/'image.png';Image.new('RGB',(31,47),'orange').save(image)
-    with patch('file_to_md.providers.generate',return_value={'text':'Synthetic image transcript'}) as model:
+    with patch('tokensaver_docs.providers.generate',return_value={'text':'Synthetic image transcript'}) as model:
         convert(image,root/'first',cache_dir=root/'image-cache',profiles={'image':{'provider':'codex','model':'mock'}})
         first_calls=model.call_count
         convert(image,root/'second',cache_dir=root/'image-cache')

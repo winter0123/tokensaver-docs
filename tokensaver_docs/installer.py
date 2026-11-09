@@ -38,7 +38,7 @@ def install_bundle(bundle, agent, *, destination=None, config_dir=None, register
     cpu={'amd64':'x64','x86_64':'x64','aarch64':'arm64','arm64':'arm64'}.get(platform.machine().lower())
     if metadata.get('agent')!=agent or metadata.get('os')!=sys.platform or metadata.get('cpu')!=cpu:
         raise ValueError('현재 에이전트·운영체제·CPU와 맞지 않는 패키지입니다.')
-    executable='file-to-md.exe' if os.name=='nt' else 'file-to-md'
+    executable='tokensaver-docs.exe' if os.name=='nt' else 'tokensaver-docs'
     if 'bin/'+executable not in checks:raise ValueError('현재 운영체제용 실행 파일이 없습니다.')
     if agent not in ('claude','codex','opencode'):raise ValueError('지원하지 않는 에이전트입니다.')
     if agent=='opencode':
@@ -74,10 +74,10 @@ def install_bundle(bundle, agent, *, destination=None, config_dir=None, register
             try:
                 subprocess.run([agent,'plugin','marketplace','add',str(marketplace)],check=True)
                 if agent=='claude':
-                    subprocess.run(['claude','plugin','install','file-to-md@file-to-md-marketplace'],check=True)
-                    subprocess.run(['claude','plugin','update','file-to-md@file-to-md-marketplace'],check=True)
+                    subprocess.run(['claude','plugin','install','tokensaver-docs@tokensaver-docs-marketplace'],check=True)
+                    subprocess.run(['claude','plugin','update','tokensaver-docs@tokensaver-docs-marketplace'],check=True)
                 else:
-                    subprocess.run(['codex','plugin','add','file-to-md@file-to-md-marketplace'],check=True)
+                    subprocess.run(['codex','plugin','add','tokensaver-docs@tokensaver-docs-marketplace'],check=True)
             except (OSError,subprocess.CalledProcessError):
                 if previous is not None:atomic_write(catalog,previous)
                 else:catalog.unlink(missing_ok=True)
@@ -87,8 +87,8 @@ def install_bundle(bundle, agent, *, destination=None, config_dir=None, register
             plugins=base/'plugins'
             if base.is_symlink() or plugins.is_symlink():raise ValueError('플러그인 경로가 올바르지 않습니다.')
             plugins.mkdir(parents=True,exist_ok=True)
-            shim=plugins/'file-to-md.js'
-            marker='// file-to-md managed plugin\n'
+            shim=plugins/'tokensaver-docs.js'
+            marker='// tokensaver-docs managed plugin\n'
             state_file=parent/'registration.json'
             if state_file.is_symlink():raise ValueError('설치 기록 경로가 올바르지 않습니다.')
             state=json.loads(state_file.read_text()) if state_file.exists() else {}
@@ -98,7 +98,7 @@ def install_bundle(bundle, agent, *, destination=None, config_dir=None, register
             version = subprocess.run([opencode, '--version'], capture_output=True, text=True, timeout=10) if opencode else None
             match = re.search(r'\bv?(\d+)\.', version.stdout) if version and version.returncode == 0 else None
             is_v2 = bool(match and match.group(1) == '2')
-            exports = 'default' if is_v2 else 'FileToMdPlugin'
+            exports = 'default' if is_v2 else 'TokenSaverDocsPlugin'
             atomic_write(shim,marker+'export { '+exports+' } from '+json.dumps((target/'index.js').as_uri())+';\n')
             state[str(shim)]=file_hash(shim)
             atomic_write(state_file,json.dumps(state))

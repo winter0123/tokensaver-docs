@@ -12,7 +12,7 @@ Convert files once and give coding agents bounded, line-numbered evidence. [Engl
 
 텍스트 문서는 로컬에서 직접 추출한다. 이미지가 있으면 이미지·글자·설명을 넣을지, 이미지만 넣을지 사람이 선택한다. 선택한 모델이 이미지를 읽지 못하면 모델을 바꾸거나 해당 위치에 `[이미지]`만 표시하고 계속할 수 있다. 이미지 내용 정리는 사용자가 선택한 모델로 처리하며, 음성은 별도로 선택한다. 화면 메시지와 안내는 한국어다.
 
-기존 명령어와 내부 플러그인 식별자는 호환성을 위해 `file-to-md`를 유지합니다.
+명령어·플러그인 ID·설치 경로는 `tokensaver-docs`, Python 패키지는 `tokensaver_docs`를 사용합니다.
 
 ## 설치와 실행
 
@@ -21,17 +21,17 @@ Convert files once and give coding agents bounded, line-numbered evidence. [Engl
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/file-to-md --help
+.venv/bin/tokensaver-docs --help
 ```
 
 스캔 PDF의 페이지 렌더링은 포함된 PDFium으로 처리하므로 Poppler나 `pdftoppm` 설치가 필요하지 않다. 페이지 이미지의 내용을 정리할 제공자·모델은 사람이 선택한다. 오디오 정규화는 프로젝트 의존성 `imageio-ffmpeg`에 포함된 바이너리를 사용하고 구간 분할은 파이썬이 수행한다. 시스템 ffmpeg/ffprobe를 설치하거나 수정하지 않는다. OCR 엔진은 사용하지 않는다. 음성은 선택에 따라 whisper.cpp로 로컬 인식할 수 있다.
 
 ```sh
-file-to-md inspect ~/Documents/자료 --output ~/Documents/변환결과
-file-to-md convert ~/Documents/자료 --output ~/Documents/변환결과
-file-to-md status --output ~/Documents/변환결과
-file-to-md search "환불 기한" --output ~/Documents/변환결과
-file-to-md read ~/Documents/변환결과/규정.pdf.md --page 4
+tokensaver-docs inspect ~/Documents/자료 --output ~/Documents/변환결과
+tokensaver-docs convert ~/Documents/자료 --output ~/Documents/변환결과
+tokensaver-docs status --output ~/Documents/변환결과
+tokensaver-docs search "환불 기한" --output ~/Documents/변환결과
+tokensaver-docs read ~/Documents/변환결과/규정.pdf.md --page 4
 ```
 
 폴더는 자동 재귀 처리하며 출력·캐시·가상환경·심볼릭 링크는 제외한다. 단일 파일도 입력할 수 있다. 결과는 원본의 상대경로와 확장자를 보존해 `규정.pdf.md`처럼 저장한다. 기본 출력 폴더는 실행한 위치의 `converted`다.
@@ -41,12 +41,12 @@ file-to-md read ~/Documents/변환결과/규정.pdf.md --page 4
 처음 `prepare`를 사용하면 **모델 선택하기 / 나중에 선택하기**를 안내한다. 일반 문서의 글자는 모델 없이도 추출할 수 있다. 플러그인의 변환 모델은 현재 대화 모델과 별개이며, 호스트 모델 정보를 확인할 수 없으면 추측하지 않는다.
 
 ```sh
-file-to-md setup-model
-file-to-md setup-model --defer
+tokensaver-docs setup-model
+tokensaver-docs setup-model --defer
 # 사용자가 고른 모델의 지원 여부 확인: 기본값은 바뀌지 않음
-file-to-md setup-model --provider openrouter --model MODEL_ID
+tokensaver-docs setup-model --provider openrouter --model MODEL_ID
 # 사용자가 기본 모델 저장을 선택한 뒤 실행
-file-to-md setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
+tokensaver-docs setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
 ```
 
 이미지 입력 지원 여부와 무료 여부는 따로 확인한다. 미지원, 확인 불가, 목록 조회 실패, 무료 가격 미확인은 서로 다른 상태로 안내한다. 코덱스·클로드 CLI에서 이미지 지원을 확인하지 못한 경우 사용자가 직접 지원·계정 조건을 확인하고 동의한 뒤 `--allow-unverified-model`을 사용할 수 있다. 이 옵션은 확인된 미지원이나 오픈라우터의 가격 검사·조회 실패를 우회하지 않는다.
@@ -59,9 +59,9 @@ file-to-md setup-model --provider openrouter --model MODEL_ID --save-as-default 
 지원 모델일 때의 `이미지만 넣기`는 실제 이미지를 MD에 연결하는 기존 기능이다. `[이미지]`만 표시하는 선택과 결과가 다르다. 로컬 OCR이나 글자만 추출하는 새 모드는 추가하지 않았다.
 
 ```sh
-file-to-md prepare 자료 --output 결과 --image-mode placeholder
-file-to-md prepare 자료 --output 결과 --image-mode preserve
-file-to-md prepare 자료 --output 결과 --image-mode analyze --model-provider openrouter --model MODEL_ID
+tokensaver-docs prepare 자료 --output 결과 --image-mode placeholder
+tokensaver-docs prepare 자료 --output 결과 --image-mode preserve
+tokensaver-docs prepare 자료 --output 결과 --image-mode analyze --model-provider openrouter --model MODEL_ID
 ```
 
 `analyze`는 이미지·글자·설명, `preserve`는 이미지만, `placeholder`는 위치 표시만 뜻한다. `--model-provider`와 `--model`은 이번 요청에만 적용하며 저장된 기본값을 바꾸지 않는다. 외부 분석 제공자를 선택하면 이미지가 전송될 수 있으므로 처리 전에 동의한다. 음성 제공자는 함께 활성화하지 않는다.
@@ -69,12 +69,12 @@ file-to-md prepare 자료 --output 결과 --image-mode analyze --model-provider 
 `configure`를 실행하면 사람이 입력 종류, 제공자, 모델을 선택한다. 이미지와 오디오를 따로 설정한다. 로컬 음성은 `configure --kind audio --provider whisper.cpp --model /모델경로/ggml-small.bin`으로 선택한다. 실행 파일은 `whisper-cli`이며 `WHISPER_CPP_BINARY`로 경로를 지정할 수 있다. 오픈라우터 무료 후보는 `models --kind image` 또는 `models --kind audio`로 조회한다. 목록 조회는 추론을 호출하지 않는다.
 
 ```sh
-file-to-md configure
-file-to-md configure --kind image --provider codex --model <계정에서_사용할_모델>
-file-to-md configure --kind audio --provider openrouter --model <직접_선택한_무료모델>
+tokensaver-docs configure
+tokensaver-docs configure --kind image --provider codex --model <계정에서_사용할_모델>
+tokensaver-docs configure --kind audio --provider openrouter --model <직접_선택한_무료모델>
 ```
 
-오픈라우터 키는 `OPENROUTER_API_KEY` 환경변수로만 전달한다. 명령줄 인자로 키를 받거나 설정 파일에 저장하지 않는다. 기존 제공자 설정은 `~/.config/file-to-md/config.json`, 최초 선택과 새 기본 변환 모델은 같은 폴더의 `model-choice.json`에 저장한다. `XDG_CONFIG_HOME`을 지정하면 그 아래를 사용한다. 기존 `configure --config`는 해당 제공자 파일 위치를 바꾸는 옵션이다.
+오픈라우터 키는 `OPENROUTER_API_KEY` 환경변수로만 전달한다. 명령줄 인자로 키를 받거나 설정 파일에 저장하지 않는다. 기존 제공자 설정은 `~/.config/tokensaver-docs/config.json`, 최초 선택과 새 기본 변환 모델은 같은 폴더의 `model-choice.json`에 저장한다. `XDG_CONFIG_HOME`을 지정하면 그 아래를 사용한다. 기존 `configure --config`는 해당 제공자 파일 위치를 바꾸는 옵션이다.
 
 | 연결 | 이미지 | 오디오 | 사용량 |
 | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ whisper.cpp는 16kHz 모노 WAV를 로컬에서 인식하고 언어를 자동 �
 
 ## 캐시·재개·보존
 
-결과 폴더의 `.file-to-md/state.json`에 원본 해시, 설정·모델·지시문 버전, 완료 구간, 추출 내용, 제공된 사용량을 저장한다. 인증값은 저장하지 않는다. 추출 내용은 민감정보를 포함할 수 있으므로 결과 폴더도 원본과 동일하게 관리한다.
+결과 폴더의 `.tokensaver-docs/state.json`에 원본 해시, 설정·모델·지시문 버전, 완료 구간, 추출 내용, 제공된 사용량을 저장한다. 인증값은 저장하지 않는다. 추출 내용은 민감정보를 포함할 수 있으므로 결과 폴더도 원본과 동일하게 관리한다.
 
 같은 내용의 파일과 완료한 AI 구간은 공통 캐시에서 재사용한다. 이미지 분석·이미지 보존·위치 표시는 서로 구분한다. 새 준비 경로에서 분석 모델을 명시적으로 선택하면 모델별 캐시를 사용해 다른 모델의 결과를 선택 모델의 결과처럼 표시하지 않는다. 결과 MD만 삭제한 경우 캐시에서 복원하고, 실패한 구간은 같은 명령으로 재개한다. 기존 `convert`의 모델 설정만 변경해도 완료된 결과는 유지하며, 새 모델로 다시 처리하려면 `--refresh`를 명시한다. 원본이 바뀌면 달라진 내용을 다시 처리한다.
 
@@ -114,7 +114,7 @@ whisper.cpp는 16kHz 모노 WAV를 로컬에서 인식하고 언어를 자동 �
 
 ## 스킬
 
-`skills/file-to-md/SKILL.md` 한 개를 코덱스·클로드 코드가 함께 사용한다. 사용자 스킬 폴더에 연결하면 어느 프로젝트에서든 변환·검색·부분 읽기 절차를 사용할 수 있다. 스킬 본문에 대회 자료나 인증값을 넣지 않는다.
+`skills/tokensaver-docs/SKILL.md` 한 개를 코덱스·클로드 코드가 함께 사용한다. 사용자 스킬 폴더에 연결하면 어느 프로젝트에서든 변환·검색·부분 읽기 절차를 사용할 수 있다. 스킬 본문에 대회 자료나 인증값을 넣지 않는다.
 
 ## 검증
 
@@ -124,7 +124,7 @@ whisper.cpp는 16kHz 모노 WAV를 로컬에서 인식하고 언어를 자동 �
 
 자동 테스트는 생성한 작은 문서와 가짜 제공자 응답을 사용한다. 실 API·구독 모델 호출을 테스트 성공으로 가장하지 않는다.
 
-문서 제목과 원본 결과 파일의 줄 번호는 `file-to-md outline 결과.md`로 확인한다. 검색할 때 `--context 2`를 지정하면 일치한 줄 앞뒤의 문맥을 함께 확인할 수 있다. 결과는 기본적으로 글자 수로 제한되며 실제 토큰 수와 같지는 않다.
+문서 제목과 원본 결과 파일의 줄 번호는 `tokensaver-docs outline 결과.md`로 확인한다. 검색할 때 `--context 2`를 지정하면 일치한 줄 앞뒤의 문맥을 함께 확인할 수 있다. 결과는 기본적으로 글자 수로 제한되며 실제 토큰 수와 같지는 않다.
 
 ## 에이전트와 토큰 예산
 
@@ -132,27 +132,27 @@ whisper.cpp는 16kHz 모노 WAV를 로컬에서 인식하고 언어를 자동 �
 
 ```sh
 python -m pip install '.[mcp,tokens]'
-file-to-md doctor
-file-to-md install-skill --agent codex
-# 또는 file-to-md install-skill --agent claude
+tokensaver-docs doctor
+tokensaver-docs install-skill --agent codex
+# 또는 tokensaver-docs install-skill --agent claude
 ```
 
 `install-skill`은 기본적으로 해당 에이전트의 사용자 스킬 폴더를 사용하고, 기존 스킬 내용이 다르면 덮어쓰지 않는다. `--destination`으로 별도 상위 폴더를 지정할 수 있다. Orca에서는 Orca가 실행하는 에이전트의 CLI·스킬 설정을 사용한다.
 
 ```sh
-file-to-md outline 결과/규정.pdf.md
-file-to-md search "환불" --output 결과 --context 2 --max-tokens 300
-file-to-md read 결과/규정.pdf.md --start-line 20 --max-tokens 300
-file-to-md count-tokens 결과/규정.pdf.md --encoding cl100k_base
+tokensaver-docs outline 결과/규정.pdf.md
+tokensaver-docs search "환불" --output 결과 --context 2 --max-tokens 300
+tokensaver-docs read 결과/규정.pdf.md --start-line 20 --max-tokens 300
+tokensaver-docs count-tokens 결과/규정.pdf.md --encoding cl100k_base
 ```
 
 `--max-tokens`는 검색 결과의 경로·줄 번호와 본문 또는 읽기 결과의 줄 번호와 본문에 적용하며 상태 메시지나 에이전트 프로토콜 부가 내용은 포함하지 않는다. `count-tokens`와 검색은 선택한 인코딩 기준이므로 실제 다른 모델의 청구 토큰과 다를 수 있다. `tiktoken` 어휘 파일은 최초 사용 시 다운로드가 필요할 수 있다. 전체 정답과 예외를 확인할 수 있을 만큼 문맥을 읽어야 하며 짧은 검색 결과만으로 정확도를 보장하지 않는다.
 
-MCP는 선택 설치 후 `file-to-md-mcp`를 stdio 서버로 실행한다. 설치가 클라이언트 설정을 자동 변경하지는 않는다. 선택한 에이전트의 명령에서 등록할 수 있다.
+MCP는 선택 설치 후 `tokensaver-docs-mcp`를 stdio 서버로 실행한다. 설치가 클라이언트 설정을 자동 변경하지는 않는다. 선택한 에이전트의 명령에서 등록할 수 있다.
 
 ```sh
-codex mcp add file-to-md -- file-to-md-mcp
-claude mcp add file-to-md -- file-to-md-mcp
+codex mcp add tokensaver-docs -- tokensaver-docs-mcp
+claude mcp add tokensaver-docs -- tokensaver-docs-mcp
 ```
 
 MCP 변환 도구는 기본적으로 설정된 외부 제공자를 사용하지 않고 상태와 경로만 반환한다. `convert_documents`의 `use_configured_providers=true`는 이미지 제공자를, `use_configured_audio_provider=true`는 음성 제공자를 각각 활성화한다. `context_documents`의 `use_configured_providers=true`는 이미지와 음성 제공자를 모두 활성화하므로 두 입력 종류에 대한 동의가 필요하다. 활성화한 입력은 해당 서비스로 전송될 수 있다. MCP 검색과 읽기는 제한된 근거를 반환하며 선택적으로 `max_tokens`를 받을 수 있다. 여러 검색어는 정확한 문구를 먼저 찾고, 같은 줄에 모든 단어가 있는 결과를 그 다음에 출력한다.
@@ -176,4 +176,4 @@ Whisper 실행 파일, OpenCode JavaScript 의존성이 포함됩니다. 음성 
 디렉터리 게시, Windows와 Intel Mac의 실제 실행은 아직 완료되지 않았습니다.
 
 
-HTML과 이미지는 `file-to-md prepare <입력> --output <결과>`로 준비합니다. 반환된 최초 설정·모델 지원·이미지 처리 질문에 사용자가 답한 뒤 계속합니다. 기존 `--transcribe-images`는 `analyze`, `--skip-image-transcription`은 `preserve`와 같은 의미입니다. `[이미지]`만 남기려면 `--image-mode placeholder`를 선택합니다. 결과 상태에서 누락·실패를 확인하세요. 모델에게 원문 HTML을 읽히거나 변환기를 작성시키지 마세요. 0.3.4의 새 흐름을 세 호스트의 실제 모델 호출로 검증한 상태는 아니며 최신 기록은 [검증 상태](docs/current-status.md)를 확인하세요.
+HTML과 이미지는 `tokensaver-docs prepare <입력> --output <결과>`로 준비합니다. 반환된 최초 설정·모델 지원·이미지 처리 질문에 사용자가 답한 뒤 계속합니다. 기존 `--transcribe-images`는 `analyze`, `--skip-image-transcription`은 `preserve`와 같은 의미입니다. `[이미지]`만 남기려면 `--image-mode placeholder`를 선택합니다. 결과 상태에서 누락·실패를 확인하세요. 모델에게 원문 HTML을 읽히거나 변환기를 작성시키지 마세요. 0.4.0의 새 흐름을 세 호스트의 실제 모델 호출로 검증한 상태는 아니며 최신 기록은 [검증 상태](docs/current-status.md)를 확인하세요.

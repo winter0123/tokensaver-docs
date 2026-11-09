@@ -5,9 +5,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
-from file_to_md.image_analysis import analyze_image
-from file_to_md.providers import ConversionError, ProviderRequired
-from file_to_md.shared_cache import UnitStore
+from tokensaver_docs.image_analysis import analyze_image
+from tokensaver_docs.providers import ConversionError, ProviderRequired
+from tokensaver_docs.shared_cache import UnitStore
 
 
 class ImageAnalysisTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class ImageAnalysisTests(unittest.TestCase):
             Image.new('RGB', (8, 8), 'red').save(asset)
             profile = {'provider': 'openrouter', 'model': 'chosen:free'}
             store = UnitStore(root)
-            with patch('file_to_md.image_analysis.providers.generate', return_value={'text': json.dumps({'image_text': '확인되는 글자 없음', 'image_description': '빨간 사각형.'}), 'usage': {'input_tokens': 7}}) as generate:
+            with patch('tokensaver_docs.image_analysis.providers.generate', return_value={'text': json.dumps({'image_text': '확인되는 글자 없음', 'image_description': '빨간 사각형.'}), 'usage': {'input_tokens': 7}}) as generate:
                 calls = []
                 record, cached = analyze_image(asset, profile, store, on_call=lambda: calls.append(1))
                 reused, cached_again = analyze_image(asset, None, store, on_call=lambda: calls.append(1))
@@ -40,7 +40,7 @@ class ImageAnalysisTests(unittest.TestCase):
             with self.assertRaises(ProviderRequired):
                 analyze_image(asset, None, store)
             for output in ('not json', '{}', '{"image_text":"x","image_description":""}', '{"image_text":[],"image_description":"photo"}'):
-                with patch('file_to_md.image_analysis.providers.generate', return_value={'text': output}):
+                with patch('tokensaver_docs.image_analysis.providers.generate', return_value={'text': output}):
                     with self.assertRaises(ConversionError):
                         analyze_image(asset, {'provider':'openrouter','model':'selected:free'}, store)
             self.assertFalse(list((root / 'units').glob('*/unit.json')))

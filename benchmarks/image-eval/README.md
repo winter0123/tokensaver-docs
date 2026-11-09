@@ -7,7 +7,7 @@
 따라 픽셀·파일 해시가 달라지므로 아래는 **새 폴더**에 생성한다.
 
 ```sh
-python benchmarks/image-eval/generate.py --output /tmp/file-to-md-image-eval --font /path/to/korean-font.ttf
+python benchmarks/image-eval/generate.py --output /tmp/tokensaver-docs-image-eval --font /path/to/korean-font.ttf
 ```
 
 ## 사람이 확인할 기준

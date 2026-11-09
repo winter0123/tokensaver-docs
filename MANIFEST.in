@@ -1,12 +1,12 @@
 include README.md README.en.md LICENSE
 include README.ko.md CONTRIBUTING.md CHANGELOG.md
-include skills/file-to-md/SKILL.md
+include skills/tokensaver-docs/SKILL.md
 include docs/plugin-preview.md
 include scripts/standalone.py scripts/build_standalone.py scripts/package_plugins.py
 include scripts/build_whisper.py scripts/archive_plugins.py scripts/install.sh scripts/install.ps1
 include scripts/prepare_release.py docs/distribution.md
 include plugins/opencode/bun.lock
-recursive-include file_to_md/data *.json
+recursive-include tokensaver_docs/data *.json
 recursive-include plugins *.md *.js *.json
 prune plugins/opencode/node_modules
 include docs/setup/whisper-cpp-setup.md

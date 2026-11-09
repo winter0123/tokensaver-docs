@@ -18,7 +18,7 @@ case "$version" in *[!a-zA-Z0-9._-]*|'') echo 'Invalid version' >&2; exit 2;; es
 case "$agent" in claude|codex|opencode) ;; *) echo 'Choose an agent' >&2; exit 2;; esac
 [ "$(uname -s)" = Darwin ] || { echo 'This installer is for macOS' >&2; exit 2; }
 case "$(uname -m)" in arm64) arch=arm64;; x86_64) arch=x64;; *) echo 'Unsupported CPU' >&2; exit 2;; esac
-asset="file-to-md-${agent}-darwin-${arch}.zip"
+asset="tokensaver-docs-${agent}-darwin-${arch}.zip"
 base="https://github.com/$repo/releases/download/$version"
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
@@ -30,6 +30,6 @@ actual=$(shasum -a 256 "$task_tmp/bundle.zip" | awk '{print $1}')
 [ "$actual" = "$expected" ] || { echo 'Checksum mismatch' >&2; exit 2; }
 mkdir "$task_tmp/bundle"
 unzip -q "$task_tmp/bundle.zip" -d "$task_tmp/bundle"
-chmod +x "$task_tmp/bundle/bin/file-to-md"
-"$task_tmp/bundle/bin/file-to-md" install-plugin "$task_tmp/bundle" --agent "$agent" --expected-version "${version#v}"
+chmod +x "$task_tmp/bundle/bin/tokensaver-docs"
+"$task_tmp/bundle/bin/tokensaver-docs" install-plugin "$task_tmp/bundle" --agent "$agent" --expected-version "${version#v}"
 echo "Installed $version for $agent. Restart your agent to load the plugin."

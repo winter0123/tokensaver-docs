@@ -1,4 +1,4 @@
-"""합성 문서에서 전문, file-to-md, QMD 키워드 검색을 비교한다."""
+"""합성 문서에서 전문, tokensaver-docs, QMD 키워드 검색을 비교한다."""
 import contextlib
 import io
 import json
@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 import tiktoken
-from file_to_md.cli import main
+from tokensaver_docs.cli import main
 
 QMD = ['bunx', '--bun', '@tobilu/qmd@2.8.3']
 FIXTURES = [
@@ -17,7 +17,7 @@ FIXTURES = [
     ('API timeout limit', '30 seconds', 'API timeout limit is 30 seconds.'),
 ]
 enc = tiktoken.get_encoding('cl100k_base')
-with tempfile.TemporaryDirectory(prefix='file-to-md-bench-') as temporary:
+with tempfile.TemporaryDirectory(prefix='tokensaver-docs-bench-') as temporary:
     root = Path(temporary)
     docs = root / 'docs'
     docs.mkdir()
@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='file-to-md-bench-') as temporary:
             qmd_text = qmd_output
         ours_text = ours.getvalue()
         results.append({'query': query, 'expected': expected, 'full_tokens': total,
-                        'file_to_md': {'exit': code, 'tokens': len(enc.encode(ours_text, disallowed_special=())), 'fact_found': expected.casefold() in ours_text.casefold()},
+                        'tokensaver_docs': {'exit': code, 'tokens': len(enc.encode(ours_text, disallowed_special=())), 'fact_found': expected.casefold() in ours_text.casefold()},
                         'qmd_bm25': {'exit': qmd.returncode, 'tokens': len(enc.encode(qmd_text, disallowed_special=())), 'fact_found': expected.casefold() in qmd_text.casefold(),
                                      'error': qmd.stderr[-500:] if qmd.returncode else ''}})
     print(json.dumps({'fixture': 'synthetic', 'encoding': 'cl100k_base', 'qmd_version': '2.8.3', 'results': results,

@@ -5,12 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from file_to_md import providers
+from tokensaver_docs import providers
 
 
 class ModelCapabilityTests(unittest.TestCase):
     def inspect(self, model):
-        with patch('file_to_md.providers.list_models', return_value=[model]):
+        with patch('tokensaver_docs.providers.list_models', return_value=[model]):
             return providers.inspect_image_model({'provider': 'openrouter', 'model': 'chosen'})
 
     def test_price_and_image_support_are_independent(self):
@@ -31,14 +31,14 @@ class ModelCapabilityTests(unittest.TestCase):
 
     def test_lookup_failure_and_missing_model_are_distinct(self):
         profile = {'provider': 'openrouter', 'model': 'chosen'}
-        with patch('file_to_md.providers.list_models', side_effect=providers.ConversionError('offline')):
+        with patch('tokensaver_docs.providers.list_models', side_effect=providers.ConversionError('offline')):
             self.assertEqual(providers.inspect_image_model(profile)['reason'], 'lookup_failed')
-        with patch('file_to_md.providers.list_models', return_value=[]):
+        with patch('tokensaver_docs.providers.list_models', return_value=[]):
             self.assertEqual(providers.inspect_image_model(profile)['reason'], 'model_not_found')
 
     def test_cli_provider_support_is_unknown_without_calling_it(self):
         for provider in ('codex', 'claude'):
-            with patch('file_to_md.providers.cli_generate') as generate:
+            with patch('tokensaver_docs.providers.cli_generate') as generate:
                 result = providers.inspect_image_model({'provider': provider, 'model': 'chosen'})
                 self.assertEqual(result['capability'], 'unknown')
                 generate.assert_not_called()
@@ -61,20 +61,20 @@ class ModelSetupTests(unittest.TestCase):
         self.addCleanup(self.environment.stop)
 
     def test_first_use_defer_and_legacy_setting(self):
-        from file_to_md.model_setup import setup_status, select_model, load_model_selection
+        from tokensaver_docs.model_setup import setup_status, select_model, load_model_selection
         self.assertEqual(setup_status()['status'], 'setup_required')
         self.assertEqual(select_model(defer=True)['status'], 'deferred')
         self.assertEqual(setup_status()['status'], 'deferred')
         self.assertIsNone(load_model_selection())
-        legacy = self.root/'file-to-md/config.json'
+        legacy = self.root/'tokensaver-docs/config.json'
         legacy.write_text(json.dumps({'image': {'provider': 'codex', 'model': 'legacy'}}))
         self.assertEqual(load_model_selection()['model'], 'legacy')
         self.assertEqual(setup_status()['status'], 'configured')
 
     def test_supplied_legacy_profiles_are_used_without_loading_global_profiles(self):
-        from file_to_md.model_setup import load_model_selection, select_model
+        from tokensaver_docs.model_setup import load_model_selection, select_model
         profile = {'provider': 'codex', 'model': 'custom-config'}
-        with patch('file_to_md.model_setup.load_profiles') as load:
+        with patch('tokensaver_docs.model_setup.load_profiles') as load:
             self.assertEqual(load_model_selection(legacy_profiles={'image': profile}), profile)
             self.assertIsNone(load_model_selection(legacy_profiles={}))
             load.assert_not_called()
@@ -82,7 +82,7 @@ class ModelSetupTests(unittest.TestCase):
         self.assertEqual(load_model_selection(legacy_profiles={'image': profile})['model'], 'selected')
 
     def test_one_time_selection_does_not_save_and_default_needs_confirmation(self):
-        from file_to_md.model_setup import setup_status, select_model, load_model_selection
+        from tokensaver_docs.model_setup import setup_status, select_model, load_model_selection
         result = select_model('codex', 'temporary')
         self.assertEqual(result['status'], 'selection_ready')
         self.assertEqual(result['profile'], {'provider': 'codex', 'model': 'temporary'})
@@ -96,8 +96,8 @@ class ModelSetupTests(unittest.TestCase):
         self.assertEqual(load_model_selection()['model'], 'default')
 
     def test_saved_selection_preserves_legacy_and_defer_does_not_erase_it(self):
-        from file_to_md.model_setup import select_model, load_model_selection
-        legacy = self.root/'file-to-md/config.json'
+        from tokensaver_docs.model_setup import select_model, load_model_selection
+        legacy = self.root/'tokensaver-docs/config.json'
         legacy.parent.mkdir()
         content = json.dumps({'image': {'provider': 'codex', 'model': 'legacy'}, 'audio': {'provider': 'whisper.cpp', 'model': 'local'}})
         legacy.write_text(content)
@@ -107,10 +107,10 @@ class ModelSetupTests(unittest.TestCase):
         self.assertEqual(load_model_selection()['model'], 'new')
 
     def test_invalid_or_symlink_selection_is_rejected(self):
-        from file_to_md.model_setup import setup_status, select_model
+        from tokensaver_docs.model_setup import setup_status, select_model
         with self.assertRaises(ValueError):
             select_model('codex', 'chosen', defer=True)
-        path = self.root/'file-to-md/model-choice.json'
+        path = self.root/'tokensaver-docs/model-choice.json'
         path.parent.mkdir()
         path.write_text('{"version":99}')
         with self.assertRaises(ValueError):

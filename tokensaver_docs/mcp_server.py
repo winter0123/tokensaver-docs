@@ -11,7 +11,7 @@ from .storage import load_profiles, digest
 import json
 from .shared_cache import cache_root
 
-server = FastMCP('file-to-md')
+server = FastMCP('tokensaver-docs')
 
 
 @server.tool()
@@ -49,8 +49,9 @@ def context_documents(source: str, query: str, output: str, max_tokens: int = 12
 
 
 def _run(args: list[str]) -> str:
-    command = [sys.executable, *args] if getattr(sys, 'frozen', False) else [sys.executable, '-m', 'file_to_md', *args]
-    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8', timeout=120)
+    command = [sys.executable, *args] if getattr(sys, 'frozen', False) else [sys.executable, '-m', 'tokensaver_docs', *args]
+    # The child CLI never reads input; do not inherit the MCP protocol pipe on Windows.
+    result = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding='utf-8', timeout=120)
     return (result.stdout + result.stderr)[:6500] + (f'\n종료 코드: {result.returncode}' if result.returncode else '')
 
 

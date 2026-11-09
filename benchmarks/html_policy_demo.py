@@ -14,17 +14,17 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import tiktoken
-from file_to_md.context import document_context
-from file_to_md.preparation import prepare_documents
+from tokensaver_docs.context import document_context
+from tokensaver_docs.preparation import prepare_documents
 
 
 def main():
     source = Path(__file__).with_name('html-policy-example.html').resolve()
     raw = source.read_text(encoding='utf-8')
-    with tempfile.TemporaryDirectory(prefix='file-to-md-benchmark-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='tokensaver-docs-benchmark-') as tmp:
         root = Path(tmp)
-        with patch.dict(os.environ, {'FILE_TO_MD_CACHE_DIR': str(root / 'cache')}), \
-             patch('file_to_md.providers.generate', side_effect=AssertionError('Unexpected provider call')) as provider:
+        with patch.dict(os.environ, {'TOKENSAVER_DOCS_CACHE_DIR': str(root / 'cache')}), \
+             patch('tokensaver_docs.providers.generate', side_effect=AssertionError('Unexpected provider call')) as provider:
             first = prepare_documents(source, root / 'output')
             second = prepare_documents(source, root / 'output')
             context = document_context(source, 'Refund policy', root / 'output', max_tokens=500)

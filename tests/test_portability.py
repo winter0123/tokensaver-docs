@@ -1,20 +1,20 @@
 import asyncio,contextlib,io,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
-from file_to_md.cli import main
+from tokensaver_docs.cli import main
 
 class PortabilityTests(unittest.TestCase):
  def test_convert_can_ignore_configured_providers(self):
   with tempfile.TemporaryDirectory() as temp:
    source=Path(temp)/'source';source.mkdir()
-   with patch('file_to_md.cli.load_profiles',side_effect=AssertionError('profiles must not be loaded')), patch('file_to_md.cli.convert',return_value=[{'status':'완료','file':'x'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
+   with patch('tokensaver_docs.cli.load_profiles',side_effect=AssertionError('profiles must not be loaded')), patch('tokensaver_docs.cli.convert',return_value=[{'status':'완료','file':'x'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
     self.assertEqual(main(['convert',str(source),'--output',str(Path(temp)/'out'),'--no-configured-providers']),0)
     self.assertEqual(convert.call_args.kwargs['profiles'],{})
 
  def test_convert_keeps_existing_configured_provider_behavior(self):
   with tempfile.TemporaryDirectory() as temp:
    profiles={'image':{'provider':'openrouter','model':'example:free'}}
-   with patch('file_to_md.cli.load_profiles',return_value=profiles), patch('file_to_md.cli.convert',return_value=[{'status':'완료','file':'x'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
+   with patch('tokensaver_docs.cli.load_profiles',return_value=profiles), patch('tokensaver_docs.cli.convert',return_value=[{'status':'완료','file':'x'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
     self.assertEqual(main(['convert',temp]),0)
     self.assertEqual(convert.call_args.kwargs['profiles'],profiles)
 
@@ -22,7 +22,7 @@ class PortabilityTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as temp:
    output=io.StringIO()
    with contextlib.redirect_stdout(output):self.assertEqual(main(['install-skill','--agent','codex','--destination',temp]),0)
-   target=Path(temp)/'file-to-md'/'SKILL.md';self.assertTrue(target.is_file())
+   target=Path(temp)/'tokensaver-docs'/'SKILL.md';self.assertTrue(target.is_file())
    target.write_text('사용자 내용')
    with contextlib.redirect_stderr(io.StringIO()):self.assertEqual(main(['install-skill','--agent','codex','--destination',temp]),2)
    self.assertEqual(target.read_text(),'사용자 내용')
@@ -43,7 +43,7 @@ class PortabilityTests(unittest.TestCase):
   except ImportError:self.skipTest('선택 MCP 패키지 없음')
   import sys
   async def verify(root):
-   params=StdioServerParameters(command=sys.executable,args=['-m','file_to_md.mcp_server'])
+   params=StdioServerParameters(command=sys.executable,args=['-m','tokensaver_docs.mcp_server'])
    async with stdio_client(params) as (reader,writer):
     async with ClientSession(reader,writer) as session:
      await session.initialize()
@@ -57,12 +57,12 @@ class PortabilityTests(unittest.TestCase):
    asyncio.run(verify(root))
 
  def test_mcp_conversion_does_not_use_configured_provider_implicitly(self):
-  try:from file_to_md.mcp_server import convert_documents
+  try:from tokensaver_docs.mcp_server import convert_documents
   except ImportError:self.skipTest('선택 MCP 패키지 없음')
   from PIL import Image
   with tempfile.TemporaryDirectory() as temp:
    root=Path(temp);image=root/'image.png';Image.new('RGB',(8,8)).save(image)
-   with patch.dict(os.environ, {'FILE_TO_MD_CACHE_DIR': str(root/'cache')}), patch('file_to_md.mcp_server.load_profiles',side_effect=AssertionError('설정된 제공자를 자동 실행하면 안 됨')), patch('file_to_md.providers.generate',side_effect=AssertionError('이미지 저장만 선택하면 모델을 호출하면 안 됨')):
+   with patch.dict(os.environ, {'TOKENSAVER_DOCS_CACHE_DIR': str(root/'cache')}), patch('tokensaver_docs.mcp_server.load_profiles',side_effect=AssertionError('설정된 제공자를 자동 실행하면 안 됨')), patch('tokensaver_docs.providers.generate',side_effect=AssertionError('이미지 저장만 선택하면 모델을 호출하면 안 됨')):
     result=convert_documents(str(image),str(root/'out'))
    record=result['files'][0]
    self.assertEqual(record['status'],'확인필요',record)
@@ -74,9 +74,9 @@ class PortabilityTests(unittest.TestCase):
    self.assertEqual((Path(record['output']).parent/match.group(1)).read_bytes(),image.read_bytes())
 
  def test_mcp_provider_configuration_requires_explicit_confirmation(self):
-  try:from file_to_md.mcp_server import configure_provider
+  try:from tokensaver_docs.mcp_server import configure_provider
   except ImportError:self.skipTest('선택 MCP 패키지 없음')
-  with patch('file_to_md.mcp_server._run') as run:
+  with patch('tokensaver_docs.mcp_server._run') as run:
    self.assertIn('confirmation',configure_provider('image','openrouter','example:free',False).lower())
    run.assert_not_called()
    configure_provider('image','openrouter','example:free',True)

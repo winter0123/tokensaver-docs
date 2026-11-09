@@ -197,7 +197,7 @@ def convert_html(source, output, *, cache_dir, source_root, profiles=None, trans
             configuration_required = False
             image_errors = 0
             completed_images = 0
-            with tempfile.TemporaryDirectory(prefix='file-to-md-html-') as tmp:
+            with tempfile.TemporaryDirectory(prefix='tokensaver-docs-html-') as tmp:
                 for number, item in enumerate(parsed['resources']):
                     if mode == 'placeholder':
                         text = text.replace(item['token'], '[이미지]', 1)

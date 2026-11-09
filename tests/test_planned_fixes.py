@@ -8,7 +8,7 @@ from docx import Document
 from openpyxl import Workbook
 from PIL import Image
 
-from file_to_md.engine import convert
+from tokensaver_docs.engine import convert
 
 
 class PlannedFixTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class PlannedFixTests(unittest.TestCase):
         def generate(*args):
             (self.out / 'image.png.md').write_text('사용자 파일')
             return {'text': json.dumps({'image_text': '전사', 'image_description': 'fixture image'})}
-        with patch('file_to_md.providers.generate', side_effect=generate):
+        with patch('tokensaver_docs.providers.generate', side_effect=generate):
             result = convert(path, self.out, profiles=self.profile)
         self.assertEqual((self.out / 'image.png.md').read_text(), '사용자 파일')
         self.assertIn('전사', Path(result[0]['output']).read_text())
@@ -65,35 +65,35 @@ class PlannedFixTests(unittest.TestCase):
         def generate(*args):
             old.write_text('변환 중 편집')
             return {'text': json.dumps({'image_text': '전사', 'image_description': 'fixture image'})}
-        with patch('file_to_md.providers.generate', side_effect=generate):
+        with patch('tokensaver_docs.providers.generate', side_effect=generate):
             result = convert(path, self.out, profiles=self.profile)
         self.assertEqual(old.read_text(), '변환 중 편집')
         self.assertEqual(Path(result[0]['output']).name, 'image.png.2.md')
 
     def test_result_publication_interrupted_then_cached_units_resume(self):
-        from file_to_md import engine
+        from tokensaver_docs import engine
         path = self.root / 'image.png'
         Image.new('RGB', (4, 4)).save(path)
         real_publish = engine.publish_new
         def publish_then_interrupt(target, text):
             real_publish(target, text)
             raise KeyboardInterrupt()
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '저장된 전사', 'image_description': 'fixture image'})}) as ai:
-            with patch('file_to_md.engine.publish_new', side_effect=publish_then_interrupt):
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '저장된 전사', 'image_description': 'fixture image'})}) as ai:
+            with patch('tokensaver_docs.engine.publish_new', side_effect=publish_then_interrupt):
                 with self.assertRaises(KeyboardInterrupt):
                     convert(path, self.out, profiles=self.profile)
             result = convert(path, self.out, profiles=self.profile)
         self.assertEqual(ai.call_count, 1)
         self.assertTrue((self.out / 'image.png.md').exists())
         self.assertEqual(Path(result[0]['output']).name, 'image.png.2.md')
-        state = json.loads((self.out / '.file-to-md' / 'state.json').read_text())
+        state = json.loads((self.out / '.tokensaver-docs' / 'state.json').read_text())
         self.assertEqual(state['records']['image.png.md']['current_output'], 'image.png.2.md')
-        with patch('file_to_md.providers.generate', side_effect=AssertionError('불필요한 AI 호출')):
+        with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('불필요한 AI 호출')):
             again = convert(path, self.out, profiles=self.profile)
         self.assertEqual(again[0]['output'], result[0]['output'])
 
     def test_output_lock_is_released(self):
-        from file_to_md.engine import output_lock
+        from tokensaver_docs.engine import output_lock
         with output_lock(self.out):
             with self.assertRaisesRegex(ValueError, '다른 변환'):
                 with output_lock(self.out):
@@ -113,7 +113,7 @@ class PlannedFixTests(unittest.TestCase):
         cell.paragraphs[0].add_run().add_picture(str(image))
         cell.add_paragraph('셀 뒤')
         doc.save(path)
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '그림 전사', 'image_description': 'fixture image'})}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '그림 전사', 'image_description': 'fixture image'})}) as ai:
             result = convert(path, self.out, profiles=self.profile)
         self.assertEqual(result[0]['status'], '완료', result)
         text = Path(result[0]['output']).read_text()
@@ -135,11 +135,11 @@ class PlannedFixTests(unittest.TestCase):
         nested.add_paragraph('뒤')
         doc.sections[0].header.paragraphs[0].add_run().add_picture(str(image2))
         doc.save(path)
-        with patch('file_to_md.providers.generate', side_effect=[{'text': json.dumps({'image_text': '첫 그림', 'image_description': 'fixture image'})}, RuntimeError('실패')]) as ai:
+        with patch('tokensaver_docs.providers.generate', side_effect=[{'text': json.dumps({'image_text': '첫 그림', 'image_description': 'fixture image'})}, RuntimeError('실패')]) as ai:
             first = convert(path, self.out, profiles=self.profile)
         self.assertEqual(first[0]['status'], '부분완료')
         self.assertEqual(ai.call_count, 2)
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '머리 그림', 'image_description': 'fixture image'})}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '머리 그림', 'image_description': 'fixture image'})}) as ai:
             result = convert(path, self.out, profiles=self.profile)
         self.assertEqual(ai.call_count, 1)
         text = Path(result[0]['output']).read_text()

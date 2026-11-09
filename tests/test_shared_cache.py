@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image
-from file_to_md.engine import convert
+from tokensaver_docs.engine import convert
 
 
 class SharedCacheTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class SharedCacheTests(unittest.TestCase):
             source.mkdir()
             image = source / 'picture.gif'
             Image.new('RGB', (10, 12), 'red').save(image)
-            with patch('file_to_md.providers.generate', side_effect=AssertionError('provider must not run')):
+            with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('provider must not run')):
                 records = convert(source, root/'out', cache_dir=root/'cache', transcribe_images=False)
             self.assertEqual(len(records), 1)
             markdown = Path(records[0]['output'])
@@ -36,7 +36,7 @@ class SharedCacheTests(unittest.TestCase):
             (source/'c.html').write_text('<img src="a.png"><img src="b.png">')
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
             response = {'text': json.dumps({'image_text': 'no text', 'image_description': 'red square'})}
-            with patch('file_to_md.providers.generate', return_value=response) as calls:
+            with patch('tokensaver_docs.providers.generate', return_value=response) as calls:
                 records = convert(source, root/'out', profiles=profile, cache_dir=root/'cache', transcribe_images=True, refresh=True)
                 self.assertEqual(calls.call_count, 1)
                 self.assertTrue(all(r['status'] == '완료' for r in records), records)
@@ -56,7 +56,7 @@ class SharedCacheTests(unittest.TestCase):
             (source/'b.html').write_text(f'<img src="{uri}">')
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
             response = {'text': json.dumps({'image_text': 'no text', 'image_description': 'red square'})}
-            with patch('file_to_md.providers.generate', return_value=response) as calls:
+            with patch('tokensaver_docs.providers.generate', return_value=response) as calls:
                 records = convert(source, root/'out', profiles=profile, transcribe_images=True, refresh=True)
                 self.assertTrue(all(r['status'] == '완료' for r in records), records)
                 self.assertEqual(calls.call_count, 1)
@@ -70,7 +70,7 @@ class SharedCacheTests(unittest.TestCase):
             (source/'b.html').write_text('<img src="a.png">')
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
             response = {'text': json.dumps({'image_text': 'no text', 'image_description': 'red square'})}
-            with patch('file_to_md.providers.generate', return_value=response) as calls:
+            with patch('tokensaver_docs.providers.generate', return_value=response) as calls:
                 records = convert(source, root/'out', profiles=profile, transcribe_images=True, refresh=True)
                 self.assertTrue(all(r['status'] == '완료' for r in records), records)
                 self.assertEqual(calls.call_count, 1)
@@ -104,7 +104,7 @@ class SharedCacheTests(unittest.TestCase):
             book = Workbook()
             book.active.add_image(SheetImage(str(image)))
             book.save(source/'book.xlsx')
-            with patch('file_to_md.providers.generate', side_effect=AssertionError('must not call provider')):
+            with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('must not call provider')):
                 first = convert(source, root/'one', cache_dir=root/'cache', transcribe_images=False)
                 second = convert(source, root/'two', cache_dir=root/'cache', transcribe_images=False)
             for record in first + second:
@@ -118,7 +118,7 @@ class SharedCacheTests(unittest.TestCase):
                     self.assertLess(text.index('!['), text.index('after'))
 
     def test_duplicate_image_failure_is_retried_only_on_next_conversion(self):
-        from file_to_md.providers import ConversionError
+        from tokensaver_docs.providers import ConversionError
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'source'
@@ -128,7 +128,7 @@ class SharedCacheTests(unittest.TestCase):
             (source/'c.html').write_text('<img src="a.png">')
             (source/'d.html').write_text('<img src="b.png">')
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
-            with patch('file_to_md.providers.generate', side_effect=ConversionError('provider failed')) as calls:
+            with patch('tokensaver_docs.providers.generate', side_effect=ConversionError('provider failed')) as calls:
                 first = convert(source, root/'out', profiles=profile, cache_dir=root/'cache', transcribe_images=True)
                 self.assertEqual(calls.call_count, 1)
                 self.assertEqual(len(first), 4)
@@ -187,7 +187,7 @@ class SharedCacheTests(unittest.TestCase):
             source = root / 'picture.png'
             Image.new('RGB', (10, 12), 'red').save(source)
             profile = {'image': {'provider': 'codex', 'model': 'chosen'}}
-            with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'analysis', 'image_description': 'fixture image'})}) as calls:
+            with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'analysis', 'image_description': 'fixture image'})}) as calls:
                 convert(source, root/'analyzed', profiles=profile, cache_dir=root/'cache', transcribe_images=True)
                 skipped = convert(source, root/'skipped', profiles=profile, cache_dir=root/'cache', transcribe_images=False)[0]
             text = Path(skipped['output']).read_text()
@@ -198,7 +198,7 @@ class SharedCacheTests(unittest.TestCase):
 
     def test_stale_shared_result_is_rebuilt_without_losing_edits_or_media(self):
         import json
-        from file_to_md.storage import digest, load_state, save_state
+        from tokensaver_docs.storage import digest, load_state, save_state
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'doc.pdf'
@@ -209,7 +209,7 @@ class SharedCacheTests(unittest.TestCase):
                 yield {'id': 'text', 'title': 'Text', 'text': 'complete text'}
                 yield {'id': 'image', 'title': 'Image', 'kind': 'image', 'path': image}
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
-            with patch('file_to_md.engine.units', side_effect=units), patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'transcribed', 'image_description': 'fixture image'})}) as calls:
+            with patch('tokensaver_docs.engine.units', side_effect=units), patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'transcribed', 'image_description': 'fixture image'})}) as calls:
                 first = convert(source, root / 'out', profiles=profile, cache_dir=root / 'cache')
                 entry_path = next((root / 'cache').glob('*/entry.json'))
                 entry = json.loads(entry_path.read_text())
@@ -252,14 +252,14 @@ class SharedCacheTests(unittest.TestCase):
 
     def test_old_pdf_cache_must_prove_requested_visual_pages_were_transcribed(self):
         import json
-        from file_to_md.storage import digest
+        from tokensaver_docs.storage import digest
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'document.pdf'
             source.write_bytes(b'unchanged pdf')
             def text_units(*args):
                 yield {'id': 'page-1', 'title': '페이지 1', 'text': 'text only'}
-            with patch('file_to_md.engine.units', side_effect=text_units):
+            with patch('tokensaver_docs.engine.units', side_effect=text_units):
                 convert(source, root / 'one', cache_dir=root / 'cache')
             entry = json.loads(next((root / 'cache').glob('*/entry.json')).read_text())
             entry['identity']['pages'] = [1]
@@ -271,7 +271,7 @@ class SharedCacheTests(unittest.TestCase):
                 convert(source, root / 'two', vision_pages={1}, cache_dir=root / 'cache')
 
     def test_edit_after_conversion_is_not_saved_as_shared_transcription(self):
-        from file_to_md.engine import _convert_local
+        from tokensaver_docs.engine import _convert_local
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'image.png'
@@ -281,9 +281,9 @@ class SharedCacheTests(unittest.TestCase):
                 Path(result[0]['output']).write_text('# Edited\n\n## Text\n\nUSER EDIT', encoding='utf-8')
                 return result
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
-            with patch('file_to_md.engine._convert_local', side_effect=edit_after_local), patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'original transcription', 'image_description': 'fixture image'})}) as calls:
+            with patch('tokensaver_docs.engine._convert_local', side_effect=edit_after_local), patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'original transcription', 'image_description': 'fixture image'})}) as calls:
                 first = convert(source, root / 'one', profiles=profile, cache_dir=root / 'cache')
-            with patch('file_to_md.providers.generate', side_effect=AssertionError('unit should be reused')):
+            with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('unit should be reused')):
                 second = convert(source, root / 'two', cache_dir=root / 'cache')
             self.assertEqual(calls.call_count, 1)
             self.assertIn('USER EDIT', Path(first[0]['output']).read_text())
@@ -303,7 +303,7 @@ class SharedCacheTests(unittest.TestCase):
                 else:
                     yield {'id': 'page-1', 'title': '페이지 1', 'text': 'extracted text'}
             profile = {'image': {'provider': 'codex', 'model': 'selected'}}
-            with patch('file_to_md.engine.units', side_effect=pdf_units), patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'image transcription', 'image_description': 'fixture image'})}) as calls:
+            with patch('tokensaver_docs.engine.units', side_effect=pdf_units), patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'image transcription', 'image_description': 'fixture image'})}) as calls:
                 convert(source, root / 'out', cache_dir=root / 'cache')
                 selected = convert(source, root / 'out', profiles=profile, vision_pages={1}, cache_dir=root / 'cache')
                 reused = convert(source, root / 'other', vision_pages={1}, cache_dir=root / 'cache')
@@ -317,7 +317,7 @@ class SharedCacheTests(unittest.TestCase):
             source = root / 'first.png'
             Image.new('RGB', (13, 17), 'blue').save(source)
             cache = root / 'cache'
-            with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '원문 123', 'image_description': 'fixture image'})}) as call:
+            with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '원문 123', 'image_description': 'fixture image'})}) as call:
                 first = convert(source, root / 'out1', profiles={'image': {'provider': 'codex', 'model': 'selected'}}, cache_dir=cache)
                 renamed = root / 'renamed.png'
                 shutil.copy2(source, renamed)
@@ -335,7 +335,7 @@ class SharedCacheTests(unittest.TestCase):
             Image.new('RGB',(17,19),'green').save(source/'nested/a.png')
             cache=root/'cache'; output=root/'out'
             profile={'image':{'provider':'codex','model':'selected'}}
-            with patch('file_to_md.providers.generate', return_value={'text':json.dumps({'image_text': '처음 전사', 'image_description': 'fixture image'})}) as call:
+            with patch('tokensaver_docs.providers.generate', return_value={'text':json.dumps({'image_text': '처음 전사', 'image_description': 'fixture image'})}) as call:
                 convert(source,output,profiles=profile,cache_dir=cache)
                 current=output/'nested/a.png.md';current.write_text('사용자 편집')
                 result=convert(source,output,cache_dir=cache)
@@ -351,7 +351,7 @@ class SharedCacheTests(unittest.TestCase):
             root=Path(temporary);source=root/'a.png';cache=root/'cache'
             profile={'image':{'provider':'codex','model':'selected'}}
             Image.new('RGB',(17,19),'blue').save(source)
-            with patch('file_to_md.providers.generate',return_value={'text':json.dumps({'image_text': '전사', 'image_description': 'fixture image'})}) as call:
+            with patch('tokensaver_docs.providers.generate',return_value={'text':json.dumps({'image_text': '전사', 'image_description': 'fixture image'})}) as call:
                 convert(source,root/'one',profiles=profile,cache_dir=cache)
                 Image.new('RGB',(17,19),'red').save(source)
                 convert(source,root/'two',profiles=profile,cache_dir=cache)
@@ -361,7 +361,7 @@ class SharedCacheTests(unittest.TestCase):
                 self.assertEqual(call.call_count,2)
 
     def test_partial_resume_in_another_output_and_changed_document_units(self):
-        from file_to_md.providers import ConversionError
+        from tokensaver_docs.providers import ConversionError
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary); source=root/'pages.pdf';source.write_bytes(b'first source')
             image1=root/'first.png';image2=root/'second.png'
@@ -371,16 +371,16 @@ class SharedCacheTests(unittest.TestCase):
                 yield {'id':'one','title':'First','kind':'image','path':image1}
                 yield {'id':'two','title':'Second','kind':'image','path':image2}
             profile={'image':{'provider':'codex','model':'selected'}}
-            with patch('file_to_md.engine.units',side_effect=units), patch('file_to_md.providers.generate',side_effect=[{'text':json.dumps({'image_text': 'first', 'image_description': 'fixture image'})},ConversionError('temporary')]) as calls:
+            with patch('tokensaver_docs.engine.units',side_effect=units), patch('tokensaver_docs.providers.generate',side_effect=[{'text':json.dumps({'image_text': 'first', 'image_description': 'fixture image'})},ConversionError('temporary')]) as calls:
                 result=convert(source,root/'one',profiles=profile,cache_dir=root/'cache')
                 self.assertEqual(result[0]['status'],'부분완료')
                 self.assertEqual(calls.call_count,2)
-            with patch('file_to_md.engine.units',side_effect=units), patch('file_to_md.providers.generate',return_value={'text':json.dumps({'image_text': 'second', 'image_description': 'fixture image'})}) as calls:
+            with patch('tokensaver_docs.engine.units',side_effect=units), patch('tokensaver_docs.providers.generate',return_value={'text':json.dumps({'image_text': 'second', 'image_description': 'fixture image'})}) as calls:
                 result=convert(source,root/'two',profiles=profile,cache_dir=root/'cache')
                 self.assertEqual(result[0]['status'],'완료')
                 self.assertEqual(calls.call_count,1)
             source.write_bytes(b'changed source')
-            with patch('file_to_md.engine.units',side_effect=units), patch('file_to_md.providers.generate',side_effect=AssertionError('must reuse units')):
+            with patch('tokensaver_docs.engine.units',side_effect=units), patch('tokensaver_docs.providers.generate',side_effect=AssertionError('must reuse units')):
                 result=convert(source,root/'three',cache_dir=root/'cache')
                 self.assertEqual(result[0]['status'],'완료')
 
@@ -388,7 +388,7 @@ class SharedCacheTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);source=root/'a.png';Image.new('RGB',(17,23),'cyan').save(source)
             profile={'image':{'provider':'codex','model':'selected'}}
-            with patch('file_to_md.providers.generate',return_value={'text':json.dumps({'image_text': 'legacy', 'image_description': 'fixture image'})}) as call:
+            with patch('tokensaver_docs.providers.generate',return_value={'text':json.dumps({'image_text': 'legacy', 'image_description': 'fixture image'})}) as call:
                 convert(source,root/'old',profiles=profile)
                 convert(source,root/'old',profiles=profile,cache_dir=root/'cache')
                 result=convert(source,root/'new',cache_dir=root/'cache')
@@ -401,7 +401,7 @@ class SharedCacheTests(unittest.TestCase):
             root=Path(temporary);asset=root/'asset.png';Image.new('RGB',(17,23),'cyan').save(asset)
             code = '''import sys,time,json
 from pathlib import Path
-from file_to_md.shared_cache import UnitStore
+from tokensaver_docs.shared_cache import UnitStore
 root=Path(sys.argv[1])
 def produce():
  with (root/'calls').open('a') as f:f.write('call\\n')
@@ -423,13 +423,13 @@ assert result['text']=='shared'
             code='''import sys,time,json
 from pathlib import Path
 from unittest.mock import patch
-from file_to_md.engine import convert
+from tokensaver_docs.engine import convert
 root=Path(sys.argv[1])
 def generate(*args):
  with (root/'calls').open('a') as f:f.write('call\\n')
  time.sleep(0.3)
  return {'text':json.dumps({'image_text': 'shared source', 'image_description': 'fixture image'})}
-with patch('file_to_md.providers.generate',side_effect=generate):
+with patch('tokensaver_docs.providers.generate',side_effect=generate):
  r=convert(root/'asset.png',root/sys.argv[2],cache_dir=root/'cache',profiles={'image':{'provider':'codex','model':'mock'}})
  assert r[0]['status']=='완료',r
 '''

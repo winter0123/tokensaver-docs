@@ -9,7 +9,7 @@ rows=[]
 for agent in ('claude','codex','opencode'):
     bundle=a.plugins/agent
     metadata=json.loads((bundle/'platform.json').read_text())
-    name=f"file-to-md-{agent}-{metadata['os']}-{metadata['cpu']}"
+    name=f"tokensaver-docs-{agent}-{metadata['os']}-{metadata['cpu']}"
     archive=Path(shutil.make_archive(str(a.output/name),'zip',root_dir=bundle))
     rows.append(hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name)
 (a.output/'checksums.txt').write_text('\n'.join(rows)+'\n')

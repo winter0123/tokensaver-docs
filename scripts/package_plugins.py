@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from file_to_md import __version__
+from tokensaver_docs import __version__
 
 
 def write_json(path, value):
@@ -28,8 +28,8 @@ def main():
     if args.output.exists():
         parser.error('output already exists; choose a new directory')
     name = binary.name
-    if name not in ('file-to-md', 'file-to-md.exe'):
-        parser.error('binary must be named file-to-md or file-to-md.exe')
+    if name not in ('tokensaver-docs', 'tokensaver-docs.exe'):
+        parser.error('binary must be named tokensaver-docs or tokensaver-docs.exe')
     notices=binary.parent/'third-party'
     if not notices.is_dir():
         parser.error('binary must have its third-party notices directory from build_standalone.py')
@@ -44,17 +44,17 @@ def main():
         shutil.copy2(binary, root / 'bin' / name)
         shutil.copytree(notices,root/'third-party')
         if platform != 'opencode':
-            target = root / 'skills' / 'file-to-md'
+            target = root / 'skills' / 'tokensaver-docs'
             target.mkdir(parents=True)
             shutil.copy2(ROOT / 'plugins/skill/SKILL.md', target / 'SKILL.md')
         if platform == 'claude':
-            write_json(root / '.claude-plugin/plugin.json', {'name': 'file-to-md', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'file-to-md contributors'}})
-            write_json(root / '.claude-plugin/marketplace.json', {'name': 'file-to-md-marketplace', 'description': 'TokenSaver Docs document context plugins for coding agents.', 'owner': {'name': 'file-to-md contributors'}, 'plugins': [{'name': 'file-to-md', 'source': './'}]})
-            write_json(root / '.mcp.json', {'mcpServers': {'file-to-md': {'command': '${CLAUDE_PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
+            write_json(root / '.claude-plugin/plugin.json', {'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'tokensaver-docs contributors'}})
+            write_json(root / '.claude-plugin/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'description': 'TokenSaver Docs document context plugins for coding agents.', 'owner': {'name': 'tokensaver-docs contributors'}, 'plugins': [{'name': 'tokensaver-docs', 'source': './'}]})
+            write_json(root / '.mcp.json', {'mcpServers': {'tokensaver-docs': {'command': '${CLAUDE_PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
         elif platform == 'codex':
-            write_json(root / 'plugin.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', 'name': 'file-to-md', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'file-to-md contributors'}})
-            write_json(root / 'mcp.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', 'mcpServers': {'file-to-md': {'type': 'stdio', 'command': '${PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
-            write_json(root / '.agents/plugins/marketplace.json', {'name': 'file-to-md-marketplace', 'plugins': [{'name': 'file-to-md', 'source': {'source': 'local', 'path': './'}, 'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
+            write_json(root / 'plugin.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', 'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'tokensaver-docs contributors'}})
+            write_json(root / 'mcp.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', 'mcpServers': {'tokensaver-docs': {'type': 'stdio', 'command': '${PLUGIN_ROOT}/bin/' + name, 'args': ['mcp']}}})
+            write_json(root / '.agents/plugins/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'plugins': [{'name': 'tokensaver-docs', 'source': {'source': 'local', 'path': './'}, 'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
         else:
             for item in ('index.js', 'package.json', 'README.md'):
                 shutil.copy2(ROOT / 'plugins/opencode' / item, root / item)

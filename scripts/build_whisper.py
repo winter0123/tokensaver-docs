@@ -15,7 +15,7 @@ def main():
     args=parser.parse_args()
     if args.output.exists():parser.error('output exists; choose a new directory')
     cmake=shutil.which('cmake') or str(Path(sys.executable).parent/('cmake.exe' if sys.platform=='win32' else 'cmake'))
-    with tempfile.TemporaryDirectory(prefix='file-to-md-whisper-build-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='tokensaver-docs-whisper-build-') as tmp:
         source=Path(tmp)/'source';build=Path(tmp)/'build'
         subprocess.run(['git','clone','--depth','1','--branch','v1.9.5','https://github.com/ggml-org/whisper.cpp.git',str(source)],check=True)
         actual=subprocess.check_output(['git','-C',str(source),'rev-parse','HEAD'],text=True).strip()

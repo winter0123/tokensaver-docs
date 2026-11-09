@@ -4,15 +4,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image
-from file_to_md.preparation import prepare_documents
+from tokensaver_docs.preparation import prepare_documents
 
 
 class PreparationChoiceTests(unittest.TestCase):
     def test_cli_image_consent_does_not_enable_audio(self):
         import contextlib, io
-        from file_to_md.cli import main
+        from tokensaver_docs.cli import main
         profiles = {'image': {'provider': 'openrouter', 'model': 'vision'}, 'audio': {'provider': 'openrouter', 'model': 'audio'}}
-        with patch('file_to_md.cli.load_profiles', return_value=profiles), patch('file_to_md.cli.convert', return_value=[{'status': '완료', 'file': 'sample'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
+        with patch('tokensaver_docs.cli.load_profiles', return_value=profiles), patch('tokensaver_docs.cli.convert', return_value=[{'status': '완료', 'file': 'sample'}]) as convert, contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(main(['convert', 'docs', '--transcribe-images']), 0)
             self.assertEqual(set(convert.call_args.kwargs['profiles']), {'image'})
             self.assertEqual(main(['convert', 'docs', '--vision-pages', '1']), 0)
@@ -23,9 +23,9 @@ class PreparationChoiceTests(unittest.TestCase):
             self.assertEqual(set(convert.call_args.kwargs['profiles']), {'image', 'audio'})
 
     def test_mcp_image_consent_does_not_enable_audio(self):
-        from file_to_md.mcp_server import convert_documents
+        from tokensaver_docs.mcp_server import convert_documents
         profiles = {'image': {'provider': 'openrouter', 'model': 'vision'}, 'audio': {'provider': 'openrouter', 'model': 'audio'}}
-        with patch('file_to_md.mcp_server.load_profiles', return_value=profiles), patch('file_to_md.mcp_server.convert', return_value=[]) as convert:
+        with patch('tokensaver_docs.mcp_server.load_profiles', return_value=profiles), patch('tokensaver_docs.mcp_server.convert', return_value=[]) as convert:
             convert_documents('docs', 'out', use_configured_providers=True)
             self.assertEqual(set(convert.call_args.kwargs['profiles']), {'image'})
             self.assertTrue(convert.call_args.kwargs['transcribe_images'])
@@ -36,7 +36,7 @@ class PreparationChoiceTests(unittest.TestCase):
             self.assertEqual(set(convert.call_args.kwargs['profiles']), {'image', 'audio'})
 
     def test_non_boolean_choice_cannot_enable_image_analysis(self):
-        with patch('file_to_md.preparation.load_profiles') as load, patch('file_to_md.preparation.convert') as convert:
+        with patch('tokensaver_docs.preparation.load_profiles') as load, patch('tokensaver_docs.preparation.convert') as convert:
             with self.assertRaises(ValueError):
                 prepare_documents('unused', transcribe_images='false')
             load.assert_not_called()
@@ -58,11 +58,11 @@ class PreparationChoiceTests(unittest.TestCase):
             package.mkdir(parents=True)
             (package/'package.json').write_text('{"type":"module","exports":"./index.js"}')
             (package/'index.js').write_text('export const tool = x => x; const schema = () => ({optional: schema, int: schema, min: schema, max: schema}); tool.schema = {string: schema, boolean: schema, number: schema, enum: schema};')
-            binary = root/'bin/file-to-md'
+            binary = root/'bin/tokensaver-docs'
             binary.parent.mkdir()
             binary.write_text('#!' + sys.executable + '\nprint(\'{"status":"choice_required"}\')\nraise SystemExit(2)\n')
             binary.chmod(0o755)
-            script = 'import {pathToFileURL} from "node:url"; const p=await import(pathToFileURL(process.argv[1])); const api=await p.FileToMdPlugin(); console.log(await api.tool.file_to_md_prepare.execute({source:"image.png"}));'
+            script = 'import {pathToFileURL} from "node:url"; const p=await import(pathToFileURL(process.argv[1])); const api=await p.TokenSaverDocsPlugin(); console.log(await api.tool.tokensaver_docs_prepare.execute({source:"image.png"}));'
             result = subprocess.run(['node', '--input-type=module', '-e', script, str(plugin)], capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)['status'], 'choice_required')
@@ -72,7 +72,7 @@ class PreparationChoiceTests(unittest.TestCase):
             root = Path(temp)
             source = root/'a.html'
             source.write_text('<p>text</p><img src="https://example.invalid/a.png">', encoding='utf-8')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.preparation.load_profiles', return_value={}):
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.preparation.load_profiles', return_value={}):
                 result = prepare_documents(source, root/'out', transcribe_images=True)
             self.assertEqual(result['status'], 'partial', result)
             self.assertNotIn('choose an image provider', result['next'])
@@ -83,7 +83,7 @@ class PreparationChoiceTests(unittest.TestCase):
             source = root/'a.html'
             Image.new('RGB', (10, 10)).save(root/'a.png')
             source.write_text('<p>text</p><img src="a.png"><img src="https://example.invalid/a.png">', encoding='utf-8')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.preparation.load_profiles', return_value={}):
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.preparation.load_profiles', return_value={}):
                 result = prepare_documents(source, root/'out', transcribe_images=True)
             self.assertEqual(result['status'], 'partial', result)
             self.assertIn('choose an image provider', result['next'])
@@ -91,7 +91,7 @@ class PreparationChoiceTests(unittest.TestCase):
 
     def test_cli_requires_image_choice_without_changing_output(self):
         import contextlib, io, json
-        from file_to_md.cli import main
+        from tokensaver_docs.cli import main
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             Image.new('RGB', (10, 10)).save(root/'image.png')
@@ -110,7 +110,7 @@ class PreparationChoiceTests(unittest.TestCase):
             doc = Document(); doc.add_paragraph('Just text'); doc.save(root/'a.docx')
             book = Workbook(); book.active['A1'] = 'Just text'; book.save(root/'b.xlsx')
             writer = PdfWriter(); writer.add_blank_page(width=72, height=72); writer.write(root/'c.pdf')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.providers.generate') as generate:
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.providers.generate') as generate:
                 for source in (root/'a.docx', root/'b.xlsx', root/'c.pdf'):
                     result = prepare_documents(source, root/'out', transcribe_images=None)
                     self.assertNotEqual(result['status'], 'choice_required', result)
@@ -120,7 +120,7 @@ class PreparationChoiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             Image.new('RGB', (10, 10)).save(root/'image.png')
-            with patch('file_to_md.preparation.convert') as convert:
+            with patch('tokensaver_docs.preparation.convert') as convert:
                 result = prepare_documents(root/'image.png', root/'out', transcribe_images=None)
                 self.assertEqual(result['status'], 'choice_required')
                 convert.assert_not_called()
@@ -130,7 +130,7 @@ class PreparationChoiceTests(unittest.TestCase):
             root = Path(temp)
             source = root/'a.html'
             source.write_text('<p>Just text</p>', encoding='utf-8')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.preparation.load_profiles', return_value={}), patch('file_to_md.providers.generate') as generate:
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.preparation.load_profiles', return_value={}), patch('tokensaver_docs.providers.generate') as generate:
                 for choice in (None, True):
                     result = prepare_documents(source, root/'out', transcribe_images=choice)
                     self.assertEqual(result['status'], 'ready', result)
@@ -142,14 +142,14 @@ class PreparationChoiceTests(unittest.TestCase):
             Image.new('RGB', (10, 10)).save(root/'a.png')
             source = root/'a.html'
             source.write_text('<p>Text is retained</p><img src="a.png">', encoding='utf-8')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.preparation.load_profiles', return_value={}), patch('file_to_md.providers.generate') as generate:
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.preparation.load_profiles', return_value={}), patch('tokensaver_docs.providers.generate') as generate:
                 result = prepare_documents(source, root/'out', transcribe_images=True)
                 self.assertEqual(result['status'], 'configuration_required', result)
                 self.assertIn('Text is retained', Path(result['files'][0]['output']).read_text())
                 generate.assert_not_called()
 
     def test_image_choice_never_uses_audio_profile(self):
-        with patch('file_to_md.preparation.load_profiles', return_value={'image': {'provider': 'openrouter', 'model': 'vision:free'}, 'audio': {'provider': 'openrouter', 'model': 'audio:free'}}), patch('file_to_md.preparation.convert', return_value=[]) as convert:
+        with patch('tokensaver_docs.preparation.load_profiles', return_value={'image': {'provider': 'openrouter', 'model': 'vision:free'}, 'audio': {'provider': 'openrouter', 'model': 'audio:free'}}), patch('tokensaver_docs.preparation.convert', return_value=[]) as convert:
             prepare_documents('unused', transcribe_images=True)
             self.assertEqual(set(convert.call_args.kwargs['profiles']), {'image'})
 
@@ -159,7 +159,7 @@ class PreparationChoiceTests(unittest.TestCase):
             Image.new('RGB', (10, 10), 'red').save(root/'a.png')
             source = root/'a.html'
             source.write_text('<p>Before</p><img src="a.png"><p>After</p>')
-            with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(root/'cache')), patch('file_to_md.preparation.load_profiles', return_value={'image': {'provider': 'openrouter', 'model': 'chosen:free'}}), patch('file_to_md.providers.generate', return_value={'text': '{"image_text":"Image words","image_description":"Red rectangle"}'}) as generate:
+            with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache')), patch('tokensaver_docs.preparation.load_profiles', return_value={'image': {'provider': 'openrouter', 'model': 'chosen:free'}}), patch('tokensaver_docs.providers.generate', return_value={'text': '{"image_text":"Image words","image_description":"Red rectangle"}'}) as generate:
                 first = prepare_documents(source, root/'out', transcribe_images=False)
                 generate.assert_not_called()
                 selected = prepare_documents(source, root/'out', transcribe_images=True)

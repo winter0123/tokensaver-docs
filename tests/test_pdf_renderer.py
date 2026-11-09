@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from file_to_md.media import pdf_image
+from tokensaver_docs.media import pdf_image
 
 
 class PdfRendererTests(unittest.TestCase):
@@ -15,7 +15,7 @@ class PdfRendererTests(unittest.TestCase):
             source = root / 'scan.pdf'
             Image.new('RGB', (200, 100), 'red').save(
                 source, 'PDF', save_all=True, append_images=[Image.new('RGB', (200, 100), 'blue')])
-            with patch('file_to_md.media.run_command', side_effect=AssertionError('external renderer')):
+            with patch('tokensaver_docs.media.run_command', side_effect=AssertionError('external renderer')):
                 rendered = pdf_image(source, 2, root)
             with Image.open(rendered) as image:
                 self.assertEqual(image.size, (2400, 1200))

@@ -31,15 +31,15 @@ def shared_lock(folder, timeout=240):
 
 
 def cache_root() -> Path:
-    if os.environ.get('FILE_TO_MD_CACHE_DIR'):
-        return Path(os.environ['FILE_TO_MD_CACHE_DIR'])
+    if os.environ.get('TOKENSAVER_DOCS_CACHE_DIR'):
+        return Path(os.environ['TOKENSAVER_DOCS_CACHE_DIR'])
     if sys.platform == 'win32':
         base = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData/Local')))
     elif sys.platform == 'darwin':
         base = Path.home() / 'Library/Application Support'
     else:
         base = Path(os.environ.get('XDG_DATA_HOME', str(Path.home() / '.local/share')))
-    return base / 'file-to-md/cache'
+    return base / 'tokensaver-docs/cache'
 
 
 def convert_shared(source, output, *, cache_dir, refresh, profiles, vision_pages, chunk_seconds, transcribe_images=False, source_root=None, image_mode=None, image_model_key=None):

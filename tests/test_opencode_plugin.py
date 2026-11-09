@@ -7,16 +7,16 @@ from pathlib import Path
 from PIL import Image
 
 
-@unittest.skipUnless(os.environ.get('FILE_TO_MD_PLUGIN'), 'built OpenCode plugin not supplied')
+@unittest.skipUnless(os.environ.get('TOKENSAVER_DOCS_PLUGIN'), 'built OpenCode plugin not supplied')
 class OpenCodePluginTests(unittest.TestCase):
     def test_v2_registers_mcp_and_read_hook(self):
         script = '''
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
-const {default: plugin} = await import(pathToFileURL(process.env.FILE_TO_MD_PLUGIN));
+const {default: plugin} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
 let server, hook;
 await plugin.setup({mcp:{transform: async fn => fn({set: (name, value) => {server = {name, ...value}}})}, tool:{transform:async fn=>fn({add(){}}),hook: async (name, fn) => {hook = {name, fn}}}});
-assert.equal(server.name, 'file-to-md');
+assert.equal(server.name, 'tokensaver-docs');
 assert.equal(server.type, 'local');
 assert.deepEqual(server.command.slice(-1), ['mcp']);
 assert.equal(hook.name, 'execute.before');
@@ -44,22 +44,22 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { join, relative } from 'node:path';
 import assert from 'node:assert/strict';
-const {FileToMdPlugin} = await import(pathToFileURL(process.env.FILE_TO_MD_PLUGIN));
-const plugin = await FileToMdPlugin();
+const {TokenSaverDocsPlugin} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const plugin = await TokenSaverDocsPlugin();
 for (const name of ['utf16be.html', 'utf16le.html', 'upper.html', 'lower.html']) {
   const source = join(process.env.TEST_SOURCE_DIR, name);
   const call = {args: {filePath: source}};
-  await assert.rejects(plugin['tool.execute.before']({tool: 'read'}, call), /file_to_md_prepare/);
+  await assert.rejects(plugin['tool.execute.before']({tool: 'read'}, call), /tokensaver_docs_prepare/);
   assert.equal(call.args.filePath, source);
-  const prepared = JSON.parse(await plugin.tool.file_to_md_prepare.execute({source, output: join(process.env.TEST_OUTPUT, name), image_mode: 'preserve'}));
+  const prepared = JSON.parse(await plugin.tool.tokensaver_docs_prepare.execute({source, output: join(process.env.TEST_OUTPUT, name), image_mode: 'preserve'}));
   const output = prepared.files[0].output;
   assert.ok(relative(process.env.TEST_SOURCE_DIR, output).startsWith('..'));
   assert.ok((await readFile(output, 'utf8')).includes('seven days'));
   assert.equal(prepared.ai_calls, 0);
 }
 '''
-            env = dict(os.environ, FILE_TO_MD_PLUGIN=str(Path(os.environ['FILE_TO_MD_PLUGIN']).resolve()),
-                       TEST_SOURCE_DIR=str(source_dir), TEST_OUTPUT=str(root/'out'), XDG_CONFIG_HOME=str(root/'config'), FILE_TO_MD_CACHE_DIR=str(root/'cache'))
+            env = dict(os.environ, TOKENSAVER_DOCS_PLUGIN=str(Path(os.environ['TOKENSAVER_DOCS_PLUGIN']).resolve()),
+                       TEST_SOURCE_DIR=str(source_dir), TEST_OUTPUT=str(root/'out'), XDG_CONFIG_HOME=str(root/'config'), TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache'))
             try:
                 result = subprocess.run(['node', '--input-type=module', '-e', script], env=env,
                                         capture_output=True, text=True, timeout=120)
@@ -77,12 +77,12 @@ for (const name of ['utf16be.html', 'utf16le.html', 'upper.html', 'lower.html'])
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
-const {FileToMdPlugin}=await import(pathToFileURL(process.env.FILE_TO_MD_PLUGIN));
-const plugin=await FileToMdPlugin();
+const {TokenSaverDocsPlugin}=await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const plugin=await TokenSaverDocsPlugin();
 const call={args:{filePath:process.env.TEST_HTML,offset:1000,limit:2000}};
-await assert.rejects(plugin['tool.execute.before']({tool:'read'},call), /file_to_md_prepare/);
+await assert.rejects(plugin['tool.execute.before']({tool:'read'},call), /tokensaver_docs_prepare/);
 assert.equal(call.args.filePath,process.env.TEST_HTML);
-const result=JSON.parse(await plugin.tool.file_to_md_prepare.execute({source:process.env.TEST_HTML,output:process.env.TEST_OUTPUT,image_mode:'placeholder'}));
+const result=JSON.parse(await plugin.tool.tokensaver_docs_prepare.execute({source:process.env.TEST_HTML,output:process.env.TEST_OUTPUT,image_mode:'placeholder'}));
 const text=await readFile(result.files[0].output,'utf8');
 assert.ok(text.includes('seven days'));
 assert.ok(text.includes('[이미지]'));
@@ -92,6 +92,6 @@ assert.equal(result.total,1);
 assert.equal(result.files[0].ai_calls,0);
 console.log('PASS: native read asks and explicit placeholder preparation preserves text');
 '''
-            env=dict(os.environ,FILE_TO_MD_PLUGIN=str(Path(os.environ['FILE_TO_MD_PLUGIN']).resolve()),TEST_HTML=str(source),TEST_OUTPUT=str(root/'out'),XDG_CONFIG_HOME=str(root/'config'),FILE_TO_MD_CACHE_DIR=str(root/'cache'))
+            env=dict(os.environ,TOKENSAVER_DOCS_PLUGIN=str(Path(os.environ['TOKENSAVER_DOCS_PLUGIN']).resolve()),TEST_HTML=str(source),TEST_OUTPUT=str(root/'out'),XDG_CONFIG_HOME=str(root/'config'),TOKENSAVER_DOCS_CACHE_DIR=str(root/'cache'))
             result=subprocess.run(['node','--input-type=module','-e',script],env=env,capture_output=True,text=True,timeout=120)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)

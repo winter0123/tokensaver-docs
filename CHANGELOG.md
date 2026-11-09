@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Rename package, CLI, MCP server, skills, plugin IDs, tool names, environment variables, cache paths, and release assets to TokenSaver Docs. Install using `tokensaver-docs`; Python imports use `tokensaver_docs`.
+- This is a breaking rename: existing installations must reinstall. Existing Markdown is preserved; choose a fresh output folder for conversions created by earlier versions.
+- Disconnect child CLI stdin from the MCP protocol pipe.
+
 - Public project branding: TokenSaver Docs; legacy command and plugin IDs remain compatible.
 - Require Pillow 13 or newer after the pre-publication dependency audit.
 

@@ -1,7 +1,7 @@
 # TokenSaver Docs for OpenCode
 
 This package adds local document conversion and bounded search tools to OpenCode.
-The platform-specific release includes the file-to-md executable. External image
+The platform-specific release includes the tokensaver-docs executable. External image
 and audio transcription require explicit setup and are not enabled by these tools.
 # OpenCode v2
 
@@ -13,8 +13,8 @@ The v2 path has been exercised with OpenCode 2.1.3 on macOS arm64.
 
 ## Model and image choices
 
-Start with `file_to_md_prepare` (v2: native `file_to_md_prepare`). First use can ask
-for a conversion model or let the user defer setup. `file_to_md_setup_model`
+Start with `tokensaver_docs_prepare` (v2: native `tokensaver_docs_prepare`). First use can ask
+for a conversion model or let the user defer setup. `tokensaver_docs_setup_model`
 (v2: `setup_conversion_model`; CLI: `setup-model`) inspects/selects a model.
 One-time `model_provider`/`model` parameters do not change defaults; saving a
 default needs the user's explicit choice and confirmation. The conversion model
@@ -33,4 +33,4 @@ HTML reads wait for explicit choices rather than silently choosing image
 preservation. Use the preparation tool and read its returned Markdown path.
 The host renders the question UI; the plugin supplies structured choices.
 
-The v2 entry point now registers native first-use tools (`file_to_md_prepare`, `file_to_md_setup_model`, `file_to_md_read`) before contributing the compatibility MCP server. This avoids requiring an MCP tool discovery round-trip for preparation. Other MCP tools remain available after connection.
+The v2 entry point now registers native first-use tools (`tokensaver_docs_prepare`, `tokensaver_docs_setup_model`, `tokensaver_docs_read`) before contributing the compatibility MCP server. This avoids requiring an MCP tool discovery round-trip for preparation. Other MCP tools remain available after connection.

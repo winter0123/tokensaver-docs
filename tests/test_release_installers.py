@@ -17,9 +17,9 @@ class MacReleaseInstallerTests(unittest.TestCase):
             commands = root/'commands'
             commands.mkdir()
             log = root/'calls'
-            archive = root/'file-to-md-opencode-darwin-arm64.zip'
+            archive = root/'tokensaver-docs-opencode-darwin-arm64.zip'
             with zipfile.ZipFile(archive, 'w') as bundle:
-                bundle.writestr('bin/file-to-md', '#!/bin/sh\nprintf "%s\\n" "$@" > "$INSTALL_TEST_LOG"\n')
+                bundle.writestr('bin/tokensaver-docs', '#!/bin/sh\nprintf "%s\\n" "$@" > "$INSTALL_TEST_LOG"\n')
             checks = root/'checksums.txt'
             checks.write_text(hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name+'\n')
             (commands/'uname').write_text('#!/bin/sh\ncase "$1" in -s) echo Darwin;; -m) echo arm64;; esac\n')
@@ -42,18 +42,18 @@ class MacReleaseInstallerTests(unittest.TestCase):
         self.assertIn('Usage:',result.stderr)
 
 
-@unittest.skipUnless(os.name == 'nt' and os.environ.get('FILE_TO_MD_STANDALONE'), 'requires Windows built executable')
+@unittest.skipUnless(os.name == 'nt' and os.environ.get('TOKENSAVER_DOCS_STANDALONE'), 'requires Windows built executable')
 class WindowsReleaseInstallerTests(unittest.TestCase):
     def test_install_and_update_with_local_release_download(self):
         import json
-        from file_to_md import __version__
+        from tokensaver_docs import __version__
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            files={'bin/file-to-md.exe':Path(os.environ['FILE_TO_MD_STANDALONE']).read_bytes(),
+            files={'bin/tokensaver-docs.exe':Path(os.environ['TOKENSAVER_DOCS_STANDALONE']).read_bytes(),
                    'platform.json':json.dumps({'agent':'opencode','os':'win32','cpu':'x64','version':__version__}).encode(),
-                   'index.js':b'export const FileToMdPlugin=()=>({});', 'package.json':b'{}'}
+                   'index.js':b'export const TokenSaverDocsPlugin=()=>({});', 'package.json':b'{}'}
             checks={name:hashlib.sha256(data).hexdigest() for name,data in files.items()}
-            archive=root/'file-to-md-opencode-win32-x64.zip'
+            archive=root/'tokensaver-docs-opencode-win32-x64.zip'
             with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as bundle:
                 for name,data in files.items():bundle.writestr(name,data)
                 bundle.writestr('checksums.json',json.dumps(checks))
@@ -62,9 +62,9 @@ class WindowsReleaseInstallerTests(unittest.TestCase):
             wrapper.write_text('function Invoke-WebRequest { param($Uri,$OutFile,$TimeoutSec) Copy-Item (Join-Path $env:INSTALL_TEST_FILES (($Uri -split "/")[-1])) $OutFile }\n& $env:INSTALL_TEST_SCRIPT -Repo owner/repo -Version $env:INSTALL_TEST_VERSION -Agent opencode\n',encoding='utf-8')
             cache=root/'cache';cache.mkdir()
             (cache/'sentinel').write_text('keep my cached documents')
-            env=dict(os.environ, FILE_TO_MD_CACHE_DIR=str(cache), XDG_CONFIG_HOME=str(root/'config'), INSTALL_TEST_FILES=str(root), INSTALL_TEST_SCRIPT=str(ROOT/'scripts/install.ps1'), INSTALL_TEST_VERSION='v'+__version__)
+            env=dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(cache), XDG_CONFIG_HOME=str(root/'config'), INSTALL_TEST_FILES=str(root), INSTALL_TEST_SCRIPT=str(ROOT/'scripts/install.ps1'), INSTALL_TEST_VERSION='v'+__version__)
             for _ in range(2):
                 result=subprocess.run(['powershell','-NoProfile','-ExecutionPolicy','Bypass','-File',str(wrapper)],env=env,capture_output=True,text=True,timeout=180)
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-                self.assertTrue((root/'config/opencode/plugins/file-to-md.js').is_file())
+                self.assertTrue((root/'config/opencode/plugins/tokensaver-docs.js').is_file())
                 self.assertEqual((cache/'sentinel').read_text(),'keep my cached documents')

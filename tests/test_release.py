@@ -7,7 +7,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from file_to_md import __version__
+from tokensaver_docs import __version__
 
 ROOT=Path(__file__).resolve().parent.parent
 
@@ -24,9 +24,9 @@ class ReleaseTests(unittest.TestCase):
             for agent in ('claude','codex','opencode'):
                 folder=artifacts/f'{system}-{cpu}'
                 folder.mkdir(parents=True,exist_ok=True)
-                files={'platform.json':json.dumps({'os':system,'cpu':cpu,'agent':agent,'version':__version__}).encode(), 'bin/file-to-md':b'fixture executable'}
+                files={'platform.json':json.dumps({'os':system,'cpu':cpu,'agent':agent,'version':__version__}).encode(), 'bin/tokensaver-docs':b'fixture executable'}
                 checks={name:hashlib.sha256(data).hexdigest() for name,data in files.items()}
-                with zipfile.ZipFile(folder/f'file-to-md-{agent}-{system}-{cpu}.zip','w') as archive:
+                with zipfile.ZipFile(folder/f'tokensaver-docs-{agent}-{system}-{cpu}.zip','w') as archive:
                     for name,data in files.items():archive.writestr(name,data)
                     archive.writestr('checksums.json',json.dumps(checks))
 

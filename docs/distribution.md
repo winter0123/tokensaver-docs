@@ -11,7 +11,7 @@ Replace `winter0123/tokensaver-docs` with its real GitHub name. Do not execute p
 ## Availability and discovery
 
 The current bundles are local previews. Installing one does not submit it to a
-public plugin directory, and file-to-md is not currently listed for public
+public plugin directory, and tokensaver-docs is not currently listed for public
 name-based discovery.
 
 | Agent | Current preview installation | Public discovery status |
@@ -36,9 +36,9 @@ release installer in this preview.
 
 ```sh
 repo='winter0123/tokensaver-docs'
-version='v0.3.4'
-curl -fL --proto '=https' "https://github.com/$repo/releases/download/$version/install.sh" -o file-to-md-install.sh
-sh file-to-md-install.sh --repo "$repo" --version "$version" --agent claude
+version='v0.4.0'
+curl -fL --proto '=https' "https://github.com/$repo/releases/download/$version/install.sh" -o tokensaver-docs-install.sh
+sh tokensaver-docs-install.sh --repo "$repo" --version "$version" --agent claude
 ```
 
 Use `--agent codex` or `--agent opencode` for the other agents.
@@ -47,9 +47,9 @@ Use `--agent codex` or `--agent opencode` for the other agents.
 
 ```powershell
 $Repo = 'winter0123/tokensaver-docs'
-$Version = 'v0.3.4'
-Invoke-WebRequest "https://github.com/$Repo/releases/download/$Version/install.ps1" -OutFile file-to-md-install.ps1
-& .\file-to-md-install.ps1 -Repo $Repo -Version $Version -Agent claude
+$Version = 'v0.4.0'
+Invoke-WebRequest "https://github.com/$Repo/releases/download/$Version/install.ps1" -OutFile tokensaver-docs-install.ps1
+& .\tokensaver-docs-install.ps1 -Repo $Repo -Version $Version -Agent claude
 ```
 
 Use `-Agent codex` or `-Agent opencode`. If local execution policy blocks the
@@ -70,15 +70,15 @@ extraction or cached evidence retrieval.
 
 ## After installing
 
-Restart the agent. Ask it to use file-to-md on a **local file or folder path**,
-for example: "Use file-to-md to find the refund deadline and exceptions in
+Restart the agent. Ask it to use tokensaver-docs on a **local file or folder path**,
+for example: "Use tokensaver-docs to find the refund deadline and exceptions in
 ./documents. Reuse existing conversions."
 
 Text PDF, Word, Excel and HTML are extracted locally. Scanned PDF pages are rendered
 using bundled PDFium. First use offers model selection or deferral; document text
 does not require an AI model. The plugin conversion model is separate from the host
 chat model, and unknown host settings are not guessed. Use `setup_conversion_model`
-(OpenCode v1: `file_to_md_setup_model`) or CLI `setup-model` to inspect a selection.
+(OpenCode v1: `tokensaver_docs_setup_model`) or CLI `setup-model` to inspect a selection.
 Use `setup-model --defer` to choose later. A request-only model selection leaves the
 default unchanged; `--save-as-default --confirmed` saves it after explicit consent.
 
@@ -117,14 +117,14 @@ document conversions and previous runtimes. Restart the agent after updating.
 This is a user-initiated update, not an automatic background updater.
 
 Remove Claude Code/Codex plugins with the host's plugin manager. For OpenCode,
-remove only the managed `file-to-md.js` loader in its `plugins` configuration
+remove only the managed `tokensaver-docs.js` loader in its `plugins` configuration
 folder (normally `~/.config/opencode/plugins`); do not remove the entire folder.
 Document caches and model files remain until explicitly removed by their owner.
 
 If installation fails, report OS/CPU, agent version, release tag, and the error
 message through GitHub Issues. Never attach API keys or private documents. A
-bundle may also be unpacked manually and installed with its `bin/file-to-md`
-(`bin/file-to-md.exe` on Windows) `install-plugin` command.
+bundle may also be unpacked manually and installed with its `bin/tokensaver-docs`
+(`bin/tokensaver-docs.exe` on Windows) `install-plugin` command.
 
 ## Maintainer release steps
 
@@ -132,7 +132,7 @@ bundle may also be unpacked manually and installed with its `bin/file-to-md`
    interview data and internal work logs. Package exclusions do not remove files
    from Git history; inspect the actual files selected for Git publication.
 2. Keep Python, OpenCode package and CLI versions consistent. Choose a version
-   tag matching `v` plus `file_to_md.__version__`; do not reuse a published tag.
+   tag matching `v` plus `tokensaver_docs.__version__`; do not reuse a published tag.
 3. After source/tag publication is authorized, run **Prepare draft release** in
    GitHub Actions with that existing tag. The workflow builds Windows x64 and both
    Mac CPU targets, runs tests against each executable, and collects nine plugin
@@ -154,7 +154,7 @@ To build one platform manually, follow [plugin build instructions](plugin-previe
 To validate archives downloaded from all three build jobs locally:
 
 ```sh
-python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.3.4
+python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.4.0
 ```
 
 Build on each actual target OS/CPU; renaming a Mac binary never makes a Windows

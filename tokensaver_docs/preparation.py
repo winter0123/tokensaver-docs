@@ -25,7 +25,7 @@ def _needs_image_choice(source, output):
         elif path.suffix.lower() in DOCUMENTS:
             from .extractors import extract
             try:
-                with tempfile.TemporaryDirectory(prefix='file-to-md-inspect-') as temp:
+                with tempfile.TemporaryDirectory(prefix='tokensaver-docs-inspect-') as temp:
                     for unit in extract(path, Path(temp)):
                         if unit.get('kind') == 'image' or any(word in unit.get('warning', '') for word in ('이미지', '그림', '차트', '도형', '개체')):
                             return True

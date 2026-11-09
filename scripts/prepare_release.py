@@ -10,13 +10,13 @@ from pathlib import Path, PurePosixPath
 
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
-from file_to_md import __version__
+from tokensaver_docs import __version__
 
 
 def prepare(artifacts, output, tag):
     if tag != 'v'+__version__:
         raise ValueError('Release tag must match v'+__version__)
-    expected={f'file-to-md-{agent}-{system}-{cpu}.zip':(agent,system,cpu)
+    expected={f'tokensaver-docs-{agent}-{system}-{cpu}.zip':(agent,system,cpu)
               for agent in ('claude','codex','opencode')
               for system,cpu in (('darwin','arm64'),('darwin','x64'),('win32','x64'))}
     archives=list(artifacts.rglob('*.zip'))
@@ -51,7 +51,7 @@ def prepare(artifacts, output, tag):
     for script in ('install.sh','install.ps1'):
         shutil.copy2(ROOT/'scripts'/script,output/script)
     (output/'release-notes.md').write_text(
-        f'# file-to-md {tag} preview\n\n'
+        f'# tokensaver-docs {tag} preview\n\n'
         'Local document context tools for Claude Code, Codex and OpenCode.\n\n'
         'Choose the archive for your agent, OS and CPU, or follow the release installation guide in the repository. '
         'No separate Python, Poppler, npm or Bun installation is required by the bundles. '

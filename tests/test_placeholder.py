@@ -11,9 +11,9 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image as SheetImage
 from PIL import Image
 
-from file_to_md.context import document_context
-from file_to_md.engine import convert
-from file_to_md.storage import digest, load_state
+from tokensaver_docs.context import document_context
+from tokensaver_docs.engine import convert
+from tokensaver_docs.storage import digest, load_state
 
 
 class PlaceholderTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class PlaceholderTests(unittest.TestCase):
 
     def test_standalone_placeholder_and_shared_reuse_do_not_restore_image_links(self):
         original = self.image.read_bytes()
-        with patch('file_to_md.providers.generate') as call:
+        with patch('tokensaver_docs.providers.generate') as call:
             for out in ('one', 'two'):
                 result = convert(self.image, self.root/out, profiles=self.profiles, cache_dir=self.root/'cache', image_mode='placeholder')
                 self.read(result)
@@ -48,12 +48,12 @@ class PlaceholderTests(unittest.TestCase):
 
     def test_placeholder_does_not_decode_standalone_image(self):
         self.image.write_bytes(b'not a decodable image')
-        with patch('file_to_md.media.image_frames', side_effect=AssertionError('Do not decode')):
+        with patch('tokensaver_docs.media.image_frames', side_effect=AssertionError('Do not decode')):
             result = convert(self.image, self.root/'out', image_mode='placeholder')
         self.read(result)
 
     def test_mode_switch_does_not_restore_prior_analysis_and_preserves_outputs(self):
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'SECRET', 'image_description': 'red image'})}) as call:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'SECRET', 'image_description': 'red image'})}) as call:
             analyzed = convert(self.image, self.root/'out', profiles=self.profiles, cache_dir=self.root/'cache', image_mode='analyze')
             before = Path(analyzed[0]['output']).read_bytes()
             skipped = convert(self.image, self.root/'out', profiles=self.profiles, cache_dir=self.root/'cache', image_mode='placeholder')
@@ -84,7 +84,7 @@ class PlaceholderTests(unittest.TestCase):
         book.active.add_image(SheetImage(str(self.image)), 'B2')
         book.save(self.root/'sheet.xlsx')
         Image.new('RGB', (100, 100), 'blue').save(self.root/'scan.pdf', 'PDF')
-        with patch('file_to_md.providers.generate') as call:
+        with patch('tokensaver_docs.providers.generate') as call:
             for name in ('table.docx', 'sheet.xlsx', 'scan.pdf'):
                 result = convert(self.root/name, self.root/'out', cache_dir=self.root/'cache', image_mode='placeholder')
                 text = self.read(result)
@@ -97,9 +97,9 @@ class PlaceholderTests(unittest.TestCase):
             call.assert_not_called()
 
     def test_context_retains_placeholder_mode_and_edited_output_protection(self):
-        with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(self.root/'cache')):
+        with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(self.root/'cache')):
             result = convert(self.image, self.root/'out', cache_dir=self.root/'cache', image_mode='placeholder')
-            with patch('file_to_md.providers.generate') as call:
+            with patch('tokensaver_docs.providers.generate') as call:
                 context = document_context(self.image, '이미지', self.root/'out')
                 call.assert_not_called()
             self.assertEqual(context['status'], 'partial')
@@ -132,7 +132,7 @@ class PlaceholderTests(unittest.TestCase):
         self.assertIn('원본에서 확인', text)
 
     def test_explicit_image_model_key_keeps_other_models_cache_separate(self):
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': 'Words', 'image_description': 'red'})}) as call:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': 'Words', 'image_description': 'red'})}) as call:
             for key, out in [('model-a', 'a'), ('model-b', 'b'), ('model-a', 'c')]:
                 convert(self.image, self.root/out, profiles=self.profiles, cache_dir=self.root/'cache', image_mode='analyze', image_model_key=key)
             self.assertEqual(call.call_count, 2)
@@ -141,11 +141,11 @@ class PlaceholderTests(unittest.TestCase):
         selected = {'provider': 'codex', 'model': 'new-default'}
         key = digest(json.dumps(selected, sort_keys=True).encode())
         response = {'text': json.dumps({'image_text': 'Words', 'image_description': 'red'})}
-        with patch.dict(os.environ, FILE_TO_MD_CACHE_DIR=str(self.root/'cache')):
-            with patch('file_to_md.providers.generate', return_value=response):
+        with patch.dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(self.root/'cache')):
+            with patch('tokensaver_docs.providers.generate', return_value=response):
                 convert(self.image, self.root/'out', profiles=self.profiles, cache_dir=self.root/'cache', image_mode='analyze', image_model_key='previous-one-time')
             Image.new('RGB', (20, 20), 'blue').save(self.image)
-            with patch('file_to_md.context.load_profiles', return_value={'image': {'provider': 'codex', 'model': 'legacy'}}), patch('file_to_md.model_setup.load_model_selection', return_value=selected), patch('file_to_md.providers.generate', return_value=response) as generate:
+            with patch('tokensaver_docs.context.load_profiles', return_value={'image': {'provider': 'codex', 'model': 'legacy'}}), patch('tokensaver_docs.model_setup.load_model_selection', return_value=selected), patch('tokensaver_docs.providers.generate', return_value=response) as generate:
                 document_context(self.image, 'Words', self.root/'out', use_configured_providers=True)
                 self.assertEqual(generate.call_args.args[2], selected)
             state = load_state(self.root/'out')['records'][self.image.name+'.md']

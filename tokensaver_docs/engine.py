@@ -15,7 +15,7 @@ IMAGES = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tif', '.tiff', '.gif'}
 AUDIO = {'.wav', '.mp3', '.m4a', '.ogg', '.flac', '.aac', '.mp4'}
 DOCUMENTS = {'.pdf', '.docx', '.xlsx', '.html', '.htm'}
 SUPPORTED = IMAGES | AUDIO | DOCUMENTS
-EXCLUDED = {'.git', '.venv', '.worker-context', '__pycache__', '.file-to-md', 'node_modules'}
+EXCLUDED = {'.git', '.venv', '.worker-context', '__pycache__', '.tokensaver-docs', 'node_modules'}
 
 
 def discover(source: Path, output: Path, *, include_markdown: bool = False) -> list[Path]:
@@ -42,7 +42,7 @@ def discover(source: Path, output: Path, *, include_markdown: bool = False) -> l
 def output_lock(output: Path):
     import os
     output.mkdir(parents=True, exist_ok=True)
-    cache = output / '.file-to-md'
+    cache = output / '.tokensaver-docs'
     if cache.is_symlink():
         raise ValueError('캐시 폴더 심볼릭 링크는 허용하지 않습니다.')
     cache.mkdir(exist_ok=True)
@@ -123,12 +123,12 @@ def convert(source: Path, output: Path, *, profiles: dict | None = None,
         if transcribe_images:
             if source.is_symlink() or output.is_symlink() or source.resolve().is_relative_to(output.resolve()):
                 raise ValueError('입력·출력 경로를 확인하세요.')
-            cache = checked_folder(output / '.file-to-md/html-cache', output)
+            cache = checked_folder(output / '.tokensaver-docs/html-cache', output)
             image_store = UnitStore(cache, refresh=refresh, failures=failed_units, successes=refreshed_units, image_model_key=image_model_key)
         for path in discover(source, output):
             if path.suffix.lower() in ('.html', '.htm'):
                 try:
-                    results.append(convert_html(path, output, cache_dir=output/'.file-to-md/html-cache', source_root=root, profiles=profiles, transcribe_images=transcribe_images, refresh=refresh, failed_units=failed_units, refreshed_units=refreshed_units, image_mode=image_mode, image_model_key=image_model_key))
+                    results.append(convert_html(path, output, cache_dir=output/'.tokensaver-docs/html-cache', source_root=root, profiles=profiles, transcribe_images=transcribe_images, refresh=refresh, failed_units=failed_units, refreshed_units=refreshed_units, image_mode=image_mode, image_model_key=image_model_key))
                 except (ValueError, OSError) as error:
                     results.append({'file': str(path), 'status': '실패', 'detail': str(error)})
             else:
@@ -235,7 +235,7 @@ def _convert_local(source: Path, output: Path, *, profiles: dict | None = None,
                 image_configuration_required = False
                 if source_image_link:
                     parts.append('## 원본 이미지\n\n' + source_image_link)
-                with tempfile.TemporaryDirectory(prefix='file-to-md-media-') as temporary:
+                with tempfile.TemporaryDirectory(prefix='tokensaver-docs-media-') as temporary:
                     folder = Path(temporary)
                     conversion_units = ([{'id': 'image', 'title': '이미지', 'kind': 'image'}]
                                         if image_mode == 'placeholder' and path.suffix.lower() in IMAGES

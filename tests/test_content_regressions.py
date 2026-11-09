@@ -9,10 +9,10 @@ from PIL import Image
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, NameObject
 
-from file_to_md.engine import convert
-from file_to_md.media import normalize_image
-from file_to_md.providers import PROMPT_VERSION
-from file_to_md.storage import digest, file_hash, save_state
+from tokensaver_docs.engine import convert
+from tokensaver_docs.media import normalize_image
+from tokensaver_docs.providers import PROMPT_VERSION
+from tokensaver_docs.storage import digest, file_hash, save_state
 
 
 class ContentRegressionTests(unittest.TestCase):
@@ -46,7 +46,7 @@ class ContentRegressionTests(unittest.TestCase):
         cell.add_paragraph('본문 뒤')
         doc.sections[0].header.add_table(rows=1, cols=1, width=100).cell(0, 0).text = '머리글 표'
         doc.save(path)
-        with patch('file_to_md.providers.generate', side_effect=AssertionError('AI 호출 금지')):
+        with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('AI 호출 금지')):
             result = convert(path, self.output)
         text = (self.output / (path.name + '.md')).read_text()
         for expected in ('환불액 12345원', '깊은 표 678원', '다음 열', '머리글 표'):
@@ -58,7 +58,7 @@ class ContentRegressionTests(unittest.TestCase):
     def test_vector_pdf_is_blocked_without_model_instead_of_declared_empty(self):
         path = self.root / '벡터.pdf'
         self.vector_pdf(path)
-        with patch('file_to_md.providers.generate', side_effect=AssertionError('모델 미설정')):
+        with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('모델 미설정')):
             result = convert(path, self.output)
         self.assertEqual(result[0]['status'], '차단')
         self.assertNotIn('(빈 페이지)', (self.output / (path.name + '.md')).read_text())
@@ -66,7 +66,7 @@ class ContentRegressionTests(unittest.TestCase):
     def test_vector_pdf_uses_selected_image_model_and_empty_page_does_not(self):
         path = self.root / '벡터.pdf'
         self.vector_pdf(path)
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '검은 도형', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '검은 도형', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
             result = convert(path, self.output, profiles=self.profiles)
         self.assertEqual(ai.call_count, 1)
         self.assertEqual(result[0]['status'], '완료')
@@ -76,7 +76,7 @@ class ContentRegressionTests(unittest.TestCase):
         writer.add_blank_page(width=100, height=100)
         with blank.open('wb') as f:
             writer.write(f)
-        with patch('file_to_md.providers.generate', side_effect=AssertionError('빈 페이지 AI 낭비')):
+        with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('빈 페이지 AI 낭비')):
             result = convert(blank, self.output, profiles=self.profiles)
         self.assertEqual(result[0]['status'], '완료')
         self.assertIn('(빈 페이지)', (self.output / (blank.name + '.md')).read_text())
@@ -115,7 +115,7 @@ class ContentRegressionTests(unittest.TestCase):
                 seen.append(im.getpixel((0, 0)))
             return {'text': json.dumps({'image_text': f'{len(seen)}번째 전사', 'image_description': 'fixture image'}), 'usage': {}}
 
-        with patch('file_to_md.providers.generate', side_effect=transcribe):
+        with patch('tokensaver_docs.providers.generate', side_effect=transcribe):
             result = convert(path, self.output, profiles=self.profiles)
             convert(path, self.output, profiles=self.profiles)
         self.assertEqual(seen, [(255, 0, 0), (0, 0, 255)])
@@ -128,11 +128,11 @@ class ContentRegressionTests(unittest.TestCase):
     def test_multiframe_tiff_resume_only_failed_frame(self):
         path = self.root / '재개.tiff'
         Image.new('RGB', (20, 20), 'red').save(path, save_all=True, append_images=[Image.new('RGB', (20, 20), 'blue')])
-        with patch('file_to_md.providers.generate', side_effect=[{'text': json.dumps({'image_text': '앞장', 'image_description': 'fixture image'}), 'usage': {}}, RuntimeError('실패')]) as ai:
+        with patch('tokensaver_docs.providers.generate', side_effect=[{'text': json.dumps({'image_text': '앞장', 'image_description': 'fixture image'}), 'usage': {}}, RuntimeError('실패')]) as ai:
             result = convert(path, self.output, profiles=self.profiles)
         self.assertEqual(ai.call_count, 2)
         self.assertEqual(result[0]['status'], '부분완료')
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '뒷장', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '뒷장', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
             result = convert(path, self.output, profiles=self.profiles)
         self.assertEqual(ai.call_count, 1)
         self.assertEqual(result[0]['status'], '완료')
@@ -151,7 +151,7 @@ class ContentRegressionTests(unittest.TestCase):
             'output_hash': file_hash(target), 'status': '완료',
             'units': {'image': {'text': '과거의 잘못된 전사'}},
         }}})
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '수정된 전사', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '수정된 전사', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
             result = convert(path, self.output, profiles=self.profiles)
         self.assertEqual(ai.call_count, 1)
         self.assertEqual(result[0]['status'], '완료')
@@ -177,7 +177,7 @@ class ContentRegressionTests(unittest.TestCase):
             'source': str(path.resolve()), 'signature': legacy, 'status': '확인필요',
             'output_hash': file_hash(target), 'units': {},
         }}})
-        with patch('file_to_md.providers.generate', return_value={'text': json.dumps({'image_text': '새 이미지 전사', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
+        with patch('tokensaver_docs.providers.generate', return_value={'text': json.dumps({'image_text': '새 이미지 전사', 'image_description': 'fixture image'}), 'usage': {}}) as ai:
             result = convert(path, self.output, profiles=self.profiles)
         self.assertEqual(ai.call_count, 1)
         self.assertEqual(target.read_text(), '과거 이미지 전사')

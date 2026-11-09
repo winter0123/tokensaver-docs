@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image
-from file_to_md.engine import convert
+from tokensaver_docs.engine import convert
 
 
 class HtmlTests(unittest.TestCase):
@@ -34,7 +34,7 @@ class HtmlTests(unittest.TestCase):
             source = root/'policy.html'
             source.write_text('<style>p { background: url(policy.png) }</style><p>본문</p>')
             old_document = {'text': '본문', 'resources': [], 'base': '', 'warnings': []}
-            with patch('file_to_md.html_document.HTML_VERSION', 2), patch('file_to_md.html_document.parse_html', return_value=old_document):
+            with patch('tokensaver_docs.html_document.HTML_VERSION', 2), patch('tokensaver_docs.html_document.parse_html', return_value=old_document):
                 old = convert(source, root/'out', cache_dir=root/'cache')[0]
             updated = convert(source, root/'out', cache_dir=root/'cache')[0]
             self.assertEqual(updated['status'], '확인필요')
@@ -75,11 +75,11 @@ class HtmlTests(unittest.TestCase):
             self.assertEqual(by_name['second.html']['status'], '완료')
 
     def test_one_call_preparation_never_returns_document_text_or_base64(self):
-        from file_to_md.preparation import prepare_documents
+        from tokensaver_docs.preparation import prepare_documents
         import json
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);html,_=self.fixture(root)
-            with patch.dict('os.environ',{'FILE_TO_MD_CACHE_DIR':str(root/'cache')}), patch('file_to_md.providers.generate',side_effect=AssertionError('no external call')):
+            with patch.dict('os.environ',{'TOKENSAVER_DOCS_CACHE_DIR':str(root/'cache')}), patch('tokensaver_docs.providers.generate',side_effect=AssertionError('no external call')):
                 result=prepare_documents(html,root/'out')
             self.assertEqual(result['total'],1)
             payload=json.dumps(result,ensure_ascii=False)
@@ -108,7 +108,7 @@ class HtmlTests(unittest.TestCase):
     def test_html_tool_preserves_image_table_order_and_reuses(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);html,image=self.fixture(root)
-            with patch('file_to_md.providers.generate',side_effect=AssertionError('no AI')):
+            with patch('tokensaver_docs.providers.generate',side_effect=AssertionError('no AI')):
                 first=convert(html,root/'out',cache_dir=root/'cache')[0]
                 self.assertEqual(first['status'],'확인필요',first)
                 text=Path(first['output']).read_text()
@@ -156,7 +156,7 @@ class HtmlTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);html,_=self.fixture(root)
             profiles={'image':{'provider':'openrouter','model':'selected:free'}}
-            with patch('file_to_md.providers.generate',return_value={'text':json.dumps({'image_text':'사진에 적힌 내용','image_description':'파란색 사각형'})}) as calls:
+            with patch('tokensaver_docs.providers.generate',return_value={'text':json.dumps({'image_text':'사진에 적힌 내용','image_description':'파란색 사각형'})}) as calls:
                 convert(html,root/'out',profiles=profiles,cache_dir=root/'cache')
                 calls.assert_not_called()
                 upgraded=convert(html,root/'out',profiles=profiles,cache_dir=root/'cache',transcribe_images=True)[0]
@@ -168,7 +168,7 @@ class HtmlTests(unittest.TestCase):
                 cached_without_profile=convert(html,root/'cached',cache_dir=root/'cache',transcribe_images=True)[0]
                 self.assertEqual(cached_without_profile['status'],'완료')
                 self.assertIn('파란색 사각형',Path(cached_without_profile['output']).read_text())
-                with patch('file_to_md.html_document.UnitStore', side_effect=AssertionError('skip must not read image analysis cache')):
+                with patch('tokensaver_docs.html_document.UnitStore', side_effect=AssertionError('skip must not read image analysis cache')):
                     skipped=convert(html,root/'skipped',cache_dir=root/'cache')[0]
                 self.assertNotIn('사진에 적힌 내용',Path(skipped['output']).read_text())
                 self.assertNotIn('파란색 사각형',Path(skipped['output']).read_text())
@@ -179,10 +179,10 @@ class HtmlTests(unittest.TestCase):
             root=Path(tmp);html,image=self.fixture(root)
             Image.new('RGB',(12,13),'red').save(image.with_name('other.png'))
             html.write_text('<p>앞</p><img src="a.png"><img src="other.png"><img src="a.png"><p>뒤</p>')
-            from file_to_md.providers import ConversionError
+            from tokensaver_docs.providers import ConversionError
             good={'text':json.dumps({'image_text':'확인되는 글자 없음','image_description':'색이 있는 사각형'})}
             profiles={'image':{'provider':'openrouter','model':'selected:free'}}
-            with patch('file_to_md.providers.generate',side_effect=[good,ConversionError('일시 오류'),good]) as calls:
+            with patch('tokensaver_docs.providers.generate',side_effect=[good,ConversionError('일시 오류'),good]) as calls:
                 first=convert(html,root/'out',profiles=profiles,cache_dir=root/'cache',transcribe_images=True)[0]
                 self.assertEqual(first['status'],'부분완료')
                 self.assertEqual(first['ai_calls'],2)
@@ -218,7 +218,7 @@ class HtmlTests(unittest.TestCase):
                 self.assertEqual(result['image_errors'],1)
 
     def test_cached_old_state_records_analysis_choice(self):
-        from file_to_md.storage import load_state, save_state
+        from tokensaver_docs.storage import load_state, save_state
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);html,_=self.fixture(root)
             convert(html,root/'out',cache_dir=root/'cache',transcribe_images=False)
@@ -230,12 +230,12 @@ class HtmlTests(unittest.TestCase):
             self.assertIs(load_state(root/'out')['records'][html.name+'.md']['image_analysis'],False)
 
     def test_duplicate_failure_does_not_retry_without_a_new_run(self):
-        from file_to_md.providers import ConversionError
+        from tokensaver_docs.providers import ConversionError
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);html,_=self.fixture(root)
             html.write_text('<img src="a.png"><img src="a.png">')
             profiles={'image':{'provider':'openrouter','model':'selected:free'}}
-            with patch('file_to_md.providers.generate',side_effect=ConversionError('일시 오류')) as calls:
+            with patch('tokensaver_docs.providers.generate',side_effect=ConversionError('일시 오류')) as calls:
                 result=convert(html,root/'out',profiles=profiles,cache_dir=root/'cache',transcribe_images=True)[0]
                 self.assertEqual(result['status'],'부분완료')
                 self.assertEqual(calls.call_count,1)
@@ -243,7 +243,7 @@ class HtmlTests(unittest.TestCase):
                 self.assertEqual(Path(result['output']).read_text().count('일시 오류'),2)
 
     def test_duplicate_failure_across_documents_retries_only_on_next_run(self):
-        from file_to_md.providers import ConversionError
+        from tokensaver_docs.providers import ConversionError
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); source=root/'docs'; source.mkdir()
             Image.new('RGB',(12,13),'blue').save(source/'a.png')
@@ -251,7 +251,7 @@ class HtmlTests(unittest.TestCase):
                 (source/name).write_text('<img src="a.png">')
             profiles={'image':{'provider':'openrouter','model':'selected:free'}}
             good={'text':json.dumps({'image_text':'확인되는 글자 없음','image_description':'파란 사각형'})}
-            with patch('file_to_md.providers.generate',side_effect=[ConversionError('일시 오류'),good]) as calls:
+            with patch('tokensaver_docs.providers.generate',side_effect=[ConversionError('일시 오류'),good]) as calls:
                 first=convert(source,root/'out',profiles=profiles,cache_dir=root/'cache',transcribe_images=True)
                 documents=[r for r in first if r['file'].endswith('.html')]
                 self.assertEqual(len(documents),2)
@@ -262,14 +262,14 @@ class HtmlTests(unittest.TestCase):
                 self.assertTrue(all(r['status']=='완료' for r in second if r['file'].endswith('.html')))
 
     def test_multiframe_image_preserves_success_when_a_frame_fails(self):
-        from file_to_md.providers import ConversionError
+        from tokensaver_docs.providers import ConversionError
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);source=root/'multi.tiff'
             Image.new('RGB',(10,10),'red').save(source,save_all=True,append_images=[Image.new('RGB',(10,10),'blue')])
             html=root/'guide.html';html.write_text('<p>전</p><img src="multi.tiff"><p>후</p>')
             profiles={'image':{'provider':'openrouter','model':'selected:free'}}
             good={'text':json.dumps({'image_text':'확인되는 글자 없음','image_description':'색이 있는 사각형'})}
-            with patch('file_to_md.providers.generate',side_effect=[good,ConversionError('일시 오류'),good]) as calls:
+            with patch('tokensaver_docs.providers.generate',side_effect=[good,ConversionError('일시 오류'),good]) as calls:
                 first=convert(html,root/'out',profiles=profiles,cache_dir=root/'cache',transcribe_images=True)[0]
                 text=Path(first['output']).read_text()
                 self.assertEqual(first['status'],'부분완료')

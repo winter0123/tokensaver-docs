@@ -3,8 +3,8 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "file-to-md"
-version = "0.3.4"
+name = "tokensaver-docs"
+version = "0.4.0"
 description = "TokenSaver Docs: prepare documents once and retrieve bounded evidence for AI coding agents"
 readme = "README.md"
 license = "MIT"
@@ -21,14 +21,14 @@ mcp = ["mcp>=1.9,<2"]
 tokens = ["tiktoken>=0.7,<1"]
 
 [project.scripts]
-file-to-md = "file_to_md.cli:main"
-file-to-md-mcp = "file_to_md.cli:mcp_entry"
+tokensaver-docs = "tokensaver_docs.cli:main"
+tokensaver-docs-mcp = "tokensaver_docs.cli:mcp_entry"
 
 [tool.setuptools.packages.find]
-include = ["file_to_md*"]
+include = ["tokensaver_docs*"]
 
 [tool.setuptools.package-data]
-file_to_md = ["data/*.json"]
+tokensaver_docs = ["data/*.json"]
 
 [tool.setuptools.data-files]
-"share/file-to-md/skills/file-to-md" = ["skills/file-to-md/SKILL.md"]
+"share/tokensaver-docs/skills/tokensaver-docs" = ["skills/tokensaver-docs/SKILL.md"]

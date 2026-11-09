@@ -4,7 +4,7 @@ __pycache__/
 build/
 dist/
 .worker-context/
-.file-to-md/
+.tokensaver-docs/
 converted/
 # Local test data and private session notes must not enter public releases.
 qa/

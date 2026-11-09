@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from file_to_md.html_document import convert_html
-from file_to_md.storage import load_state
+from tokensaver_docs.html_document import convert_html
+from tokensaver_docs.storage import load_state
 
 
 class HtmlPlaceholderTests(unittest.TestCase):
@@ -21,9 +21,9 @@ class HtmlPlaceholderTests(unittest.TestCase):
             source.write_text('<p>Before</p><img alt="secret alt" src="missing.png"><p>Between</p>'
                               '<img src="https://example.invalid/image.png"><img src="data:image/png;base64,invalid">'
                               '<p>After</p>', encoding='utf-8')
-            with patch('file_to_md.html_document.local_image', side_effect=AssertionError('must not open images')), \
-                    patch('file_to_md.html_document.store_image', side_effect=AssertionError('must not store images')), \
-                    patch('file_to_md.providers.generate', side_effect=AssertionError('must not call provider')):
+            with patch('tokensaver_docs.html_document.local_image', side_effect=AssertionError('must not open images')), \
+                    patch('tokensaver_docs.html_document.store_image', side_effect=AssertionError('must not store images')), \
+                    patch('tokensaver_docs.providers.generate', side_effect=AssertionError('must not call provider')):
                 result = self.run_html(source, root, image_mode='placeholder')
                 repeated = self.run_html(source, root, image_mode='placeholder')
             text = Path(result['output']).read_text(encoding='utf-8')
@@ -51,10 +51,10 @@ class HtmlPlaceholderTests(unittest.TestCase):
             preserved = self.run_html(source, root)
             original_md = Path(preserved['output']).read_bytes()
             response = {'text': json.dumps({'image_text': 'secret words', 'image_description': 'secret description'})}
-            with patch('file_to_md.providers.generate', return_value=response):
+            with patch('tokensaver_docs.providers.generate', return_value=response):
                 analyzed = self.run_html(source, root, transcribe_images=True, profiles={'image': {'provider': 'codex', 'model': 'fixture'}})
             self.assertIn('secret description', Path(analyzed['output']).read_text())
-            with patch('file_to_md.providers.generate', side_effect=AssertionError('no analysis')):
+            with patch('tokensaver_docs.providers.generate', side_effect=AssertionError('no analysis')):
                 placeholder = self.run_html(source, root, image_mode='placeholder')
             self.assertEqual(Path(preserved['output']).read_bytes(), original_md)
             self.assertTrue(Path(analyzed['output']).is_file())
@@ -71,8 +71,8 @@ class HtmlPlaceholderTests(unittest.TestCase):
             source = root/'page.html'
             source.write_text('<img src="image.png">')
             Image.new('RGB', (8, 9), 'blue').save(root/'image.png')
-            with patch('file_to_md.html_document.UnitStore') as store, \
-                    patch('file_to_md.html_document.analyze_image', return_value=({'text': 'same text'}, False)):
+            with patch('tokensaver_docs.html_document.UnitStore') as store, \
+                    patch('tokensaver_docs.html_document.analyze_image', return_value=({'text': 'same text'}, False)):
                 first = self.run_html(source, root, image_mode='analyze', image_model_key='model-a')
                 second = self.run_html(source, root, image_mode='analyze', image_model_key='model-b')
             self.assertEqual(store.call_args.kwargs['image_model_key'], 'model-b')

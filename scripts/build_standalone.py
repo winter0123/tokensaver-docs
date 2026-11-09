@@ -20,7 +20,7 @@ def main():
     args = parser.parse_args()
     if args.output.exists():
         parser.error('output already exists; choose a new directory')
-    with tempfile.TemporaryDirectory(prefix='file-to-md-build-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='tokensaver-docs-build-') as temporary:
         temp = Path(temporary)
         # python-docx resolves templates through docx/parts/../templates on disk.
         marker = temp / '.bundle-marker'
@@ -48,14 +48,14 @@ def main():
             shutil.copy2(args.whisper/'WHISPER_LICENSE',notices/'WHISPER_LICENSE')
         (notices/'README.txt').write_text('PDF rendering uses pypdfium2 '+pdfium_dist.version+' and PDFium. Upstream license texts, including PDFium dependency notices, are included here.\n',encoding='utf-8')
         command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--onefile',
-                   '--name', 'file-to-md', '--distpath', str(temp / 'dist'),
+                   '--name', 'tokensaver-docs', '--distpath', str(temp / 'dist'),
                    '--workpath', str(temp / 'work'), '--specpath', str(temp),
                    '--collect-all', 'tiktoken', '--collect-data', 'docx', '--hidden-import', 'tiktoken_ext.openai_public',
                    '--collect-all', 'pypdfium2_raw', '--collect-data', 'pypdfium2',
                    '--add-data', str(notices)+os.pathsep+'third-party',
                    '--add-data', str(vocabulary)+os.pathsep+'tiktoken-cache',
-                   '--add-data', str(ROOT/'file_to_md/data') + os.pathsep + 'file_to_md/data',
-                   '--add-data', str(ROOT / 'skills/file-to-md/SKILL.md') + os.pathsep + 'skills/file-to-md',
+                   '--add-data', str(ROOT/'tokensaver_docs/data') + os.pathsep + 'tokensaver_docs/data',
+                   '--add-data', str(ROOT / 'skills/tokensaver-docs/SKILL.md') + os.pathsep + 'skills/tokensaver-docs',
                    '--add-data', str(marker) + os.pathsep + 'docx/parts',
                    str(ROOT / 'scripts/standalone.py')]
         if args.whisper:
@@ -63,7 +63,7 @@ def main():
             command[3:3]=['--add-binary',str(args.whisper.resolve()/name)+os.pathsep+'whisper','--add-data',str(args.whisper.resolve()/'WHISPER_LICENSE')+os.pathsep+'whisper']
         subprocess.run(command, check=True, cwd=ROOT)
         args.output.mkdir(parents=True)
-        name = 'file-to-md.exe' if os.name == 'nt' else 'file-to-md'
+        name = 'tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'
         shutil.copy2(temp / 'dist' / name, args.output / name)
         shutil.copytree(notices,args.output/'third-party')
         print(args.output / name)

@@ -13,11 +13,11 @@ image positions. Image analysis
 uses a provider and model chosen by the user; multilingual audio can run locally with bundled whisper.cpp.
 No separate OCR engine is used. Existing files and user edits are preserved.
 
-The command and internal plugin identifier remain `file-to-md` for compatibility.
+The CLI command, Python package, plugin IDs, and installation paths use `tokensaver-docs` (`tokensaver_docs` in Python).
 
 ## Current status
 
-0.3.4 is a local preview, not a published registry or official directory release.
+0.4.0 is a local preview, not a published registry or official directory release.
 macOS arm64 has been tested locally. Windows and Intel Mac have build
 workflows but no remote CI result in this checkout. Linux has source tests only.
 Do not assume untested
@@ -39,10 +39,10 @@ alone is not a published plugin installer.
 
 ```sh
 python -m pip install '.[mcp,tokens]'
-file-to-md prepare ./documents --output ./converted --skip-image-transcription
-file-to-md convert ./documents --output ./converted --no-configured-providers
-file-to-md context ./documents 'refund deadline' --output ./converted --max-tokens 1200
-file-to-md read ./converted/policy.pdf.md --start-line 20 --lines 40
+tokensaver-docs prepare ./documents --output ./converted --skip-image-transcription
+tokensaver-docs convert ./documents --output ./converted --no-configured-providers
+tokensaver-docs context ./documents 'refund deadline' --output ./converted --max-tokens 1200
+tokensaver-docs read ./converted/policy.pdf.md --start-line 20 --lines 40
 ```
 
 The installed plugin bundles contain the Python runtime and libraries. The
@@ -51,8 +51,8 @@ bundle do not need Python, npm or Bun. See [plugin installation](docs/plugin-pre
 
 ## Convert once
 
-For agents, start with `prepare_documents` (OpenCode v1: `file_to_md_prepare`;
-v2: native `file_to_md_prepare`). First use offers model selection or
+For agents, start with `prepare_documents` (OpenCode v1: `tokensaver_docs_prepare`;
+v2: native `tokensaver_docs_prepare`). First use offers model selection or
 deferral. The plugin's conversion model can differ from the host chat model;
 the plugin does not infer a host model it cannot verify. Ordinary document text
 needs no AI model. For images, the tool checks the selected model's image support
@@ -68,12 +68,12 @@ The tool returns output paths/status, not raw HTML or Base64. Questions use
 For CLI use, inspect first-use setup or defer it:
 
 ```sh
-file-to-md setup-model
-file-to-md setup-model --defer
+tokensaver-docs setup-model
+tokensaver-docs setup-model --defer
 # Inspect a user-selected model without saving it:
-file-to-md setup-model --provider openrouter --model MODEL_ID
+tokensaver-docs setup-model --provider openrouter --model MODEL_ID
 # Only after the user chooses to save this default:
-file-to-md setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
+tokensaver-docs setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
 ```
 
 `prepare INPUT --output OUTPUT --image-mode analyze` includes images, visible text
@@ -99,7 +99,7 @@ The OpenCode read hook intercepts HTML with a literal embedded-image data URI.
 It directs the agent to preparation when a model/image choice is needed rather
 than silently choosing a mode; prepared Markdown reads are capped at 40 lines.
 HTML entities in the URI can evade detection; shell commands and other host tools
-are also outside that hook. Use `file_to_md_prepare` for reliable preparation.
+are also outside that hook. Use `tokensaver_docs_prepare` for reliable preparation.
 
 CLI, MCP and plugins use a common cache within the current user's application data.
 Identical content can be reused after renaming or moving a file, changing the output
@@ -121,9 +121,9 @@ reprocessed. Cache integrity failures are explicit.
 The audio bundle includes a CPU whisper-cli. First show a model's download size:
 
 ```sh
-file-to-md setup-audio --model small
+tokensaver-docs setup-audio --model small
 # After choosing the model and consenting to the download:
-file-to-md setup-audio --model small --download
+tokensaver-docs setup-audio --model small --download
 ```
 
 The pinned multilingual model download is checksum-verified and shared across

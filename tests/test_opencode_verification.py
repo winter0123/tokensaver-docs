@@ -9,7 +9,7 @@ class HostVerificationTests(unittest.TestCase):
             p=Path(temp)/'events';p.write_text('\n'.join(lines));return module.inspect_events(p)
 
     def test_counts_actual_mcp_results(self):
-        events=[{'type':'tool_use','part':{'tool':'file-to-md_prepare_documents','state':{'status':'completed','input':{'image_mode':'analyze'},'output':json.dumps({'status':'ready','ai_calls':count})}}} for count in (5,0)]
+        events=[{'type':'tool_use','part':{'tool':'tokensaver-docs_prepare_documents','state':{'status':'completed','input':{'image_mode':'analyze'},'output':json.dumps({'status':'ready','ai_calls':count})}}} for count in (5,0)]
         self.assertEqual([r['ai_calls'] for r in self.check([json.dumps(e) for e in events])],[5,0])
 
     def test_cli_fallback_is_not_success(self):

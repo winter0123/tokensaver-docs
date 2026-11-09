@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 import tiktoken
-from file_to_md.cli import main
+from tokensaver_docs.cli import main
 
 encoding = tiktoken.get_encoding('cl100k_base')
 with tempfile.TemporaryDirectory() as temporary:

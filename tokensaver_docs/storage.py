@@ -21,7 +21,7 @@ def file_hash(path: Path) -> str:
 
 def atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.file-to-md-')
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.tokensaver-docs-')
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
@@ -38,7 +38,7 @@ def publish_new(path: Path, text: str) -> Path:
 
 def publish_bytes(path: Path, content: bytes) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.file-to-md-')
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.tokensaver-docs-')
     try:
         with os.fdopen(fd, 'wb') as f:
             f.write(content)
@@ -57,7 +57,7 @@ def publish_bytes(path: Path, content: bytes) -> Path:
 
 
 def load_state(output: Path) -> dict:
-    path = output / '.file-to-md' / 'state.json'
+    path = output / '.tokensaver-docs' / 'state.json'
     if not path.exists():
         return {'version': 1, 'records': {}}
     if path.is_symlink() or not path.is_file():
@@ -69,14 +69,14 @@ def load_state(output: Path) -> dict:
 
 
 def save_state(output: Path, state: dict) -> None:
-    folder = output / '.file-to-md'
+    folder = output / '.tokensaver-docs'
     if folder.is_symlink():
         raise ValueError('캐시 경로에 심볼릭 링크를 사용할 수 없습니다.')
     atomic_write(folder / 'state.json', json.dumps(state, ensure_ascii=False, indent=2))
 
 
 def config_path() -> Path:
-    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'file-to-md' / 'config.json'
+    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'tokensaver-docs' / 'config.json'
 
 
 def load_profiles(path: Path | None = None) -> dict:

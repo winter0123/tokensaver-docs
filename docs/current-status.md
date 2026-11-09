@@ -4,8 +4,8 @@ Source publication preparation: branded as TokenSaver Docs; source requires Pill
 
 ## Native OpenCode v2 preparation — 2026-11-09
 
-- Added native `file_to_md_prepare`, `file_to_md_setup_model` and `file_to_md_read` registration before the compatibility MCP transform. Preparation no longer depends on finding a background MCP tool; these wrappers call the bundled runtime with structured arguments, without model-written shell commands. MCP remains available for compatibility and other tools.
-- PASS: a fresh OpenCode 2.1.3 session on macOS arm64 called native `file_to_md_prepare` twice with a completely empty dedicated cache. Free OpenRouter `nvidia/nemotron-3.5-super-vl:free` analyzed five unique synthetic images (six positions including a duplicate): `ready`, five calls, then `ready`, zero calls. No other tools, source reads, CLI/shell fallback or shared earlier cache were used.
+- Added native `tokensaver_docs_prepare`, `tokensaver_docs_setup_model` and `tokensaver_docs_read` registration before the compatibility MCP transform. Preparation no longer depends on finding a background MCP tool; these wrappers call the bundled runtime with structured arguments, without model-written shell commands. MCP remains available for compatibility and other tools.
+- PASS: a fresh OpenCode 2.1.3 session on macOS arm64 called native `tokensaver_docs_prepare` twice with a completely empty dedicated cache. Free OpenRouter `nvidia/nemotron-3.5-super-vl:free` analyzed five unique synthetic images (six positions including a duplicate): `ready`, five calls, then `ready`, zero calls. No other tools, source reads, CLI/shell fallback or shared earlier cache were used.
 - The new verification script rejects CLI/source-read fallback and damaged logs, records actual tool results and isolates each run. 189 source tests passed with six environment skips. Evidence and reviewed Markdown: `qa/opencode-native-20261109/`.
 - Final bundles: `dist/model-choice-pqMv8h/plugins-native-verified/`, archives: `release-native-verified/`. This is verification of the native plugin path, not a claim that the separate MCP cold-start issue in OpenCode has been fixed upstream. Global installations remain unchanged.
 
@@ -60,7 +60,7 @@ Source publication preparation: branded as TokenSaver Docs; source requires Pill
 - Long-section context prioritizes the matching lines and nearby text within the response budget; omitted material remains marked as truncated.
 - Shared cache keys include extraction versions where needed, preserve previous outputs and reuse available media transcripts. Oversized input files no longer stop a folder run.
 - HTML preparation flags possible CSS background image omissions and catches invalid or oversized image errors. CSS images are not extracted.
-- OpenCode v1 redirects literal embedded-image URIs, including UTF-16 HTML, into a per-source user cache. HTML entities in a URI can evade the read hook; call `file_to_md_prepare` for preparation.
+- OpenCode v1 redirects literal embedded-image URIs, including UTF-16 HTML, into a per-source user cache. HTML entities in a URI can evade the read hook; call `tokensaver_docs_prepare` for preparation.
 - PASS: 108 source tests, with five environment-dependent skips; separately the final macOS arm64 standalone tests (2) and final bundled OpenCode tests (2) passed. The remaining Windows-only test was not run.
 - PASS: final native HTML preparation and repeated reuse with zero provider calls, including the refund rule and exception; all three final plugin bundle checksums verified. `pip check` and `git diff --check` passed.
 - Synthetic HTML benchmark: in one local run the original HTML, full Markdown and bounded JSON were estimated at 308, 207 and 379 `cl100k_base` tokens respectively. Paths affect counts; model usage and accuracy were not measured.
@@ -70,7 +70,7 @@ Source publication preparation: branded as TokenSaver Docs; source requires Pill
 ## Previous: 0.3.1 tool-first HTML support
 
 - Implemented HTML/HTM conversion in the product engine, including Markdown tables, separately preserved original photos, English asset filenames and explicit optional transcription.
-- Added bounded offline `prepare` / MCP `prepare_documents` / OpenCode `file_to_md_prepare`, with tool-first skills. Models no longer need to write converters or read raw HTML to use this workflow.
+- Added bounded offline `prepare` / MCP `prepare_documents` / OpenCode `tokensaver_docs_prepare`, with tool-first skills. Models no longer need to write converters or read raw HTML to use this workflow.
 - HTML structure is cached; local images are checked for changes, saved outputs are preserved and cached image transcripts can upgrade a previously untranscribed document without automatic external calls.
 - OpenCode v1 native `read` of embedded-image HTML is redirected to prepared Markdown with a 40-line cap. This hook does not cover shell/other host tools and is not a complete sandbox.
 - PASS: current native executable + OpenCode hook/preparation tests; 97 passed, one Windows-only test NOT_RUN (98 total).

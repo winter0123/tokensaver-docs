@@ -21,7 +21,7 @@ jobs:
       - name: Check version tag
         env:
           RELEASE_TAG: ${{ inputs.tag }}
-        run: python -c "import os; from file_to_md import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__, 'Tag must match package version'"
+        run: python -c "import os; from tokensaver_docs import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__, 'Tag must match package version'"
   build:
     needs: validate
     uses: ./.github/workflows/plugin-build.yml
@@ -41,7 +41,7 @@ jobs:
           python-version: '3.13'
       - uses: actions/download-artifact@v4
         with:
-          pattern: file-to-md-plugins-*
+          pattern: tokensaver-docs-plugins-*
           path: dist/artifacts
       - name: Validate and combine release files
         env:

@@ -36,23 +36,23 @@ jobs:
         shell: python
         run: |
           import os, subprocess, sys
-          exe = 'file-to-md.exe' if os.name == 'nt' else 'file-to-md'
-          env = dict(os.environ, FILE_TO_MD_STANDALONE=os.path.abspath('dist/standalone/' + exe))
+          exe = 'tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'
+          env = dict(os.environ, TOKENSAVER_DOCS_STANDALONE=os.path.abspath('dist/standalone/' + exe))
           subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], env=env, check=True)
       - name: Package plugins
         shell: python
         run: |
           import os, subprocess, sys
-          exe = 'file-to-md.exe' if os.name == 'nt' else 'file-to-md'
+          exe = 'tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'
           subprocess.run([sys.executable, 'scripts/package_plugins.py', '--binary', 'dist/standalone/' + exe, '--output', 'dist/plugins', '--bundle-opencode'], check=True)
       - run: python scripts/archive_plugins.py --plugins dist/plugins --output dist/release
       - name: Test OpenCode preparation and read redirection
         shell: python
         run: |
           import os, subprocess, sys
-          env = dict(os.environ, FILE_TO_MD_PLUGIN=os.path.abspath('dist/plugins/opencode/index.js'))
+          env = dict(os.environ, TOKENSAVER_DOCS_PLUGIN=os.path.abspath('dist/plugins/opencode/index.js'))
           subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_opencode_plugin.py', '-v'], env=env, check=True)
       - uses: actions/upload-artifact@v4
         with:
-          name: file-to-md-plugins-${{ runner.os }}-${{ runner.arch }}
+          name: tokensaver-docs-plugins-${{ runner.os }}-${{ runner.arch }}
           path: dist/release/

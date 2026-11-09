@@ -29,7 +29,7 @@ def token_encoder(name):
     try:
         import tiktoken
     except ImportError:
-        raise ValueError('토큰 측정에는 file-to-md[tokens] 설치가 필요합니다.') from None
+        raise ValueError('토큰 측정에는 tokensaver-docs[tokens] 설치가 필요합니다.') from None
     try:
         return tiktoken.get_encoding(name)
     except ValueError:
@@ -214,7 +214,7 @@ def mcp_entry() -> None:
         from .mcp_server import run
     except ModuleNotFoundError as error:
         if error.name == 'mcp' or (error.name or '').startswith('mcp.'):
-            print('MCP 서버에는 file-to-md[mcp] 설치가 필요합니다.', file=sys.stderr)
+            print('MCP 서버에는 tokensaver-docs[mcp] 설치가 필요합니다.', file=sys.stderr)
             raise SystemExit(2) from None
         raise
     run()
@@ -258,13 +258,13 @@ def main(argv=None) -> int:
             for kind, profile in load_profiles().items():
                 print(f"{kind}: {profile['provider']} / {profile['model']}")
         elif args.command == 'install-skill':
-            local = Path(__file__).resolve().parent.parent / 'skills' / 'file-to-md' / 'SKILL.md'
-            packaged = Path(sys.prefix) / 'share' / 'file-to-md' / 'skills' / 'file-to-md' / 'SKILL.md'
+            local = Path(__file__).resolve().parent.parent / 'skills' / 'tokensaver-docs' / 'SKILL.md'
+            packaged = Path(sys.prefix) / 'share' / 'tokensaver-docs' / 'skills' / 'tokensaver-docs' / 'SKILL.md'
             source = local if local.is_file() else packaged
             if not source.is_file():
                 raise ValueError('배포 패키지에 스킬이 없습니다. 설치를 확인하세요.')
             base = args.destination or Path.home() / ('.codex' if args.agent == 'codex' else '.claude') / 'skills'
-            target = base / 'file-to-md' / 'SKILL.md'
+            target = base / 'tokensaver-docs' / 'SKILL.md'
             if target.exists() or target.is_symlink():
                 if target.is_file() and target.read_bytes() == source.read_bytes():
                     print(f'이미 설치됨: {target}')
@@ -338,7 +338,7 @@ def main(argv=None) -> int:
                         if old != current:
                             old_paths.add(str(old))
             paths = [p for p in sorted(args.output.rglob('*.md'))
-                     if not p.is_symlink() and '.file-to-md' not in p.parts
+                     if not p.is_symlink() and '.tokensaver-docs' not in p.parts
                      and str(p.relative_to(args.output)) not in old_paths]
             for p, n, lines in search_matches(paths, args.query):
                 start, end = max(0, n - 1 - args.context), min(len(lines), n + args.context)

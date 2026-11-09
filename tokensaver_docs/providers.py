@@ -147,7 +147,7 @@ def whisper_paths(model: str) -> tuple[Path, str]:
 
 def whisper_generate(path: Path, model: str) -> dict:
     model_path, binary = whisper_paths(model)
-    with tempfile.TemporaryDirectory(prefix='file-to-md-whisper-') as folder:
+    with tempfile.TemporaryDirectory(prefix='tokensaver-docs-whisper-') as folder:
         output = Path(folder) / 'transcript'
         try:
             result = subprocess.run([binary, '-m', str(model_path), '-f', str(path.resolve()),
@@ -227,7 +227,7 @@ def generate(path: Path, kind: str, profile: dict) -> dict:
 
 
 def cli_generate(path: Path, provider: str, model: str) -> dict:
-    with tempfile.TemporaryDirectory(prefix='file-to-md-ai-') as t:
+    with tempfile.TemporaryDirectory(prefix='tokensaver-docs-ai-') as t:
         if provider == 'codex':
             args = ['codex', 'exec', '--model', model, '--sandbox', 'read-only', '--ephemeral',
                     '--ignore-user-config', '--skip-git-repo-check', '--json', '--image', str(path.resolve()), '-']

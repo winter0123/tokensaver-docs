@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "file-to-md-opencode",
+      "name": "tokensaver-docs-opencode",
       "dependencies": {
         "@opencode-ai/plugin": "^1.0.0",
       },

@@ -23,7 +23,7 @@ def setup_audio(model, *, confirmed=False, root=None):
     if target.is_symlink() or partial.is_symlink():raise ValueError('모델 파일 경로가 올바르지 않습니다.')
     with shared_lock(root):
         # Reuse a verified previous local installation, without downloading it again.
-        legacy=Path.home()/'.local/share/file-to-md/models'/target.name
+        legacy=Path.home()/'.local/share/tokensaver-docs/models'/target.name
         candidate=target if target.exists() else legacy
         if candidate.is_file() and candidate.stat().st_size==info['size'] and file_hash(candidate)==info['sha256']:
             target=candidate

@@ -21,20 +21,20 @@ class ModelPluginTests(unittest.TestCase):
         package.mkdir(parents=True)
         (package/'package.json').write_text('{"type":"module","exports":"./index.js"}')
         (package/'index.js').write_text('export const tool = x => x; const schema = () => ({optional: schema, int: schema, min: schema, max: schema}); tool.schema = {string: schema, boolean: schema, number: schema, enum: schema};')
-        binary = self.root/'bin/file-to-md'
+        binary = self.root/'bin/tokensaver-docs'
         binary.parent.mkdir()
         binary.write_text('#!' + sys.executable + '\nimport json, sys\nprint(json.dumps({"status":"setup_required", "question":"Choose a model", "args":sys.argv[1:]}))\nraise SystemExit(2)\n')
         binary.chmod(0o755)
 
     def run_plugin(self, body):
-        script = 'import assert from "node:assert/strict"; import {pathToFileURL} from "node:url"; const {FileToMdPlugin}=await import(pathToFileURL(process.argv[1])); const p=await FileToMdPlugin();\n' + body
-        result = subprocess.run(['node','--input-type=module','-e',script,str(self.root/'index.mjs')], capture_output=True,text=True,timeout=30,env=dict(os.environ, FILE_TO_MD_CACHE_DIR=str(self.root/'cache')))
+        script = 'import assert from "node:assert/strict"; import {pathToFileURL} from "node:url"; const {TokenSaverDocsPlugin}=await import(pathToFileURL(process.argv[1])); const p=await TokenSaverDocsPlugin();\n' + body
+        result = subprocess.run(['node','--input-type=module','-e',script,str(self.root/'index.mjs')], capture_output=True,text=True,timeout=30,env=dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(self.root/'cache')))
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         return result.stdout
 
     def test_prepare_passes_explicit_mode_and_one_time_model(self):
         self.run_plugin('''
-const result=JSON.parse(await p.tool.file_to_md_prepare.execute({source:'a.html', image_mode:'analyze', model_provider:'openrouter', model:'chosen:free', allow_unverified_model:true}));
+const result=JSON.parse(await p.tool.tokensaver_docs_prepare.execute({source:'a.html', image_mode:'analyze', model_provider:'openrouter', model:'chosen:free', allow_unverified_model:true}));
 assert.deepEqual(result.args,['prepare','a.html','--output','converted','--image-mode','analyze','--model-provider','openrouter','--model','chosen:free','--allow-unverified-model']);
 ''')
 
@@ -43,17 +43,17 @@ assert.deepEqual(result.args,['prepare','a.html','--output','converted','--image
 const originalTimer=globalThis.setTimeout;
 let duration;
 globalThis.setTimeout=(fn, ms, ...args) => {duration=ms; return originalTimer(fn,ms,...args);};
-await p.tool.file_to_md_prepare.execute({source:'a.html',image_mode:'analyze'});
+await p.tool.tokensaver_docs_prepare.execute({source:'a.html',image_mode:'analyze'});
 assert.equal(duration,7200000);
-await p.tool.file_to_md_prepare.execute({source:'a.html',image_mode:'placeholder'});
+await p.tool.tokensaver_docs_prepare.execute({source:'a.html',image_mode:'placeholder'});
 assert.equal(duration,300000);
 ''')
 
     def test_setup_passes_explicit_save_and_defer(self):
         self.run_plugin('''
-let result=JSON.parse(await p.tool.file_to_md_setup_model.execute({provider:'openrouter',model:'chosen:free',save_as_default:true,confirmed:true}));
+let result=JSON.parse(await p.tool.tokensaver_docs_setup_model.execute({provider:'openrouter',model:'chosen:free',save_as_default:true,confirmed:true}));
 assert.deepEqual(result.args,['setup-model','--provider','openrouter','--model','chosen:free','--save-as-default','--confirmed']);
-result=JSON.parse(await p.tool.file_to_md_setup_model.execute({defer:true}));
+result=JSON.parse(await p.tool.tokensaver_docs_setup_model.execute({defer:true}));
 assert.deepEqual(result.args,['setup-model','--defer']);
 ''')
 
@@ -82,7 +82,7 @@ await assert.rejects(hook({tool:'read',input:{path:SOURCE}}),/Choose a model/);
 const {default:definition}=await import(pathToFileURL(process.argv[1]));
 const registered=[];
 await definition.setup({tool:{transform:async fn=>fn({add:t=>registered.push(t)}),hook:async()=>{}},mcp:{transform:async()=>{assert.equal(registered.length,3);}}});
-const prepare=registered.find(t=>t.name==='file_to_md_prepare');
+const prepare=registered.find(t=>t.name==='tokensaver_docs_prepare');
 assert.equal(prepare.options.codemode,false);
 assert.deepEqual(prepare.input.required,['source']);
 const reply=await prepare.execute({source:'a.html',image_mode:'placeholder'});

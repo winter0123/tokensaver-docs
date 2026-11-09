@@ -14,11 +14,11 @@ python -m pip install '.[mcp,tokens]' 'pyinstaller>=6,<7' 'cmake>=3.26,<5'
 bun install --cwd plugins/opencode --frozen-lockfile
 python scripts/build_whisper.py --output dist/whisper
 python scripts/build_standalone.py --output dist/standalone --whisper dist/whisper
-python scripts/package_plugins.py --binary dist/standalone/file-to-md --output dist/plugins --bundle-opencode
+python scripts/package_plugins.py --binary dist/standalone/tokensaver-docs --output dist/plugins --bundle-opencode
 python scripts/archive_plugins.py --plugins dist/plugins --output dist/release
 ```
 
-On Windows use `file-to-md.exe`. Build on the actual target OS/CPU; do not label a
+On Windows use `tokensaver-docs.exe`. Build on the actual target OS/CPU; do not label a
 Mac executable as a Windows release. Build commands refuse to overwrite output.
 The audio CPU runtime is built from pinned whisper.cpp sources and has a bundled
 upstream license. Review third-party redistribution requirements before publishing.
@@ -33,11 +33,11 @@ runtime. The bundled OpenCode JavaScript contains its SDK dependencies. End user
 need their coding agent, but do not need separate Python/npm/Bun installations.
 
 ```sh
-./bin/file-to-md install-plugin /path/to/unpacked/bundle --agent claude
+./bin/tokensaver-docs install-plugin /path/to/unpacked/bundle --agent claude
 # Alternatively: --agent codex or --agent opencode
 ```
 
-Windows uses `.\bin\file-to-md.exe`. The installer verifies all listed files,
+Windows uses `.\bin\tokensaver-docs.exe`. The installer verifies all listed files,
 checks OS/CPU/agent compatibility, copies a versioned runtime into user storage and
 registers only this plugin. No sudo or administrator installation is required.
 Claude/Codex registration uses their own CLI. OpenCode gets a small managed plugin
@@ -53,7 +53,7 @@ against a published release here. PowerShell has not been run on Windows locally
 
 ## Shared conversions
 
-CLI, MCP and OpenCode use the same per-user cache. `FILE_TO_MD_CACHE_DIR` can
+CLI, MCP and OpenCode use the same per-user cache. `TOKENSAVER_DOCS_CACHE_DIR` can
 select another location outside the input folder. Source content, format and
 requested coverage identify completed results. Renaming or moving a source does
 not cause another transcription. Media units are independently content-addressed,
