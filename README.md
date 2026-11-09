@@ -15,11 +15,21 @@ No separate OCR engine is used. Existing files and user edits are preserved.
 
 ## Quick start
 
-### 1. Install
+**Choose installation commands by operating system, then choose your conversion model service.**
+
+| Step | Choose based on | Options |
+| --- | --- | --- |
+| 1. Install | Your computer's operating system | macOS/Linux or Windows |
+| 2. Select a conversion model | The service used for image conversion | Claude Code, Codex, or OpenRouter with OpenCode |
+| 3. Convert | The image content you want in Markdown | Image placeholders or image text and descriptions |
+
+Example: **Windows + Claude Code → install with 1-B → select a model with 2-A → convert with step 3.** Installation commands differ by OS; model selection commands are the same on every OS.
+
+### Step 1. Install — choose your operating system
 
 This installs the **source CLI**, not an agent plugin. Requires Python 3.11+ and Git. Public plugin release archives are not available yet.
 
-**macOS / Linux**
+#### 1-A. macOS / Linux
 
 ```sh
 python3 -m venv "$HOME/.tokensaver-docs/venv"
@@ -27,7 +37,7 @@ source "$HOME/.tokensaver-docs/venv/bin/activate"
 python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
 ```
 
-**Windows PowerShell**
+#### 1-B. Windows (PowerShell)
 
 ```powershell
 py -3 -m venv "$HOME\.tokensaver-docs\venv"
@@ -37,11 +47,15 @@ python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/wint
 
 In a new terminal, activate the environment again using the second line. If PowerShell blocks activation, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs`, without changing execution policy.
 
-### 2. Choose or change the conversion model
+### Step 2. Choose or change a model — choose your service
 
-**Choose one of the three options below.** Use the same command for initial setup and later changes. Your selection is saved as the default image conversion model.
+**Choose one of the three options below.** Enter the command in a terminal with the environment from step 1 activated, rather than in agent chat.
 
-**① Claude Code**
+OpenCode is the agent; OpenRouter is the model service. Option 2-C selects OpenRouter as the conversion provider alongside OpenCode. Conversion providers are independent of the host agent: Claude Code and Codex users can also select OpenRouter.
+
+ Use the same command for initial setup and later changes. Your selection is saved as the default image conversion model.
+
+#### 2-A. Claude Code models
 
 Install and sign in to the Claude Code CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
 
@@ -49,7 +63,7 @@ Install and sign in to the Claude Code CLI first. Run this, then **type the mode
 tokensaver-docs configure --kind image --provider claude
 ```
 
-**② Codex**
+#### 2-B. Codex models
 
 Install and sign in to the Codex CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
 
@@ -59,7 +73,7 @@ tokensaver-docs configure --kind image --provider codex
 
 Claude Code and Codex use their respective CLI authentication, usage limits, and billing conditions. The plugin does not copy your current chat model or automatically discover either CLI's model list or vision capability. Choose a model that supports image input.
 
-**③ OpenRouter free models**
+#### 2-C. OpenRouter free models with OpenCode
 
 Set the `OPENROUTER_API_KEY` environment variable first. Run this, then **enter a number from the free image-input model candidate list**. Actual availability depends on your account and the service.
 
@@ -71,13 +85,13 @@ Do not share API keys in agent chat.
 
 These commands change the **document image model**, not your agent's chat model or audio model. Plain document text extraction needs no model or API key.
 
-**Check the current model**
+#### All services: check the current model
 
 ```sh
 tokensaver-docs setup-model
 ```
 
-### 3. Convert a file or folder
+### Step 3. Convert a file or folder — all environments
 
 Replace `./documents` with your input path. This extracts text and marks image positions with `[이미지]`, without image analysis:
 

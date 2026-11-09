@@ -10,11 +10,23 @@ Convert files once and give coding agents bounded, line-numbered evidence. [Engl
 
 ## 빠른 시작
 
-### 1. 설치
+**설치는 컴퓨터 기준으로, 모델 선택은 사용할 서비스 기준으로 고르세요.**
+
+| 단계 | 선택 기준 | 골라야 할 항목 |
+| --- | --- | --- |
+| 1. 프로그램 설치 | 내 컴퓨터의 운영체제 | macOS·Linux / Windows 중 하나 |
+| 2. 변환 모델 선택 | 이미지 변환에 사용할 서비스 | Claude Code / Codex / OpenCode에서 사용할 OpenRouter 중 하나 |
+| 3. 파일 변환 | 결과에 이미지를 어떻게 넣을지 | 이미지 위치만 표시 / 이미지 속 글자·설명도 추가 |
+
+예: **Windows에서 Claude Code를 사용한다면 → 1-B로 설치 → 2-A로 모델 선택 → 3단계로 변환**합니다. 설치 명령은 운영체제에 따라 다르고, 모델 선택 명령은 모든 운영체제에서 같습니다.
+
+### 1단계. 프로그램 설치 — 운영체제별로 선택
 
 현재 바로 사용할 수 있는 **소스 버전 설치**입니다. Python 3.11 이상과 Git이 필요합니다. 에이전트에 등록되는 플러그인 설치와는 별개이며, 공개 플러그인 설치 파일은 아직 배포 전입니다.
 
-**macOS / Linux** — 터미널에 아래 세 줄을 붙여넣으세요.
+#### 1-A. macOS / Linux
+
+터미널에 아래 세 줄을 붙여넣으세요.
 
 ```sh
 python3 -m venv "$HOME/.tokensaver-docs/venv"
@@ -22,7 +34,9 @@ source "$HOME/.tokensaver-docs/venv/bin/activate"
 python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
 ```
 
-**Windows PowerShell**
+#### 1-B. Windows
+
+PowerShell에 아래 세 줄을 붙여넣으세요.
 
 ```powershell
 py -3 -m venv "$HOME\.tokensaver-docs\venv"
@@ -32,11 +46,15 @@ python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/wint
 
 새 터미널에서는 위의 두 번째 줄로 다시 활성화하세요. PowerShell에서 활성화가 차단되면 정책을 바꾸는 대신 `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"`를 `tokensaver-docs` 대신 사용하세요.
 
-### 2. 변환 모델 선택 / 변경
+### 2단계. 변환 모델 선택·변경 — 서비스별로 선택
 
-**아래 세 가지 중 사용할 방식 하나만 선택하세요.** 처음 설정할 때와 모델을 변경할 때 같은 명령을 사용합니다. 선택한 모델은 다음 이미지 변환에도 사용할 기본값으로 저장됩니다.
+**아래 세 가지 중 사용할 방식 하나만 선택하세요.** 명령은 에이전트 대화창이 아닌, 1단계에서 설치한 환경을 활성화한 터미널에 입력합니다.
 
-**① Claude Code로 변환하기**
+OpenCode는 에이전트이고 OpenRouter는 모델 제공 서비스입니다. 아래 2-C는 OpenCode와 함께 사용할 변환 제공자로 OpenRouter를 선택하는 예입니다. 변환 제공자는 사용하는 에이전트와 별개라서, Claude Code나 Codex에서도 OpenRouter를 선택할 수 있습니다.
+
+ 처음 설정할 때와 모델을 변경할 때 같은 명령을 사용합니다. 선택한 모델은 다음 이미지 변환에도 사용할 기본값으로 저장됩니다.
+
+#### 2-A. Claude Code 모델 사용
 
 Claude Code CLI가 설치되어 있고 로그인되어 있어야 합니다. 아래 명령을 실행한 뒤, **해당 계정에서 사용할 모델 이름을 입력**하세요. 모델 목록을 번호로 고르는 방식은 아닙니다.
 
@@ -44,7 +62,7 @@ Claude Code CLI가 설치되어 있고 로그인되어 있어야 합니다. 아�
 tokensaver-docs configure --kind image --provider claude
 ```
 
-**② Codex로 변환하기**
+#### 2-B. Codex 모델 사용
 
 Codex CLI가 설치되어 있고 로그인되어 있어야 합니다. 아래 명령을 실행한 뒤, **해당 계정에서 사용할 모델 이름을 입력**하세요. 모델 목록을 번호로 고르는 방식은 아닙니다.
 
@@ -54,7 +72,7 @@ tokensaver-docs configure --kind image --provider codex
 
 Claude Code와 Codex는 각각 실행되는 CLI의 로그인·사용량 한도·과금 조건을 따릅니다. 현재 대화 모델을 자동으로 가져오지 않습니다. 이 플러그인은 두 CLI의 모델 목록·이미지 지원 여부를 자동 조회하지 못하므로, 이미지 입력을 지원하는 모델인지 확인하고 선택하세요.
 
-**③ OpenRouter 무료 모델로 변환하기**
+#### 2-C. OpenCode에서 OpenRouter 무료 모델 사용
 
 `OPENROUTER_API_KEY` 환경변수를 설정한 뒤 아래 명령을 실행하세요. **무료 이미지 입력 지원 후보 목록에서 모델 번호를 입력**하면 됩니다. 실제 사용 가능 여부는 계정과 서비스 상태에 따라 달라질 수 있습니다.
 
@@ -66,13 +84,13 @@ tokensaver-docs configure --kind image --provider openrouter
 
 위 명령은 **문서 속 이미지를 처리할 모델**을 바꿉니다. 에이전트의 대화 모델이나 음성 모델은 바꾸지 않습니다. 이미지 없는 문서의 텍스트 추출에는 모델·API 키가 필요하지 않습니다.
 
-**현재 선택한 모델 확인**
+#### 공통: 현재 선택한 모델 확인
 
 ```sh
 tokensaver-docs setup-model
 ```
 
-### 3. 파일 또는 폴더 변환
+### 3단계. 파일 또는 폴더 변환 — 모든 환경 공통
 
 `./documents`를 변환할 파일이나 폴더 경로로 바꾸세요. 경로에 공백이 있으면 따옴표로 감싸세요.
 
@@ -104,9 +122,9 @@ tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyz
 
 명령어·플러그인 ID·설치 경로는 `tokensaver-docs`, Python 패키지는 `tokensaver_docs`를 사용합니다.
 
-## 설치와 실행
+## 개발자용: 체크아웃한 소스에서 실행
 
-파이썬 3.11 이상, macOS 또는 Linux가 필요하다. 프로젝트 가상환경에만 설치한다.
+일반 사용자는 위의 빠른 시작을 따르면 됩니다. 아래는 저장소를 직접 체크아웃한 개발자를 위한 macOS·Linux 예시입니다. Python 3.11 이상이 필요합니다.
 
 ```sh
 python3 -m venv .venv
