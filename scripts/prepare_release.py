@@ -11,6 +11,7 @@ from pathlib import Path, PurePosixPath
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
 from tokensaver_docs import __version__
+from scripts.platform_downloads import create_platform_downloads
 
 
 def prepare(artifacts, output, tag):
@@ -47,13 +48,15 @@ def prepare(artifacts, output, tag):
     for path in sorted(archives):
         shutil.copy2(path,output/path.name)
         rows.append(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name)
+    for path in create_platform_downloads(output):
+        rows.append(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name)
     (output/'checksums.txt').write_text('\n'.join(rows)+'\n',encoding='utf-8')
     for script in ('install.sh','install.ps1'):
         shutil.copy2(ROOT/'scripts'/script,output/script)
     (output/'release-notes.md').write_text(
         f'# tokensaver-docs {tag} preview\n\n'
         'Local document context tools for Claude Code, Codex and OpenCode.\n\n'
-        'Choose the archive for your agent, OS and CPU, or follow the release installation guide in the repository. '
+        'Choose the unified archive for your OS and CPU, extract it, and run its installer to select your agent. Agent-specific archives remain available. '
         'No separate Python, Poppler, npm or Bun installation is required by the bundles. '
         'Local audio requires a separately selected and downloaded model.\n\n'
         'This is a prerelease. Check the CI results and perform real Windows/macOS agent installation tests before publishing. '

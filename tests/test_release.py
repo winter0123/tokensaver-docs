@@ -39,12 +39,55 @@ class ReleaseTests(unittest.TestCase):
             result=self.run_prepare(root)
             self.assertEqual(result.returncode,0,result.stderr)
             rows=(root/'release/checksums.txt').read_text().splitlines()
-            self.assertEqual(len(rows),9)
+            self.assertEqual(len(rows),12)
             for row in rows:
                 expected,name=row.split()
                 self.assertEqual(hashlib.sha256((root/'release'/name).read_bytes()).hexdigest(),expected)
             self.assertTrue((root/'release/install.ps1').is_file())
+            for system,cpu in (('darwin','arm64'),('darwin','x64'),('win32','x64')):
+                with zipfile.ZipFile(root/f'release/tokensaver-docs-{system}-{cpu}.zip') as unified:
+                    common={n.removeprefix('common/'):unified.read(n) for n in unified.namelist() if n.startswith('common/')}
+                    self.assertEqual(common['bin/tokensaver-docs'],b'fixture executable')
+                    for agent in ('claude','codex','opencode'):
+                        prefix=f'plugins/{agent}/'
+                        restored={**common,**{n.removeprefix(prefix):unified.read(n) for n in unified.namelist() if n.startswith(prefix)}}
+                        with zipfile.ZipFile(root/f'release/tokensaver-docs-{agent}-{system}-{cpu}.zip') as original:
+                            self.assertEqual(restored,{n:original.read(n) for n in original.namelist()})
             self.assertNotEqual(self.run_prepare(root).returncode,0)
+
+    @unittest.skipIf(sys.platform == 'win32', 'POSIX launcher runs on macOS')
+    def test_unified_launcher_selects_agent_and_preserves_failure(self):
+        import os
+        from scripts.platform_downloads import MAC_INSTALL
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'common/bin').mkdir(parents=True)
+            (root/'plugins/codex').mkdir(parents=True)
+            (root/'plugins/codex/marker').write_text('codex payload')
+            binary=root/'common/bin/tokensaver-docs'
+            binary.write_text('#!/bin/sh\ntest -f "$2/marker" || exit 8\nprintf "%s\\n" "$4" > "$TEST_AGENT_LOG"\nexit "${TEST_EXIT_CODE:-0}"\n')
+            launcher=root/'install.command';launcher.write_text(MAC_INSTALL)
+            env=dict(os.environ,TEST_AGENT_LOG=str(root/'called'))
+            result=subprocess.run(['sh',str(launcher)],input='2\n',text=True,capture_output=True,env=env)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual((root/'called').read_text().strip(),'codex')
+            self.assertTrue((root/'plugins/codex/marker').exists())
+            failed=subprocess.run(['sh',str(launcher)],input='2\n',text=True,capture_output=True,env={**env,'TEST_EXIT_CODE':'9'})
+            self.assertEqual(failed.returncode,9)
+            self.assertNotIn('Installed.',failed.stdout)
+            invalid=subprocess.run(['sh',str(launcher)],input='0\n',text=True,capture_output=True,env=env)
+            self.assertEqual(invalid.returncode,2)
+
+    def test_windows_launcher_parses_and_rejects_invalid_selection(self):
+        import shutil
+        shell=shutil.which('powershell') or shutil.which('pwsh')
+        if not shell:self.skipTest('PowerShell not installed')
+        from scripts.platform_downloads import WINDOWS_INSTALL
+        with tempfile.TemporaryDirectory() as temp:
+            script=Path(temp)/'install.ps1';script.write_text(WINDOWS_INSTALL,encoding='utf-8-sig')
+            result=subprocess.run([shell,'-NoProfile','-File',str(script)],input='0\n',text=True,capture_output=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('Invalid selection',result.stderr)
+            self.assertFalse((Path(temp)/'common').exists())
 
     def test_missing_platform_and_wrong_tag_cannot_prepare_release(self):
         with tempfile.TemporaryDirectory() as temp:
