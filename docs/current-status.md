@@ -5,6 +5,7 @@ Source publication preparation: branded as TokenSaver Docs; source requires Pill
 ## Natural-language conversion check — 2026-11-09
 
 - PASS: the published macOS arm64 OpenCode bundle in OpenCode 2.1.3 selected `tokensaver_docs_prepare`, then `tokensaver_docs_read`, for a Korean request to convert a local HTML file to MD. The prompt did not specify the plugin or tool name and did not provide a conversion command. The output preserved the refund deadline and table amount.
+- A second request with a neutral temporary directory also produced the correct Markdown via preparation/read tools, but first attempted `webfetch` and `execute`; both were denied by test permissions. This failed the strict direct-routing criterion, even though conversion succeeded. Do not describe automatic first-tool selection as deterministic.
 - This fixture had no images and used an isolated configuration where model setup was already deferred. It does not establish first-use consent behavior or every host/model's routing. Codex/Claude natural-language conversations have not been checked by this test. Skill/tool selection remains a host/model decision.
 - README examples now start with ordinary chat requests; source CLI commands remain a separate path. No runtime change or reinstall is needed for this documentation correction.
 
