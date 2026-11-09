@@ -1,0 +1,10 @@
+{
+  "name": "file-to-md-opencode",
+  "version": "0.3.4",
+  "description": "TokenSaver Docs — reusable document context for coding agents",
+  "type": "module",
+  "main": "index.js",
+  "files": ["index.js", "bin", "README.md"],
+  "license": "MIT",
+  "dependencies": {"@opencode-ai/plugin": "^1.0.0"}
+}

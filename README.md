@@ -1,0 +1,169 @@
+# TokenSaver Docs
+
+**Prepare documents once. Give your AI only what it needs.**
+
+A document context plugin for Codex, Claude Code, and OpenCode. Convert documents once,
+reuse the Markdown across sessions and agents, and read only the evidence you need.
+
+[한국어 안내](README.ko.md) · [Local plugin builds](docs/plugin-preview.md) · [Benchmarks](benchmarks/README.md)
+
+Text PDF, Word, Excel and HTML are extracted locally. The user chooses images with
+visible text and descriptions, images only, or `[이미지]` placeholders at known
+image positions. Image analysis
+uses a provider and model chosen by the user; multilingual audio can run locally with bundled whisper.cpp.
+No separate OCR engine is used. Existing files and user edits are preserved.
+
+The command and internal plugin identifier remain `file-to-md` for compatibility.
+
+## Current status
+
+0.3.4 is a local preview, not a published registry or official directory release.
+macOS arm64 has been tested locally. Windows and Intel Mac have build
+workflows but no remote CI result in this checkout. Linux has source tests only.
+Do not assume untested
+platforms work merely because a build configuration exists.
+
+## Install a plugin
+
+The distribution path is **GitHub Releases → platform archive → local plugin**.
+No hosted server is needed. Choose Claude Code, Codex or OpenCode and run the
+release installer for Windows x64, macOS Apple Silicon or macOS Intel.
+See [installation, updates and release preparation](docs/distribution.md).
+
+The bundles include Python, PDFium and the audio runtime. Users do not need
+separate Python, Poppler, npm or Bun. Image providers and audio models are chosen
+on first use. Public release URLs will be added after publication; a checkout
+alone is not a published plugin installer.
+
+## Use from a checkout
+
+```sh
+python -m pip install '.[mcp,tokens]'
+file-to-md prepare ./documents --output ./converted --skip-image-transcription
+file-to-md convert ./documents --output ./converted --no-configured-providers
+file-to-md context ./documents 'refund deadline' --output ./converted --max-tokens 1200
+file-to-md read ./converted/policy.pdf.md --start-line 20 --lines 40
+```
+
+The installed plugin bundles contain the Python runtime and libraries. The
+checkout installation above is for Python users; end users of a built plugin
+bundle do not need Python, npm or Bun. See [plugin installation](docs/plugin-preview.md).
+
+## Convert once
+
+For agents, start with `prepare_documents` (OpenCode v1: `file_to_md_prepare`;
+v2: native `file_to_md_prepare`). First use offers model selection or
+deferral. The plugin's conversion model can differ from the host chat model;
+the plugin does not infer a host model it cannot verify. Ordinary document text
+needs no AI model. For images, the tool checks the selected model's image support
+and reports free pricing separately from image support and lookup errors.
+If the model cannot read images, choose **change model** or **continue with
+`[이미지]` only**. Continuing extracts ordinary document text and marks each known
+image position with `[이미지]`; it adds no image link, image text or description.
+Supported models offer images with visible text and descriptions, or images only.
+An external analysis provider receives the images after the user's selection.
+The tool returns output paths/status, not raw HTML or Base64. Questions use
+`context_documents` for bounded evidence.
+
+For CLI use, inspect first-use setup or defer it:
+
+```sh
+file-to-md setup-model
+file-to-md setup-model --defer
+# Inspect a user-selected model without saving it:
+file-to-md setup-model --provider openrouter --model MODEL_ID
+# Only after the user chooses to save this default:
+file-to-md setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
+```
+
+`prepare INPUT --output OUTPUT --image-mode analyze` includes images, visible text
+and descriptions; `preserve` includes images only; `placeholder` writes `[이미지]`
+only. `--model-provider PROVIDER --model MODEL_ID` chooses a model for that request
+without changing the default. API keys belong in environment variables, never
+these model arguments. Unknown image support requires explicit manual consent
+with `--allow-unverified-model`; this does not bypass confirmed incompatibility,
+lookup failures or OpenRouter's free-price checks. No separate local OCR is added.
+The existing `--transcribe-images` and `--skip-image-transcription` flags retain
+their analyze/preserve meanings. Check status for pending choices, missing models,
+unreadable images or incomplete analysis.
+
+Image preparation does not enable an audio provider. For MCP `convert_documents`,
+`use_configured_providers=true` selects the image provider and
+`use_configured_audio_provider=true` separately selects audio. The optional
+`context_documents` provider switch enables both and needs consent for both.
+The existing CLI `convert` command uses configured providers by default; when
+`--transcribe-images` or `--vision-pages` is specified, audio is excluded unless
+`--use-configured-audio-provider` is also supplied.
+
+The OpenCode read hook intercepts HTML with a literal embedded-image data URI.
+It directs the agent to preparation when a model/image choice is needed rather
+than silently choosing a mode; prepared Markdown reads are capped at 40 lines.
+HTML entities in the URI can evade detection; shell commands and other host tools
+are also outside that hook. Use `file_to_md_prepare` for reliable preparation.
+
+CLI, MCP and plugins use a common cache within the current user's application data.
+Identical content can be reused after renaming or moving a file, changing the output
+folder, or switching agents. Complete media units survive partial failure and can
+be reused in another output folder or a changed document when the actual processed
+unit is identical. Concurrent requests share per-source and per-unit locks.
+
+Preparation separates analyze, preserve and placeholder caches. Explicitly choosing
+a model for analysis uses that model's cache identity; a result from a different
+model is not presented as its work. Legacy `convert` model-setting changes alone
+do not automatically regenerate successful shared results. Prior text-only image
+results are not complete image descriptions.
+Request `convert --refresh` explicitly to make a new version. Existing
+outputs are kept. Unverifiable old results are preserved rather than silently
+reprocessed. Cache integrity failures are explicit.
+
+## Media setup
+
+The audio bundle includes a CPU whisper-cli. First show a model's download size:
+
+```sh
+file-to-md setup-audio --model small
+# After choosing the model and consenting to the download:
+file-to-md setup-audio --model small --download
+```
+
+The pinned multilingual model download is checksum-verified and shared across
+agents. Local Whisper automatically detects the language; review its transcript
+for recognition errors. No audio is uploaded for local transcription. For image analysis,
+choose a supported provider and model; API keys belong in environment variables,
+not documents, chat, configuration files or logs. No paid or alternate model is
+automatically selected. Free API quotas and availability vary.
+
+## What is measured
+
+`context` returns original excerpts with paths, line ranges, pending items and
+truncation/continuation information. Its token budget uses `cl100k_base` for the
+serialized JSON response and excludes the host's protocol framing and tool schemas.
+It is not a guarantee about the host model's billed usage. Existing search/read
+commands retain their documented body-only budgets.
+
+Our small synthetic QMD comparison is a reproducible example, not a ranking or a
+real-world accuracy or savings claim. Converting to Markdown alone does not guarantee
+lower tokens if the agent then reads the entire document repeatedly.
+The [synthetic HTML comparison](benchmarks/README.md#html-예제) includes a small
+case where the bounded response is larger than the full Markdown.
+
+## Limits and privacy
+
+Extracted text and image descriptions can contain errors, especially names,
+numbers and diagram relationships. Compare important details with the original.
+Audio transcripts can also contain errors.
+Search is lexical, can miss synonyms or distant exceptions, and is not proof that
+a fact is absent. Truncated or incomplete output is not a full-document review.
+HTML CSS background images are not extracted; possible omissions are flagged for review.
+Scanned and selected visual PDF pages use bundled PDFium to prepare image input;
+transcription still requires a selected image provider and model.
+
+Files already uploaded through the host's native attachment flow may already have
+consumed tokens. Pass a file or folder path to the plugin before uploading raw
+media when possible. Documents and caches stay local unless the user explicitly
+selects an external transcription provider and allows the relevant media to be sent.
+Caches contain document text: treat them as private and review any outputs before sharing.
+
+[Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [MIT License](LICENSE)
+
+CLI diagnostic and status messages currently include Korean; plugin tool names and schemas are in English.

@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/
+.worker-context/
+.file-to-md/
+converted/
+# Local test data and private session notes must not enter public releases.
+qa/
+docs/work-log-*.md
+docs/handoff-*.md
+docs/superpowers/
+**/node_modules/
+.env
+.env.*
+!.env.example
+
+# Internal implementation plans stay local.
+docs/work-plan-*.md
+.DS_Store
+docs/github-launch.md

@@ -1,0 +1,57 @@
+name: Prepare draft release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example v0.3.0
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check version tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python -c "import os; from file_to_md import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__, 'Tag must match package version'"
+  build:
+    needs: validate
+    uses: ./.github/workflows/plugin-build.yml
+    with:
+      ref: ${{ inputs.tag }}
+  draft:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: file-to-md-plugins-*
+          path: dist/artifacts
+      - name: Validate and combine release files
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python scripts/prepare_release.py --artifacts dist/artifacts --output dist/release --tag "$RELEASE_TAG"
+      - name: Create draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: >-
+          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease
+          --title "TokenSaver Docs $RELEASE_TAG" --notes-file dist/release/release-notes.md
+          dist/release/*.zip dist/release/checksums.txt dist/release/install.sh dist/release/install.ps1

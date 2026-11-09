@@ -1,0 +1,56 @@
+{
+  "fixture": "synthetic",
+  "encoding": "cl100k_base",
+  "qmd_version": "2.8.3",
+  "results": [
+    {
+      "query": "환불 신청 기한",
+      "expected": "수령 후 7일",
+      "full_tokens": 8610,
+      "file_to_md": {
+        "exit": 0,
+        "tokens": 78,
+        "fact_found": true
+      },
+      "qmd_bm25": {
+        "exit": 0,
+        "tokens": 88,
+        "fact_found": true,
+        "error": ""
+      }
+    },
+    {
+      "query": "배송 주소 변경",
+      "expected": "출고 전",
+      "full_tokens": 8610,
+      "file_to_md": {
+        "exit": 0,
+        "tokens": 72,
+        "fact_found": true
+      },
+      "qmd_bm25": {
+        "exit": 0,
+        "tokens": 82,
+        "fact_found": true,
+        "error": ""
+      }
+    },
+    {
+      "query": "API timeout limit",
+      "expected": "30 seconds",
+      "full_tokens": 8610,
+      "file_to_md": {
+        "exit": 0,
+        "tokens": 66,
+        "fact_found": true
+      },
+      "qmd_bm25": {
+        "exit": 0,
+        "tokens": 76,
+        "fact_found": true,
+        "error": ""
+      }
+    }
+  ],
+  "note": "전문·검색 출력의 텍스트 토큰과 정답 포함 여부만 비교하며 모델 최종 답변 정확도·실전 성능을 뜻하지 않음"
+}

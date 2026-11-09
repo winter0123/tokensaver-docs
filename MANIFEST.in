@@ -1,0 +1,24 @@
+include README.md README.en.md LICENSE
+include README.ko.md CONTRIBUTING.md CHANGELOG.md
+include skills/file-to-md/SKILL.md
+include docs/plugin-preview.md
+include scripts/standalone.py scripts/build_standalone.py scripts/package_plugins.py
+include scripts/build_whisper.py scripts/archive_plugins.py scripts/install.sh scripts/install.ps1
+include scripts/prepare_release.py docs/distribution.md
+include plugins/opencode/bun.lock
+recursive-include file_to_md/data *.json
+recursive-include plugins *.md *.js *.json
+prune plugins/opencode/node_modules
+include docs/setup/whisper-cpp-setup.md
+include benchmarks/token_demo.py
+include benchmarks/compare_qmd.py
+include benchmarks/reuse_demo.py
+include benchmarks/html_policy_demo.py benchmarks/html-policy-example.html
+include benchmarks/README.md
+recursive-include benchmarks/image-eval *.py *.md *.html *.png
+recursive-include benchmarks/results *.json
+prune qa
+prune docs/superpowers
+exclude docs/work-log-*.md
+exclude docs/handoff-*.md
+exclude docs/work-plan-*.md

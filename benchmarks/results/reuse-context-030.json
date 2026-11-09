@@ -1,0 +1,11 @@
+{
+  "fixture": "synthetic",
+  "tokenizer": "cl100k_base",
+  "full_markdown_tokens": 9676,
+  "context_json_tokens": 262,
+  "mock_transcription_first_calls": 1,
+  "mock_transcription_repeat_calls": 0,
+  "first_processing_seconds": 0.11358529100016312,
+  "repeated_context_seconds": 0.08912433300019984,
+  "note": "Mock image provider and synthetic text only. Not billed usage, production accuracy, or a general savings claim."
+}
