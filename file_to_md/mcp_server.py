@@ -50,7 +50,7 @@ def context_documents(source: str, query: str, output: str, max_tokens: int = 12
 
 def _run(args: list[str]) -> str:
     command = [sys.executable, *args] if getattr(sys, 'frozen', False) else [sys.executable, '-m', 'file_to_md', *args]
-    result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8', timeout=120)
     return (result.stdout + result.stderr)[:6500] + (f'\n종료 코드: {result.returncode}' if result.returncode else '')
 
 

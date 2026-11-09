@@ -50,7 +50,7 @@ class PortabilityTests(unittest.TestCase):
      tools=await session.list_tools()
      self.assertIn('search_documents',[t.name for t in tools.tools])
      result=await session.call_tool('search_documents',{'query':'환불','output':str(root),'context':0})
-     self.assertFalse(result.isError)
+     self.assertFalse(result.isError, str(result.content))
      self.assertIn('환불은 7일',str(result.content))
   with tempfile.TemporaryDirectory() as temp:
    root=Path(temp);(root/'doc.md').write_text('# 안내\n환불은 7일\n')

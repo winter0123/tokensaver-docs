@@ -326,8 +326,8 @@ class SharedCacheTests(unittest.TestCase):
             self.assertEqual(call.call_count, 1)
             self.assertTrue(second[0]['cached'])
             text = Path(second[0]['output']).read_text()
-            self.assertIn(str(renamed), text)
-            self.assertNotIn(str(source), text)
+            self.assertIn(str(renamed.resolve()), text)
+            self.assertNotIn(str(source.resolve()), text)
 
     def test_nested_paths_refresh_and_edited_output_are_preserved(self):
         with tempfile.TemporaryDirectory() as temporary:

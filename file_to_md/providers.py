@@ -240,7 +240,7 @@ def cli_generate(path: Path, provider: str, model: str) -> dict:
                 {'type': 'text', 'text': IMAGE_PROMPT},
             ]}}, ensure_ascii=False) + '\n'
         try:
-            p = subprocess.run(args, input=data, text=True, capture_output=True, cwd=t, timeout=180)
+            p = subprocess.run(args, input=data, text=True, encoding='utf-8', capture_output=True, cwd=t, timeout=180)
         except FileNotFoundError:
             raise ConversionError(f'{provider} 명령이 설치되지 않았습니다.') from None
         except subprocess.TimeoutExpired:
