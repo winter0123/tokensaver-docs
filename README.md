@@ -1,35 +1,19 @@
 # TokenSaver Docs
 
-**Prepare documents once. Give your AI only what it needs.**
+**Turn PDF, Word, Excel, HTML, images, and audio into Markdown. Help AI agents waste fewer tokens reading documents.**
 
-A document context plugin for Codex, Claude Code, and OpenCode. Convert documents once,
-reuse the Markdown across sessions and agents, and read only the evidence you need.
+Convert once, reuse the Markdown, and retrieve only the passages you need. Plugins for Codex, Claude Code, and OpenCode are in development. Optionally include visible image text and descriptions using your chosen model.
 
-[한국어 안내](README.ko.md) · [Local plugin builds](docs/plugin-preview.md) · [Benchmarks](benchmarks/README.md)
+[한국어](README.ko.md) · [Install](#install) · [Choose a model](#choose-or-change-a-model) · [Usage](#usage) · [Supported files](#supported-files)
 
-Text PDF, Word, Excel and HTML are extracted locally. The user chooses images with
-visible text and descriptions, images only, or `[이미지]` placeholders at known
-image positions. Image analysis
-uses a provider and model chosen by the user; multilingual audio can run locally with bundled whisper.cpp.
-No separate OCR engine is used. Existing files and user edits are preserved.
+> **Source CLI preview available.** The commands below do not automatically register an agent plugin. Downloadable plugin releases and official marketplace listings are still in preparation.
 
-## Quick start
+## Install
 
-**Choose installation commands by operating system, then choose your conversion model service.**
+**Choose your operating system.** Requires Python 3.11+ and Git.
 
-| Step | Choose based on | Options |
-| --- | --- | --- |
-| 1. Install | Your computer's operating system | macOS/Linux or Windows |
-| 2. Select a conversion model | The service used for image conversion | Claude Code, Codex, or OpenRouter with OpenCode |
-| 3. Convert | The image content you want in Markdown | Image placeholders or image text and descriptions |
-
-Example: **Windows + Claude Code → install with 1-B → select a model with 2-A → convert with step 3.** Installation commands differ by OS; model selection commands are the same on every OS.
-
-### Step 1. Install — choose your operating system
-
-This installs the **source CLI**, not an agent plugin. Requires Python 3.11+ and Git. Public plugin release archives are not available yet.
-
-#### 1-A. macOS / Linux
+<details open>
+<summary><strong>macOS / Linux — paste into your terminal</strong></summary>
 
 ```sh
 python3 -m venv "$HOME/.tokensaver-docs/venv"
@@ -37,7 +21,12 @@ source "$HOME/.tokensaver-docs/venv/bin/activate"
 python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
 ```
 
-#### 1-B. Windows (PowerShell)
+In a new terminal, run the second line again.
+
+</details>
+
+<details>
+<summary><strong>Windows — paste into PowerShell</strong></summary>
 
 ```powershell
 py -3 -m venv "$HOME\.tokensaver-docs\venv"
@@ -45,231 +34,86 @@ py -3 -m venv "$HOME\.tokensaver-docs\venv"
 python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
 ```
 
-In a new terminal, activate the environment again using the second line. If PowerShell blocks activation, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs`, without changing execution policy.
+In a new terminal, run the second line again. If activation is blocked, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs` below, without changing execution policy.
 
-### Step 2. Choose or change a model — choose your service
+</details>
 
-**Choose one of the three options below.** Enter the command in a terminal with the environment from step 1 activated, rather than in agent chat.
+## Choose or change a model
 
-OpenCode is the agent; OpenRouter is the model service. Option 2-C selects OpenRouter as the conversion provider alongside OpenCode. Conversion providers are independent of the host agent: Claude Code and Codex users can also select OpenRouter.
+**Choose one service if you want visible image text and descriptions.** Run commands in a terminal with the installed environment activated. Use the same command for initial setup and later changes; your model becomes the saved default.
 
- Use the same command for initial setup and later changes. Your selection is saved as the default image conversion model.
+<details>
+<summary><strong>① Claude Code — use your signed-in CLI</strong></summary>
 
-#### 2-A. Claude Code models
-
-Install and sign in to the Claude Code CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
+Install and sign in to the Claude Code CLI first. Run this, then **enter the exact model name available to your account**.
 
 ```sh
 tokensaver-docs configure --kind image --provider claude
 ```
 
-#### 2-B. Codex models
+</details>
 
-Install and sign in to the Codex CLI first. Run this, then **type the model name available to your account**. This is a text prompt, not a numbered model list.
+<details>
+<summary><strong>② Codex — use your signed-in CLI</strong></summary>
+
+Install and sign in to the Codex CLI first. Run this, then **enter the exact model name available to your account**.
 
 ```sh
 tokensaver-docs configure --kind image --provider codex
 ```
 
-Claude Code and Codex use their respective CLI authentication, usage limits, and billing conditions. The plugin does not copy your current chat model or automatically discover either CLI's model list or vision capability. Choose a model that supports image input.
+</details>
 
-#### 2-C. OpenRouter free models with OpenCode
+<details>
+<summary><strong>③ OpenCode + OpenRouter — choose from free model candidates</strong></summary>
 
-Set the `OPENROUTER_API_KEY` environment variable first. Run this, then **enter a number from the free image-input model candidate list**. Actual availability depends on your account and the service.
+Set the `OPENROUTER_API_KEY` environment variable first. Run this, then **choose a number from the free image-input model candidate list**. Actual availability depends on your account and the service. Do not share keys in agent chat.
 
 ```sh
 tokensaver-docs configure --kind image --provider openrouter
 ```
 
-Do not share API keys in agent chat.
+OpenCode is the agent; OpenRouter is the model service. This does not change OpenCode's chat model. Claude Code and Codex users can also select OpenRouter as the conversion provider.
 
-These commands change the **document image model**, not your agent's chat model or audio model. Plain document text extraction needs no model or API key.
+</details>
 
-#### All services: check the current model
+Plain document text needs no model or API key. These settings change the **image conversion model**, independently of your agent's chat model and audio model. Claude Code/Codex use their CLI authentication, usage limits, and billing conditions.
 
-```sh
-tokensaver-docs setup-model
-```
+Check your model: `tokensaver-docs setup-model`
 
-### Step 3. Convert a file or folder — all environments
+## Usage
 
-Replace `./documents` with your input path. This extracts text and marks image positions with `[이미지]`, without image analysis:
+Replace `./documents` with a file or folder. Results go into `./converted`. **Example: `policy.html` → `converted/policy.html.md`.**
+
+**Extract text and mark image positions with `[이미지]`**
 
 ```sh
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
 ```
 
-To include visible image text and descriptions, configure your model and CLI login or API key first, then run this. Images are sent to the selected provider.
-For models whose image support cannot be verified automatically (including Claude Code/Codex), add `--allow-unverified-model` only after checking image support yourself. This does not override known incompatibility.
+**Include images, visible image text, and descriptions** — configure your model first. Images are sent to the selected provider.
 
 ```sh
 tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
 ```
 
-## Supported file formats
+Claude Code/Codex image support cannot be verified automatically. Add `--allow-unverified-model` only after checking image support yourself; known incompatible models remain blocked. Audio requires separate setup in the [advanced guide](docs/advanced-usage.md).
 
-| Type | Extensions | Markdown content |
+Existing Markdown and user edits are preserved. Identical documents and completed image analysis are reused from cache.
+
+## Supported files
+
+| File | Extensions | Markdown content |
 | --- | --- | --- |
-| PDF | `.pdf` | Extracted text; image analysis of selected scanned pages |
-| Word | `.docx` | Document text, tables, and embedded images |
-| Excel | `.xlsx` | Sheets, cells, and embedded images |
-| HTML | `.html`, `.htm` | Body content, tables, and embedded images |
-| Images | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tif`, `.tiff`, `.gif` | Preserved images, with optional visible text and image descriptions |
+| PDF | `.pdf` | Text; image analysis of selected scanned pages |
+| Word | `.docx` | Text, tables, embedded images |
+| Excel | `.xlsx` | Sheets, cells, embedded images |
+| HTML | `.html`, `.htm` | Body content, tables, embedded images |
+| Images | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tif`, `.tiff`, `.gif` | Preserved images, optional text and descriptions |
 | Audio and video audio tracks | `.wav`, `.mp3`, `.m4a`, `.ogg`, `.flac`, `.aac`, `.mp4` | Speech converted to text; video frames are not analyzed |
 
-Image analysis and speech-to-text require separate model setup and user choices.
-Legacy `.doc` and `.xls` files are not supported.
+Legacy `.doc`/`.xls` files are unsupported. Image/audio quality depends on the model. Token savings depend on the document and retrieved scope; see [benchmarks and limitations](benchmarks/README.md).
 
-The CLI command, Python package, plugin IDs, and installation paths use `tokensaver-docs` (`tokensaver_docs` in Python).
+## More
 
-## Current status
-
-0.4.0 is a local preview, not a published registry or official directory release.
-Source CI passes on macOS, Windows, and Linux with Python 3.11 and 3.13.
-The macOS arm64 executable and bundled OpenCode integration are tested locally.
-Windows and Intel Mac native installers have not been verified.
-
-## Install a plugin
-
-The distribution path is **GitHub Releases → platform archive → local plugin**.
-No hosted server is needed. Choose Claude Code, Codex or OpenCode and run the
-release installer for Windows x64, macOS Apple Silicon or macOS Intel.
-See [installation, updates and release preparation](docs/distribution.md).
-
-The bundles include Python, PDFium and the audio runtime. Users do not need
-separate Python, Poppler, npm or Bun. Image providers and audio models are chosen
-on first use. Public release URLs will be added after publication; a checkout
-alone is not a published plugin installer.
-
-## Use from a checkout
-
-```sh
-python -m pip install '.[mcp,tokens]'
-tokensaver-docs prepare ./documents --output ./converted --skip-image-transcription
-tokensaver-docs convert ./documents --output ./converted --no-configured-providers
-tokensaver-docs context ./documents 'refund deadline' --output ./converted --max-tokens 1200
-tokensaver-docs read ./converted/policy.pdf.md --start-line 20 --lines 40
-```
-
-The installed plugin bundles contain the Python runtime and libraries. The
-checkout installation above is for Python users; end users of a built plugin
-bundle do not need Python, npm or Bun. See [plugin installation](docs/plugin-preview.md).
-
-## Convert once
-
-For agents, start with `prepare_documents` (OpenCode v1: `tokensaver_docs_prepare`;
-v2: native `tokensaver_docs_prepare`). First use offers model selection or
-deferral. The plugin's conversion model can differ from the host chat model;
-the plugin does not infer a host model it cannot verify. Ordinary document text
-needs no AI model. For images, the tool checks the selected model's image support
-and reports free pricing separately from image support and lookup errors.
-If the model cannot read images, choose **change model** or **continue with
-`[이미지]` only**. Continuing extracts ordinary document text and marks each known
-image position with `[이미지]`; it adds no image link, image text or description.
-Supported models offer images with visible text and descriptions, or images only.
-An external analysis provider receives the images after the user's selection.
-The tool returns output paths/status, not raw HTML or Base64. Questions use
-`context_documents` for bounded evidence.
-
-For CLI use, inspect first-use setup or defer it:
-
-```sh
-tokensaver-docs setup-model
-tokensaver-docs setup-model --defer
-# Inspect a user-selected model without saving it:
-tokensaver-docs setup-model --provider openrouter --model MODEL_ID
-# Only after the user chooses to save this default:
-tokensaver-docs setup-model --provider openrouter --model MODEL_ID --save-as-default --confirmed
-```
-
-`prepare INPUT --output OUTPUT --image-mode analyze` includes images, visible text
-and descriptions; `preserve` includes images only; `placeholder` writes `[이미지]`
-only. `--model-provider PROVIDER --model MODEL_ID` chooses a model for that request
-without changing the default. API keys belong in environment variables, never
-these model arguments. Unknown image support requires explicit manual consent
-with `--allow-unverified-model`; this does not bypass confirmed incompatibility,
-lookup failures or OpenRouter's free-price checks. No separate local OCR is added.
-The existing `--transcribe-images` and `--skip-image-transcription` flags retain
-their analyze/preserve meanings. Check status for pending choices, missing models,
-unreadable images or incomplete analysis.
-
-Image preparation does not enable an audio provider. For MCP `convert_documents`,
-`use_configured_providers=true` selects the image provider and
-`use_configured_audio_provider=true` separately selects audio. The optional
-`context_documents` provider switch enables both and needs consent for both.
-The existing CLI `convert` command uses configured providers by default; when
-`--transcribe-images` or `--vision-pages` is specified, audio is excluded unless
-`--use-configured-audio-provider` is also supplied.
-
-The OpenCode read hook intercepts HTML with a literal embedded-image data URI.
-It directs the agent to preparation when a model/image choice is needed rather
-than silently choosing a mode; prepared Markdown reads are capped at 40 lines.
-HTML entities in the URI can evade detection; shell commands and other host tools
-are also outside that hook. Use `tokensaver_docs_prepare` for reliable preparation.
-
-CLI, MCP and plugins use a common cache within the current user's application data.
-Identical content can be reused after renaming or moving a file, changing the output
-folder, or switching agents. Complete media units survive partial failure and can
-be reused in another output folder or a changed document when the actual processed
-unit is identical. Concurrent requests share per-source and per-unit locks.
-
-Preparation separates analyze, preserve and placeholder caches. Explicitly choosing
-a model for analysis uses that model's cache identity; a result from a different
-model is not presented as its work. Legacy `convert` model-setting changes alone
-do not automatically regenerate successful shared results. Prior text-only image
-results are not complete image descriptions.
-Request `convert --refresh` explicitly to make a new version. Existing
-outputs are kept. Unverifiable old results are preserved rather than silently
-reprocessed. Cache integrity failures are explicit.
-
-## Media setup
-
-The audio bundle includes a CPU whisper-cli. First show a model's download size:
-
-```sh
-tokensaver-docs setup-audio --model small
-# After choosing the model and consenting to the download:
-tokensaver-docs setup-audio --model small --download
-```
-
-The pinned multilingual model download is checksum-verified and shared across
-agents. Local Whisper automatically detects the language; review its transcript
-for recognition errors. No audio is uploaded for local transcription. For image analysis,
-choose a supported provider and model; API keys belong in environment variables,
-not documents, chat, configuration files or logs. No paid or alternate model is
-automatically selected. Free API quotas and availability vary.
-
-## What is measured
-
-`context` returns original excerpts with paths, line ranges, pending items and
-truncation/continuation information. Its token budget uses `cl100k_base` for the
-serialized JSON response and excludes the host's protocol framing and tool schemas.
-It is not a guarantee about the host model's billed usage. Existing search/read
-commands retain their documented body-only budgets.
-
-Our small synthetic QMD comparison is a reproducible example, not a ranking or a
-real-world accuracy or savings claim. Converting to Markdown alone does not guarantee
-lower tokens if the agent then reads the entire document repeatedly.
-The [synthetic HTML comparison](benchmarks/README.md#html-예제) includes a small
-case where the bounded response is larger than the full Markdown.
-
-## Limits and privacy
-
-Extracted text and image descriptions can contain errors, especially names,
-numbers and diagram relationships. Compare important details with the original.
-Audio transcripts can also contain errors.
-Search is lexical, can miss synonyms or distant exceptions, and is not proof that
-a fact is absent. Truncated or incomplete output is not a full-document review.
-HTML CSS background images are not extracted; possible omissions are flagged for review.
-Scanned and selected visual PDF pages use bundled PDFium to prepare image input;
-transcription still requires a selected image provider and model.
-
-Files already uploaded through the host's native attachment flow may already have
-consumed tokens. Pass a file or folder path to the plugin before uploading raw
-media when possible. Documents and caches stay local unless the user explicitly
-selects an external transcription provider and allows the relevant media to be sent.
-Caches contain document text: treat them as private and review any outputs before sharing.
-
-[Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [MIT License](LICENSE)
-
-CLI diagnostic and status messages currently include Korean; plugin tool names and schemas are in English.
+[Agent connections, search, audio, development](docs/advanced-usage.md) · [Plugin installation and distribution](docs/distribution.md) · [Verification status](docs/current-status.md) · [Report an issue](https://github.com/winter0123/tokensaver-docs/issues) · [MIT license](LICENSE)

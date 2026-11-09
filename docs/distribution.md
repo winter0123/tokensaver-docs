@@ -8,6 +8,25 @@ Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/to
 are templates for a trusted repository after its release has been published.
 Use only a tag whose release assets have actually been published.
 
+## First public preview: maintainer checklist
+
+The current source version is `0.4.0`. The release workflow creates a **draft prerelease**; it never publishes automatically.
+
+1. Verify the intended commit passes source CI, then create and push the matching version tag:
+
+   ```sh
+   git tag v0.4.0
+   git push origin v0.4.0
+   ```
+
+2. In GitHub **Actions → Prepare draft release → Run workflow**, select `main` and enter `v0.4.0` as the tag. The workflow checks the version, builds macOS arm64, macOS x64, and Windows x64, then assembles three agent bundles per platform.
+3. After all jobs succeed, open **Releases** and inspect the draft. It should contain nine ZIP files, `checksums.txt`, `install.sh`, and `install.ps1`.
+4. Download the draft assets while signed in as a maintainer. Test installation from the unpacked bundles on the actual target platforms and agents, including first-use model selection, HTML with images, repeated conversion, and preservation of edited Markdown. The public download scripts cannot fetch an unpublished draft anonymously.
+5. Edit the release notes to state the verified platforms and remaining limitations. Keep **Set as a pre-release** enabled for the first preview, then click **Publish release** when ready.
+6. Add links to the actual versioned assets and installer commands near the top of each README. A prerelease need not be selected by GitHub's `/releases/latest` URLs; use `/releases/download/v0.4.0/…` for this preview.
+
+These commands describe release preparation; reading this guide does not create a tag, start builds, or publish a release. A GitHub release also does not submit the plugin to any official marketplace. Linux currently has source installation only; no Linux native archive is built.
+
 ## Availability and discovery
 
 The current bundles are local previews. Installing one does not submit it to a
