@@ -13,6 +13,20 @@ image positions. Image analysis
 uses a provider and model chosen by the user; multilingual audio can run locally with bundled whisper.cpp.
 No separate OCR engine is used. Existing files and user edits are preserved.
 
+## Supported file formats
+
+| Type | Extensions | Markdown content |
+| --- | --- | --- |
+| PDF | `.pdf` | Extracted text; image analysis of selected scanned pages |
+| Word | `.docx` | Document text, tables, and embedded images |
+| Excel | `.xlsx` | Sheets, cells, and embedded images |
+| HTML | `.html`, `.htm` | Body content, tables, and embedded images |
+| Images | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tif`, `.tiff`, `.gif` | Preserved images, with optional visible text and image descriptions |
+| Audio and video audio tracks | `.wav`, `.mp3`, `.m4a`, `.ogg`, `.flac`, `.aac`, `.mp4` | Speech converted to text; video frames are not analyzed |
+
+Image analysis and speech-to-text require separate model setup and user choices.
+Legacy `.doc` and `.xls` files are not supported.
+
 The CLI command, Python package, plugin IDs, and installation paths use `tokensaver-docs` (`tokensaver_docs` in Python).
 
 ## Current status
