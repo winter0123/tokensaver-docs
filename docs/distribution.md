@@ -6,7 +6,7 @@ PyPI, npm and official plugin directories are separate distribution channels.
 
 Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **No public binary release has been published yet.** The commands below
 are templates for a trusted repository after its release has been published.
-Replace `winter0123/tokensaver-docs` with its real GitHub name. Do not execute placeholders.
+Use only a tag whose release assets have actually been published.
 
 ## Availability and discovery
 

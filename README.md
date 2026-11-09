@@ -18,10 +18,9 @@ The CLI command, Python package, plugin IDs, and installation paths use `tokensa
 ## Current status
 
 0.4.0 is a local preview, not a published registry or official directory release.
-macOS arm64 has been tested locally. Windows and Intel Mac have build
-workflows but no remote CI result in this checkout. Linux has source tests only.
-Do not assume untested
-platforms work merely because a build configuration exists.
+Source CI passes on macOS, Windows, and Linux with Python 3.11 and 3.13.
+The macOS arm64 executable and bundled OpenCode integration are tested locally.
+Windows and Intel Mac native installers have not been verified.
 
 ## Install a plugin
 

@@ -2,6 +2,14 @@
 
 Source publication preparation: branded as TokenSaver Docs; source requires Pillow 13 or newer after the dependency audit. Older local preview binaries predate that dependency change and are not public releases.
 
+## 0.4.0 complete rename — 2026-11-09
+
+- Package/CLI/plugin identity: `tokensaver-docs`; Python imports and OpenCode tool prefix: `tokensaver_docs`.
+- PASS: [source CI across all six OS/Python combinations](https://github.com/winter0123/tokensaver-docs/actions/runs/42565514725). Local suite: 190 tests, six environment skips, no failures.
+- PASS: rebuilt macOS arm64 executable format/rendering checks (two tests) and bundled OpenCode integration (three tests). Clean wheel contains only the renamed package and skill; dependency audit reports no known vulnerabilities.
+- Existing installations must reinstall under the new ID. Settings and caches use the new name; when upgrading elsewhere, choose a fresh conversion output folder to keep prior Markdown and state untouched. Older local build artifacts were archived outside the checkout.
+- No public binary release, npm/PyPI package, or official marketplace listing has been published. Live vision inference was not repeated for this rename; the records below describe earlier previews.
+
 ## Native OpenCode v2 preparation — 2026-11-09
 
 - Added native `tokensaver_docs_prepare`, `tokensaver_docs_setup_model` and `tokensaver_docs_read` registration before the compatibility MCP transform. Preparation no longer depends on finding a background MCP tool; these wrappers call the bundled runtime with structured arguments, without model-written shell commands. MCP remains available for compatibility and other tools.
