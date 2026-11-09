@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Fix GitHub Actions checkout shallow clone so release tag resolves in CI builds
+- Add winter0123 as copyright holder in LICENSE, AUTHORS.md, and NOTICE
+- Add SPDX license header and author attribution to Python sources and OpenCode plugin
+- Bundle LICENSE, NOTICE, AUTHORS.md in plugin and release artifacts
+
 ## 0.4.0
 
 - Rename package, CLI, MCP server, skills, plugin IDs, tool names, environment variables, cache paths, and release assets to TokenSaver Docs. Install using `tokensaver-docs`; Python imports use `tokensaver_docs`.
