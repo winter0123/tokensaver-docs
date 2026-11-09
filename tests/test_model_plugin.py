@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 
-@unittest.skipUnless(shutil.which('node'), 'Node.js is not installed')
+@unittest.skipUnless(shutil.which('node') and os.name != 'nt', 'POSIX fake CLI fixture; Windows executable is tested separately')
 class ModelPluginTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

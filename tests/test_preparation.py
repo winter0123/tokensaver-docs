@@ -42,6 +42,7 @@ class PreparationChoiceTests(unittest.TestCase):
             load.assert_not_called()
             convert.assert_not_called()
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX fake CLI fixture; Windows executable is tested separately')
     def test_opencode_v1_preserves_choice_required_json(self):
         import json
         import shutil

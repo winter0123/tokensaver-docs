@@ -221,6 +221,11 @@ def mcp_entry() -> None:
 
 
 def main(argv=None) -> int:
+    # Windows redirected output must preserve Korean prompts and UTF-8 Markdown paths.
+    if sys.platform == 'win32':
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, 'reconfigure'):
+                stream.reconfigure(encoding='utf-8')
     args = parser().parse_args(argv)
     try:
         if args.command == 'prepare':
