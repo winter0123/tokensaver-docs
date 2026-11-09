@@ -8,6 +8,60 @@ Codex · Claude Code · OpenCode를 위한 문서 컨텍스트 플러그인입�
 
 Convert files once and give coding agents bounded, line-numbered evidence. [English guide](README.en.md) · 한국어 안내는 아래를 확인하세요.
 
+## 빠른 시작
+
+### 1. 설치
+
+현재 바로 사용할 수 있는 **소스 버전 설치**입니다. Python 3.11 이상과 Git이 필요합니다. 에이전트에 등록되는 플러그인 설치와는 별개이며, 공개 플러그인 설치 파일은 아직 배포 전입니다.
+
+**macOS / Linux** — 터미널에 아래 세 줄을 붙여넣으세요.
+
+```sh
+python3 -m venv "$HOME/.tokensaver-docs/venv"
+source "$HOME/.tokensaver-docs/venv/bin/activate"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+**Windows PowerShell**
+
+```powershell
+py -3 -m venv "$HOME\.tokensaver-docs\venv"
+& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+새 터미널에서는 위의 두 번째 줄로 다시 활성화하세요. PowerShell에서 활성화가 차단되면 정책을 바꾸는 대신 `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"`를 `tokensaver-docs` 대신 사용하세요.
+
+### 2. 변환 모델 선택 / 변경
+
+터미널에서 다음 명령을 실행하고, **목록에서 원하는 모델 번호를 입력**하세요. 처음 선택할 때와 나중에 변경할 때 같은 명령을 사용합니다. 선택한 모델은 다음 변환에도 사용할 기본값으로 저장됩니다.
+
+```sh
+tokensaver-docs configure --kind image --provider openrouter
+```
+
+OpenRouter 이미지 분석에는 `OPENROUTER_API_KEY` 환경변수 설정이 필요합니다. 키는 에이전트 대화에 입력하지 마세요. 이 명령은 **문서 속 이미지 변환 모델**을 바꾸며, Codex·Claude Code·OpenCode의 대화 모델이나 음성 모델은 바꾸지 않습니다. 이미지 없는 문서의 텍스트 추출에는 모델·API 키가 필요하지 않습니다.
+
+현재 설정 확인:
+
+```sh
+tokensaver-docs setup-model
+```
+
+### 3. 파일 또는 폴더 변환
+
+`./documents`를 변환할 파일이나 폴더 경로로 바꾸세요. 경로에 공백이 있으면 따옴표로 감싸세요.
+
+```sh
+tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
+```
+
+위 명령은 글자를 추출하고 이미지 위치에 `[이미지]`를 남깁니다. **이미지 속 글자와 설명도 넣으려면**, 모델·키를 설정한 뒤 아래 명령을 사용하세요. 이미지가 선택한 제공자로 전송됩니다.
+
+```sh
+tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
+```
+
 ## PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 변환
 
 | 종류 | 지원 확장자 | 변환 내용 |

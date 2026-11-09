@@ -13,6 +13,60 @@ image positions. Image analysis
 uses a provider and model chosen by the user; multilingual audio can run locally with bundled whisper.cpp.
 No separate OCR engine is used. Existing files and user edits are preserved.
 
+## Quick start
+
+### 1. Install
+
+This installs the **source CLI**, not an agent plugin. Requires Python 3.11+ and Git. Public plugin release archives are not available yet.
+
+**macOS / Linux**
+
+```sh
+python3 -m venv "$HOME/.tokensaver-docs/venv"
+source "$HOME/.tokensaver-docs/venv/bin/activate"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+**Windows PowerShell**
+
+```powershell
+py -3 -m venv "$HOME\.tokensaver-docs\venv"
+& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+In a new terminal, activate the environment again using the second line. If PowerShell blocks activation, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs`, without changing execution policy.
+
+### 2. Choose or change the conversion model
+
+Run this in your terminal, then **enter a model number from the list**. The selected model becomes the default for future image conversions. Use the same command to change it later.
+
+```sh
+tokensaver-docs configure --kind image --provider openrouter
+```
+
+OpenRouter image analysis needs the `OPENROUTER_API_KEY` environment variable. Do not share keys in agent chat. This changes the document image model, not your coding agent's chat model or audio model. Plain document text extraction needs no model or API key.
+
+Check the current model:
+
+```sh
+tokensaver-docs setup-model
+```
+
+### 3. Convert a file or folder
+
+Replace `./documents` with your input path. This extracts text and marks image positions with `[이미지]`, without image analysis:
+
+```sh
+tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
+```
+
+To include visible image text and descriptions, configure your model/key first, then run this. Images are sent to the selected provider:
+
+```sh
+tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
+```
+
 ## Supported file formats
 
 | Type | Extensions | Markdown content |
