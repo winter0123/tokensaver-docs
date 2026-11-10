@@ -5,7 +5,7 @@ on:
       tag:
         description: Published release tag
         required: true
-        default: v0.4.0
+        default: v0.4.2
         type: string
 permissions:
   contents: read

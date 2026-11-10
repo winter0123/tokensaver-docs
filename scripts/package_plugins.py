@@ -45,10 +45,9 @@ def main():
         (root / 'bin').mkdir(parents=True)
         shutil.copy2(binary, root / 'bin' / name)
         shutil.copytree(notices,root/'third-party')
-        if platform != 'opencode':
-            target = root / 'skills' / 'tokensaver-docs'
-            target.mkdir(parents=True)
-            shutil.copy2(ROOT / 'plugins/skill/SKILL.md', target / 'SKILL.md')
+        target = root / 'skills' / 'tokensaver-docs'
+        target.mkdir(parents=True)
+        shutil.copy2(ROOT / 'plugins/skill/SKILL.md', target / 'SKILL.md')
         if platform == 'claude':
             write_json(root / '.claude-plugin/plugin.json', {'name': 'tokensaver-docs', 'version': __version__, 'description': 'TokenSaver Docs: prepare documents once and retrieve bounded evidence.', 'author': {'name': 'winter0123', 'url': 'https://github.com/winter0123'}})
             write_json(root / '.claude-plugin/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'description': 'TokenSaver Docs document context plugins for coding agents.', 'owner': {'name': 'winter0123', 'url': 'https://github.com/winter0123'}, 'plugins': [{'name': 'tokensaver-docs', 'source': './'}]})

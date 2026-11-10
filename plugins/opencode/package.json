@@ -1,12 +1,13 @@
 {
   "name": "tokensaver-docs-opencode",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "TokenSaver Docs — reusable document context for coding agents",
   "type": "module",
   "main": "index.js",
   "files": [
     "index.js",
     "bin",
+    "skills",
     "README.md",
     "LICENSE",
     "NOTICE",

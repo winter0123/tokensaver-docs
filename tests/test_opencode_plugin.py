@@ -13,16 +13,81 @@ class OpenCodePluginTests(unittest.TestCase):
         script = '''
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
-const {default: plugin} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
-let server, hook;
-await plugin.setup({mcp:{transform: async fn => fn({set: (name, value) => {server = {name, ...value}}})}, tool:{transform:async fn=>fn({add(){}}),hook: async (name, fn) => {hook = {name, fn}}}});
+const {default: plugin, TokenSaverDocsPlugin} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const legacy = await TokenSaverDocsPlugin();
+let server, hook, contextHook, promptHook, skill;
+const tools = new Map();
+await plugin.setup({
+  mcp:{transform: async fn => fn({set: (name, value) => {server = {name, ...value}}})},
+  skill:{transform: async fn => fn({add: definition => {skill = definition}})},
+  session:{hook: async (name, fn) => {if(name === 'prompt') promptHook = fn; else contextHook = fn}},
+  tool:{transform:async fn=>fn({add(definition){tools.set(definition.name, definition)}}),hook: async (name, fn) => {hook = {name, fn}}},
+});
+const prepare = tools.get('tokensaver_docs_prepare');
+assert.equal(prepare.description, legacy.tool.tokensaver_docs_prepare.description);
+assert.ok(prepare.description.includes('PDF, DOCX, XLSX, HTML, image/photo/screenshot or audio files/folders to Markdown'));
+assert.match(prepare.description, /unless the user specifies another converter/);
+assert.ok(prepare.description.includes('image/photo/screenshot text and description into an MD file'));
+assert.match(prepare.description, /ordinary image viewing or questions remain normal image tasks/);
+assert.match(prepare.description, /output is a directory, not an output filename; omit it to use the safe default/);
+assert.match(prepare.description, /Analyze produces an MD file with an image link, visible text and a separate image description/);
+assert.match(prepare.description, /never choose for the user/);
+assert.match(prepare.description, /If a question fails or is cancelled, stop and ask the user; never infer a model or image mode/);
+assert.match(prepare.description, /Use analyze only after the user explicitly approves image analysis with the chosen model/);
+assert.match(prepare.description, /If preparation fails, report the failure instead of automatically writing a fallback conversion script/);
+const setupModel = tools.get('tokensaver_docs_setup_model');
+assert.equal(setupModel.description, legacy.tool.tokensaver_docs_setup_model.description);
+assert.match(setupModel.description, /If a question fails or is cancelled, stop and ask the user; never infer defer, model or confirmation arguments/);
+const unapproved = await prepare.execute({source:'photo.png',image_mode:'analyze',model_provider:'openrouter',model:'nvidia/nemotron-3.5-super-vl:free'},{sessionID:'test'});
+assert.equal(JSON.parse(unapproved.content).status, 'choice_required');
+const inferredDefer = await setupModel.execute({defer:true},{sessionID:'test'});
+assert.equal(JSON.parse(inferredDefer.content).status, 'choice_required');
+assert.deepEqual(prepare.input.required, ['source']);
+assert.deepEqual(prepare.input.properties.image_mode.enum, ['analyze', 'preserve', 'placeholder']);
+assert.equal(skill.id, 'tokensaver-docs-opencode');
+assert.equal(skill.name, 'TokenSaver Docs for OpenCode');
+assert.match(skill.content, /turn this photo[/]image[/]screenshot and its text[/]description into an MD file/);
+assert.equal(skill.path.split('/').at(-1), 'SKILL.md');
+const conversion = {sessionID:'test',messages:[{info:{role:'user'},parts:[{type:'text',text:'photo.png 사진의 글자와 설명을 MD로 정리해줘'}]}],system:[],tools:{read:{},glob:{},shell:{},write:{},edit:{},tokensaver_docs_prepare:{},tokensaver_docs_read:{},tokensaver_docs_search:{},tokensaver_docs_convert:{},question:{}}};
+await promptHook({sessionID:'test',messageID:'user-1',prompt:{text:'photo.png 사진의 글자와 설명을 MD로 정리해줘',files:[]}});
+await contextHook(conversion);
+assert.equal(conversion.system.length, 1);
+assert.match(conversion.system[0].text, /call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals/);
+assert.match(conversion.system[0].text, /never infer a model, defer, image mode, or provider consent/);
+for (const mode of [{transcribe_images:true},{image_mode:'analyze'}]) {
+  const retry = await prepare.execute({source:'photo.png',...mode},{sessionID:'test'});
+  assert.equal(JSON.parse(retry.content).status, 'choice_required');
+}
+const denial = {sessionID:'denial',messages:[{info:{role:'user'},parts:[{type:'text',text:'Convert photo.png text and description to MD. I do not approve image analysis with openrouter nvidia/nemotron-3.5-super-vl:free.'}]}],system:[]};
+await promptHook({sessionID:'denial',messageID:'user-denial',prompt:{text:'Convert photo.png text and description to MD. I do not approve image analysis with openrouter nvidia/nemotron-3.5-super-vl:free.',files:[]}});
+await contextHook(denial);
+const deniedAnalyze = await prepare.execute({source:'photo.png',image_mode:'analyze',model_provider:'openrouter',model:'nvidia/nemotron-3.5-super-vl:free'},{sessionID:'denial'});
+assert.equal(JSON.parse(deniedAnalyze.content).status, 'consent_declined');
+await assert.rejects(hook.fn({tool:'read',sessionID:'test',input:{filePath:'photo.png'}}), /Use tokensaver_docs_prepare first/);
+await assert.rejects(hook.fn({tool:'grep',sessionID:'test',input:{pattern:'image'}}), /Use tokensaver_docs_prepare first/);
+const ordinary = {sessionID:'test',messages:[{info:{role:'user'},parts:[{type:'text',text:'What is in this photo?'}]}],system:[],tools:{read:{},glob:{},shell:{},tokensaver_docs_read:{}}};
+await promptHook({sessionID:'test',messageID:'user-2',prompt:{text:'What is in this photo?',files:[]}});
+await contextHook(ordinary);
+assert.equal(ordinary.system.length, 0);
+await hook.fn({tool:'read',sessionID:'test',input:{filePath:'photo.png'}});
+await hook.fn({tool:'grep',sessionID:'test',input:{pattern:'image'}});
+const alternative = {sessionID:'test',messages:[{info:{role:'user'},parts:[{type:'text',text:'Use Pandoc to convert photo.png to a Markdown file.'}]}],system:[],tools:{read:{},glob:{},shell:{},tokensaver_docs_read:{}}};
+await promptHook({sessionID:'test',messageID:'user-3',prompt:{text:'Use Pandoc to convert photo.png to a Markdown file.',files:[]}});
+await contextHook(alternative);
+assert.equal(alternative.system.length, 0);
+await hook.fn({tool:'read',sessionID:'test',input:{filePath:'photo.png'}});
+const reset = {sessionID:'test',messages:[...conversion.messages,{info:{role:'assistant'},parts:[]},{info:{role:'user'},parts:[{type:'text',text:'What is in this photo?'}]}],system:[]};
+await promptHook({sessionID:'test',messageID:'user-4',prompt:{text:'What is in this photo?',files:[]}});
+await contextHook(reset);
+assert.equal(reset.system.length, 0);
 assert.equal(server.name, 'tokensaver-docs');
 assert.equal(server.type, 'local');
 assert.deepEqual(server.command.slice(-1), ['mcp']);
 assert.equal(hook.name, 'execute.before');
 await hook.fn({tool: 'other', input: {}});
 '''
-        result = subprocess.run(['node', '--input-type=module', '-e', script], env=os.environ.copy(), capture_output=True, text=True, timeout=30)
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(['node', '--input-type=module', '-e', script], env=dict(os.environ, XDG_CONFIG_HOME=tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_embedded_image_read_waits_for_choice_without_writing_beside_source(self):

@@ -4,7 +4,7 @@ No service or remote MCP server is needed. The tools run on the user's computer.
 The planned distribution uses GitHub for source and versioned release archives.
 PyPI, npm and official plugin directories are separate distribution channels.
 
-Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **[v0.4.0 is published as a prerelease](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.0).** The commands below use its versioned assets. Windows and Intel Mac passed automated bundle tests; real host installation remains experimental.
+Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **[v0.4.1 is published as a prerelease](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.1).** The commands below use its versioned assets. Windows and Intel Mac passed automated bundle tests; real host installation remains experimental.
 
 ## Direct downloads
 
@@ -14,20 +14,20 @@ The original nine ZIP files remain advanced downloads. Linux has a source-instal
 
 ## First public preview: maintainer checklist
 
-The current source version is `0.4.0`. The release workflow creates a **draft prerelease**; it never publishes automatically.
+The current source candidate is `0.4.2`; it is not tagged or published. The published v0.4.1 remains available. The release workflow creates a **draft prerelease**; it never publishes automatically.
 
 1. Verify the intended commit passes source CI, then create and push the matching version tag:
 
    ```sh
-   git tag v0.4.0
-   git push origin v0.4.0
+   git tag v0.4.2
+   git push origin v0.4.2
    ```
 
-2. In GitHub **Actions → Prepare draft release → Run workflow**, select `main` and enter `v0.4.0` as the tag. The workflow checks the version, builds macOS arm64, macOS x64, and Windows x64, then assembles three agent bundles per platform.
+2. In GitHub **Actions → Prepare draft release → Run workflow**, select the reviewed release commit and enter `v0.4.2` as the tag. The workflow checks the version, builds macOS arm64, macOS x64, and Windows x64, then assembles three agent bundles per platform.
 3. After all jobs succeed, open **Releases** and inspect the draft. It should contain twelve ZIP files (three unified platform downloads and nine agent-specific downloads), `checksums.txt`, `install.sh`, and `install.ps1`.
 4. Download the draft assets while signed in as a maintainer. Test installation from the unpacked bundles on the actual target platforms and agents, including first-use model selection, HTML with images, repeated conversion, and preservation of edited Markdown. The public download scripts cannot fetch an unpublished draft anonymously.
 5. Edit the release notes to state the verified platforms and remaining limitations. Keep **Set as a pre-release** enabled for the first preview, then click **Publish release** when ready.
-6. Add links to the actual versioned assets and installer commands near the top of each README. A prerelease need not be selected by GitHub's `/releases/latest` URLs; use `/releases/download/v0.4.0/…` for this preview.
+6. Add links to the actual versioned assets and installer commands near the top of each README. A prerelease need not be selected by GitHub's `/releases/latest` URLs; use `/releases/download/v0.4.2/…` only after the assets are public; until then, keep published links on v0.4.1.
 
 These commands describe release preparation; reading this guide does not create a tag, start builds, or publish a release. A GitHub release also does not submit the plugin to any official marketplace. Linux currently has source installation only; no Linux native archive is built.
 
@@ -43,23 +43,20 @@ name-based discovery.
 | Claude Code | The installer registers the bundled local marketplace with the Claude CLI. | The [plugin browser](https://code.claude.com/docs/en/discover-plugins) searches configured marketplaces; registering a local marketplace does not list this project in Anthropic's marketplace. |
 | OpenCode | The installer adds a managed local loader for the detected OpenCode major version. | No npm package or public listing has been published. OpenCode documents [local and npm plugins](https://opencode.ai/docs/plugins/) and [v2 plugins](https://opencode.ai/v2/docs/plugins). Version 2.1.3 has been exercised locally on macOS arm64. |
 
-Actual Codex and Claude Code conversations using this preview have not been
-verified. OpenCode v1 was checked with a synthetic HTML example and v2.1.3 with
-local HTML documents; this does not establish compatibility with all workflows.
-See [the current status](current-status.md) for the recorded checks.
+Codex candidate validation remains unresolved: the installed marketplace copy is v0.4.0, and the follow-up stopped before another model call because candidate isolation was not safely established. Claude candidate host validation is pending. OpenCode 2.1.3 on macOS arm64 passed a session-prompt API image-choice flow; quoted CLI prompt validation failed closed, and this does not establish other prompt surfaces or universal routing. See [the current status](current-status.md) and local release readiness report for evidence and remaining gates.
 
 ## Release installer templates
 
 The package build targets are macOS Apple Silicon, macOS Intel and Windows x64.
-Only macOS Apple Silicon has been exercised locally so far; Windows and Intel
-Mac installations have not been verified. Linux has source tests only and no
+The v0.4.1 preview was exercised on macOS Apple Silicon; Windows and Intel
+Mac real-host installations have not been verified for this v0.4.2 candidate. Linux has source tests only and no
 release installer in this preview.
 
 ### macOS
 
 ```sh
 repo='winter0123/tokensaver-docs'
-version='v0.4.0'
+version='v0.4.1'
 curl -fL --proto '=https' "https://github.com/$repo/releases/download/$version/install.sh" -o tokensaver-docs-install.sh
 sh tokensaver-docs-install.sh --repo "$repo" --version "$version" --agent claude
 ```
@@ -70,7 +67,7 @@ Use `--agent codex` or `--agent opencode` for the other agents.
 
 ```powershell
 $Repo = 'winter0123/tokensaver-docs'
-$Version = 'v0.4.0'
+$Version = 'v0.4.1'
 Invoke-WebRequest "https://github.com/$Repo/releases/download/$Version/install.ps1" -OutFile tokensaver-docs-install.ps1
 & .\tokensaver-docs-install.ps1 -Repo $Repo -Version $Version -Agent claude
 ```
@@ -156,8 +153,8 @@ bundle may also be unpacked manually and installed with its `bin/tokensaver-docs
    from Git history; inspect the actual files selected for Git publication.
 2. Keep Python, OpenCode package and CLI versions consistent. Choose a version
    tag matching `v` plus `tokensaver_docs.__version__`; do not reuse a published tag.
-3. After source/tag publication is authorized, run **Prepare draft release** in
-   GitHub Actions with that existing tag. The workflow builds Windows x64 and both
+3. After the candidate is approved and tagged, run **Prepare draft release** in
+   GitHub Actions with the existing `v0.4.2` tag. Host validation and full source CI must pass first. The workflow builds Windows x64 and both
    Mac CPU targets, runs tests against each executable, and collects nine plugin
    archives. It refuses missing/duplicate archives, wrong versions and damaged
    archive contents. The combined checksum list covers all nine archives.
@@ -171,13 +168,13 @@ bundle may also be unpacked manually and installed with its `bin/tokensaver-docs
 Ordinary pushes run the source test workflow. Heavy native builds are manual or
 called by the draft-release workflow. No workflow publishes to PyPI/npm. Running
 remote CI can consume the repository's Actions allowance; review account limits
-before triggering it. This checkout has not run those remote workflows.
+before triggering it. The v0.4.2 candidate has not run those remote workflows.
 
 To build one platform manually, follow [plugin build instructions](plugin-preview.md).
 To validate archives downloaded from all three build jobs locally:
 
 ```sh
-python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.4.0
+python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.4.2
 ```
 
 Build on each actual target OS/CPU; renaming a Mac binary never makes a Windows

@@ -9,6 +9,112 @@ import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 
 const executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
+// shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
+const requestBySession = new Map();
+
+const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. Follow the tool’s setup and image-choice questions: without an actual user choice, stop and ask; never infer a model, defer, image mode, or provider consent. For conversion-only, report the returned Markdown paths and status without rereading the result.';
+const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current genuine user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze, using that selected model. Do not ask the user to select or repeat the provider/model. This instruction does not grant consent; the tool accepts only explicit approval in the current real user message.';
+const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
+
+function isMarkdownConversionRequest(prompt) {
+  const text = prompt?.text ?? '';
+  const files = prompt?.files ?? [];
+  const source = files.length > 0 || /\b(?:image|photo|picture|screenshot|document|file|folder|pdf|docx?|xlsx?|html|htm|pptx?)\b|\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|pdf|docx?|xlsx?|html|htm|pptx?)\b|이미지|사진|스크린샷|캡처|문서|파일|폴더/i.test(text);
+  const target = /\b(?:to|into|as)\s+(?:an?\s+)?(?:markdown|md)(?:\s+(?:file|document))?|\b(?:markdown|md)\s+file\b|마크다운(?:으로|\s*파일)|md\s*파일(?:로)?|md로/i.test(text);
+  const alternative = /\b(?:pandoc|libreoffice|obsidian)\b|\b(?:another|different|external|my)\s+(?:converter|tool|command|script)\b|(?:다른|별도|직접 지정한)\s*(?:변환기|도구|명령|스크립트)|\buse\s+(?!tokensaver\b)(?:the\s+)?[a-z][\w.@/-]*\s+to\s+(?:convert|turn|make|write|save)/i.test(text);
+  const convert = /\b(?:convert|turn|transform|export)\b|변환|바꿔|정리해/i.test(text);
+  return source && target && convert && !alternative;
+}
+
+function exactChoice(text) {
+  const value = text.trim().toLowerCase().replace(/[.!]$/, '');
+  const labels = {
+    defer: ['later','defer','not now','나중에','나중에 선택하기'],
+    select_model: ['모델 선택하기','모델 바꾸기'],
+    preserve: ['preserve','images only','image links only','이미지 링크만','보존(preserve)','이미지만 넣기'],
+    placeholder: ['placeholder','[이미지]','플레이스홀더(placeholder)','현재 모델로 계속하기'],
+    analyze: ['이미지·글자·설명 넣기','이미지 분석에 동의합니다'],
+    decline: ['no','no, do not analyze the image','no, do not analyze it','cancel','아니요','취소'],
+    confirm: ['yes','confirm','네','예','확인'],
+  };
+  for (const [choice, values] of Object.entries(labels))
+    if (values.includes(value)) return choice;
+  if (/^(?:yes,?\s+(?:please\s+)?analy[sz]e it|i (?:explicitly )?approve image analysis(?: with (?:openrouter|codex|claude) \S+)?|(?:네|예),?\s*분석해\s*(?:주세요|줘요))$/i.test(value)) return 'analyze';
+  return null;
+}
+
+function choiceReply(text, previous) {
+  const choice = exactChoice(text);
+  return Boolean(choice && (choice !== 'confirm' || previous?.defaultConfirmation)) ||
+    /^(?:i (?:choose|select) )?(?:openrouter|codex|claude) \S+(?: and save this model as default)?[.!]?$/i.test(text.trim());
+}
+
+function matchesModelChoice(text, provider, model) {
+  const choice = text.trim().replace(/[.!]$/, '').replace(/^Convert \S+ to Markdown(?:\. | with )/i, '').toLowerCase();
+  const pair = `${provider} ${model}`.toLowerCase();
+  return [pair, `i choose ${pair}`, `i select ${pair}`, `${pair} and save this model as default`].includes(choice);
+}
+
+function choiceError(choice) {
+  return JSON.stringify({status:'choice_required',question:choice,
+    next:'Ask the user in chat and stop this turn. Do not retry with inferred arguments.'});
+}
+
+function parseResult(result) {
+  try { return JSON.parse(result); } catch { return null; }
+}
+
+async function configuredImageProfile() {
+  const state = parseResult(await run(['setup-model']));
+  return state?.status === 'configured' ? state.model : null;
+}
+
+function explicitChoiceError(name, input, request) {
+  const text = request?.text ?? '';
+  const choice = exactChoice(text);
+  if (name === 'tokensaver_docs_setup_model') {
+    if (input.defer && choice !== 'defer')
+      return choiceError('Ask whether the user wants to choose a model now or defer setup.');
+    const confirmingDefault = input.save_as_default && input.confirmed && request?.defaultConfirmation;
+    if (input.provider || input.model) {
+      if (confirmingDefault && (input.provider !== confirmingDefault.provider || input.model !== confirmingDefault.model))
+        return choiceError('Use the model awaiting default-save confirmation.');
+      if (!confirmingDefault && (!input.provider || !input.model ||
+          !matchesModelChoice(text,input.provider,input.model)))
+        return choiceError('Ask the user to name the provider and model they selected.');
+    }
+    if (request?.defaultConfirmation && input.save_as_default &&
+        /\b(?:no|cancel|decline|do not|don't)\b|^(?:아니요|아니|취소)/i.test(text))
+      return JSON.stringify({status:'save_declined',next:'The user declined saving a default. Stop without changing settings.'});
+    if (input.save_as_default && !confirmingDefault && !/\b(?:save|set)\b.{0,30}\bdefault\b|기본(?:값)?으로\s*저장/i.test(text))
+      return choiceError('Ask whether the user wants this model saved as the default.');
+    if (input.save_as_default && input.confirmed && (!request?.defaultConfirmation ||
+        choice !== 'confirm'))
+      return choiceError('Ask for a separate confirmation before saving the selected model as the default.');
+  }
+  if (name !== 'tokensaver_docs_prepare') return null;
+  const mode = input.image_mode ?? (input.transcribe_images === true ? 'analyze' : input.transcribe_images === false ? 'preserve' : null);
+  if (mode === 'analyze') {
+    const denied = /\b(?:no|do not|don't|dont|never|refuse(?:d)? to|decline(?:d)? to|cancel)\b.{0,100}\b(?:approve|authorize|consent|allow|permit|analy[sz]e|image|photo)\b|\b(?:approve|authorize|consent|allow|permit)\b.{0,100}\b(?:not|never|without|unless)\b|(?:동의|승인|허용|분석)하지\s*않|(?:이미지|사진).{0,50}(?:보내지\s*않|분석하지\s*않)|^(?:아니요|아니|취소)/i.test(text.trim());
+    if (denied)
+      return JSON.stringify({status:'consent_declined',next:'The user declined image analysis. Stop this conversion; do not retry or send the image.'});
+    const approved = choice === 'analyze';
+    const selected = request?.profile;
+    const hasModelChoice = Boolean(input.model && input.model_provider &&
+      text.toLowerCase().includes(input.model.toLowerCase()) && text.toLowerCase().includes(input.model_provider.toLowerCase()));
+    const mismatch = selected && ((input.model && input.model !== selected.model) ||
+      (input.model_provider && input.model_provider !== selected.provider));
+    if (!approved || mismatch || (!selected && !hasModelChoice))
+      return choiceError(selected && !mismatch
+        ? 'The image model is already selected. Ask only for explicit image-analysis approval; use this same model after the user approves.'
+        : 'Ask the user to choose an image model and explicitly approve image analysis for this request.');
+  }
+  if (mode === 'placeholder' && choice !== 'placeholder')
+    return choiceError('Ask whether the user wants placeholder images with no extracted text or description.');
+  if (mode === 'preserve' && choice !== 'preserve')
+    return choiceError('Ask whether the user wants image links only, without extracted text or descriptions.');
+  return null;
+}
 
 function run(args) {
   return new Promise((resolve) => {
@@ -68,12 +174,12 @@ export const TokenSaverDocsPlugin = async () => ({
   },
   tool: {
     tokensaver_docs_prepare: tool({
-      description: 'CALL FIRST. Ask the returned first-use/model/image question; never choose for the user. analyze includes images, visible text and descriptions; preserve includes images only; placeholder writes [이미지] at their positions with no image text, description or link. Unsupported models require switching models or explicitly continuing with placeholder. One-time model parameters do not change defaults. Image analysis may send images externally; audio is separate. Never read raw HTML/Base64 or write conversion scripts.',
+      description: 'Convert supported local PDF, DOCX, XLSX, HTML, image/photo/screenshot or audio files/folders to Markdown. For requests to turn image/photo/screenshot text and description into an MD file, use this tool first; ordinary image viewing or questions remain normal image tasks. Use first for file-to-Markdown requests unless the user specifies another converter; not for editing originals or existing Markdown. output is a directory, not an output filename; omit it to use the safe default and never infer a filename. For conversion-only requests, return output paths and status without extra search or reading. Ask the returned first-use/model/image question; never choose for the user. If a question fails or is cancelled, stop and ask the user; never infer a model or image mode. Use analyze only after the user explicitly approves image analysis with the chosen model. Analyze produces an MD file with an image link, visible text and a separate image description; preserve includes image links only; placeholder writes [이미지] at their positions with no image text, description or link. Unsupported models require switching models or explicitly continuing with placeholder. One-time model parameters do not change defaults. Image analysis may send images externally; audio is separate. Never read raw HTML/Base64. If preparation fails, report the failure instead of automatically writing a fallback conversion script.',
       args: { source: tool.schema.string(), output: tool.schema.string().optional(), transcribe_images: tool.schema.boolean().optional(), image_mode: tool.schema.enum(['analyze','preserve','placeholder']).optional(), model_provider: tool.schema.enum(['openrouter','codex','claude']).optional(), model: tool.schema.string().optional(), allow_unverified_model: tool.schema.boolean().optional() },
       execute: ({source,output,transcribe_images,image_mode,model_provider,model,allow_unverified_model}) => run(['prepare',source,'--output',output ?? 'converted',...(transcribe_images === undefined ? [] : [transcribe_images ? '--transcribe-images' : '--skip-image-transcription']),...(image_mode ? ['--image-mode',image_mode] : []),...(model_provider ? ['--model-provider',model_provider] : []),...(model ? ['--model',model] : []),...(allow_unverified_model ? ['--allow-unverified-model'] : [])]),
     }),
     tokensaver_docs_setup_model: tool({
-      description: 'Inspect first-use setup or a user-selected conversion model. Defer only when the user chooses later. A one-time selection does not save defaults; save_as_default requires explicit confirmation. Never request API keys in chat or assume the host chat model is the conversion model.',
+      description: 'Inspect first-use setup or a user-selected conversion model. Defer only when the user chooses later. If a question fails or is cancelled, stop and ask the user; never infer defer, model or confirmation arguments. A one-time selection does not save defaults; save_as_default requires explicit confirmation. Never request API keys in chat or assume the host chat model is the conversion model.',
       args: { provider: tool.schema.enum(['openrouter','codex','claude']).optional(), model: tool.schema.string().optional(), defer: tool.schema.boolean().optional(), save_as_default: tool.schema.boolean().optional(), confirmed: tool.schema.boolean().optional() },
       execute: ({provider,model,defer,save_as_default,confirmed}) => run(['setup-model',...(provider ? ['--provider',provider] : []),...(model ? ['--model',model] : []),...(defer ? ['--defer'] : []),...(save_as_default ? ['--save-as-default'] : []),...(confirmed ? ['--confirmed'] : [])]),
     }),
@@ -130,6 +236,10 @@ export default {
   id: 'tokensaver-docs',
   async setup(ctx) {
     const legacy = await TokenSaverDocsPlugin();
+    const pluginDirectory = dirname(fileURLToPath(import.meta.url));
+    let skillDirectory = join(pluginDirectory,'skills','tokensaver-docs');
+    try { await stat(skillDirectory); }
+    catch { skillDirectory = resolve(pluginDirectory,'../../skills/tokensaver-docs'); await stat(skillDirectory); }
     // First-use tools must be available before the background MCP connection is ready.
     await ctx.tool.transform(editor => {
       const string = { type: 'string' }, boolean = { type: 'boolean' };
@@ -137,7 +247,84 @@ export default {
         name, description: legacy.tool[name].description,
         input: { type: 'object', properties, required, additionalProperties: false },
         options: { codemode: false },
-        execute: async input => ({ content: await execute(input) }),
+        execute: async (input, context) => {
+          const sessionID = context.sessionID;
+          const request = (sessionID && requestBySession.get(sessionID)) ?? { text: '' };
+          let selected = request.profile;
+          let callInput = input;
+          if (name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true)) {
+            if (!sessionID || !request.messageID)
+              return { content: choiceError('A real user request is required before image analysis.') };
+            selected ??= await configuredImageProfile();
+            if (selected && ((input.model && input.model !== selected.model) ||
+                (input.model_provider && input.model_provider !== selected.provider))) {
+              request.profile = selected;
+              request.pending = Boolean(request.conversion);
+              if (sessionID) requestBySession.set(sessionID,request);
+              return { content: choiceError('Use the selected image model or ask the user to select another model first.') };
+            }
+            request.profile = selected;
+            if (selected) callInput = { ...input, model_provider: selected.provider, model: selected.model };
+          }
+          if (name === 'tokensaver_docs_setup_model' && input.confirmed && request.defaultConfirmation) {
+            if ((input.model && input.model !== request.defaultConfirmation.model) ||
+                (input.provider && input.provider !== request.defaultConfirmation.provider))
+              return { content: choiceError('Use the model awaiting default-save confirmation.') };
+            callInput = { ...input, provider: request.defaultConfirmation.provider, model: request.defaultConfirmation.model };
+          }
+          const blocked = explicitChoiceError(name,callInput,{...request,profile:selected});
+          if (blocked) {
+            if (name === 'tokensaver_docs_prepare' && request.conversion) request.pending = true;
+            if (name === 'tokensaver_docs_setup_model' && request.conversion && input.save_as_default && input.confirmed &&
+                !request.defaultConfirmation && input.provider && input.model &&
+                matchesModelChoice(request.text,input.provider,input.model) &&
+                /and save this model as default[.!]?$/i.test(request.text) &&
+                !/\b(?:no|do not|don't|decline|cancel)\b|^(?:아니요|아니|취소)/i.test(request.text)) {
+              request.defaultConfirmation = { provider: input.provider, model: input.model };
+              request.pending = true;
+            }
+            if (parseResult(blocked)?.status === 'save_declined') {
+              request.pending = false;
+              delete request.defaultConfirmation;
+            }
+            if (sessionID) requestBySession.set(sessionID,request);
+            return { content: blocked };
+          }
+          const result = await execute(callInput);
+          const parsed = parseResult(result);
+          if (name === 'tokensaver_docs_prepare' && request.conversion) {
+            if (['ready','needs_review'].includes(parsed?.status)) {
+              request.pending = false;
+              request.completed = true;
+              delete request.profile;
+              delete request.defaultConfirmation;
+            } else {
+              request.pending = true;
+              request.completed = false;
+            }
+          }
+          if (name === 'tokensaver_docs_setup_model') {
+            if (parsed?.status === 'selection_ready') {
+              request.profile = parsed.profile;
+              request.pending = true;
+            } else if (parsed?.status === 'confirmation_required') {
+              request.defaultConfirmation = parsed.profile;
+              request.pending = true;
+            } else if (request.conversion && ['setup_required','choice_required'].includes(parsed?.status)) {
+              request.pending = true;
+            } else if (parsed?.status === 'configured' && parsed.model) {
+              request.profile = parsed.model;
+              request.pending = exactChoice(request.text) === 'select_model';
+              delete request.defaultConfirmation;
+            } else if (parsed?.status === 'deferred' || parsed?.status === 'save_declined') {
+              request.pending = false;
+              delete request.profile;
+              delete request.defaultConfirmation;
+            }
+          }
+          if (sessionID) requestBySession.set(sessionID,request);
+          return { content: result };
+        },
       });
       add('tokensaver_docs_prepare', {source:string,output:string,transcribe_images:boolean,
         image_mode:{type:'string',enum:['analyze','preserve','placeholder']},
@@ -147,10 +334,62 @@ export default {
         model:string,defer:boolean,save_as_default:boolean,confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_model.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
     });
+    const skillPath = join(skillDirectory,'SKILL.md');
+    const skillContent = await readFile(skillPath,'utf8');
+    await ctx.skill.transform(editor => editor.add({
+      id:'tokensaver-docs-opencode',name:'TokenSaver Docs for OpenCode',
+      description:'Convert local PDF, DOCX, XLSX, HTML, photos, images, screenshots or audio to Markdown. Use for file/folder-to-MD requests and relevant passage retrieval.',
+      path:skillPath,content:skillContent,
+    }));
+    await ctx.session.hook('context', event => {
+      const request = requestBySession.get(event.sessionID);
+      if (request?.conversion) {
+        if (request.completed) {
+          event.system.push({type:'text',text:completedConversionInstruction});
+          return;
+        }
+        event.system.push({type:'text',text:conversionInstruction});
+        if (request.pending && request.profile)
+          event.system.push({type:'text',text:selectedModelApprovalInstruction});
+      }
+    });
+    await ctx.session.hook('prompt', event => {
+      const sessionID = event.sessionID;
+      if (typeof sessionID !== 'string' || !sessionID.trim() ||
+          typeof event.messageID !== 'string' || !event.messageID.trim()) {
+        if (sessionID) requestBySession.delete(sessionID);
+        return;
+      }
+      const previous = requestBySession.get(sessionID);
+      const text = event.prompt?.text ?? '';
+      const conversion = isMarkdownConversionRequest(event.prompt);
+      const continuing = previous?.pending && !conversion && choiceReply(text,previous);
+      const active = conversion || continuing;
+      if (active) requestBySession.set(sessionID,{
+        text,messageID:event.messageID,conversion:true,pending:continuing,
+        profile:continuing ? previous?.profile : undefined,
+        defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
+      });
+      else requestBySession.delete(sessionID);
+    });
     await ctx.mcp.transform(editor => {
       editor.set('tokensaver-docs', { type: 'local', command: [executable, 'mcp'], codemode: false });
     });
     await ctx.tool.hook('execute.before', async event => {
+      // MCP read-only names come from mcp_server.py; conversion/settings use guarded native tools only.
+      const safeMcp = new Set(['list_free_models','outline_document','search_documents','read_document']);
+      const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
+      const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
+      if ((mcpName !== null && !safeMcp.has(mcpName)) ||
+          (nativeName !== null && !['prepare','setup_model','read',...safeMcp].includes(nativeName)))
+        throw new Error('Use the guarded native tokensaver_docs_prepare or tokensaver_docs_setup_model tools; duplicate conversion/settings routes are disabled.');
+      const request = requestBySession.get(event.sessionID);
+      if (request?.completed)
+        throw new Error('Preparation is complete; return the reported Markdown paths and status without further tool calls.');
+      const fileAccess = /(?:^|__|_)(?:read(?:_[a-z]+)?|glob|grep|search|webfetch|websearch|write|edit|shell|bash|execute)(?:_|$)/i.test(event.tool);
+      if (request?.conversion && fileAccess) {
+        throw new Error('Use tokensaver_docs_prepare first for this explicit conversion request; do not read, search, fetch, or write files directly.');
+      }
       await legacy['tool.execute.before']({ tool: event.tool }, { args: event.input });
     });
   },

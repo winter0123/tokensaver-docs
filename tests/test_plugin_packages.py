@@ -23,6 +23,26 @@ class PluginPackagingTests(unittest.TestCase):
             for platform in ('claude', 'codex', 'opencode'):
                 self.assertEqual((output / platform / 'bin/tokensaver-docs').read_bytes(), b'fixture')
                 self.assertIn('PDFium', (output/platform/'third-party/pdfium-license.txt').read_text())
+            # The installed skill must advertise the user's actual conversion goal.
+            for agent in ('claude', 'codex'):
+                text = (output / agent / 'skills/tokensaver-docs/SKILL.md').read_text(encoding='utf-8')
+                frontmatter = text.split('---', 2)[1]
+                self.assertIn('description:', frontmatter)
+                self.assertIn('Markdown', frontmatter)
+                self.assertIn('HTML', frontmatter)
+                self.assertIn('photo/image/screenshot', text)
+                self.assertIn('output` is a directory', text)
+                self.assertIn('ordinary image viewing or image questions', text)
+                self.assertEqual(text, (ROOT/'plugins/skill/SKILL.md').read_text(encoding='utf-8'))
+            opencode_skill=output/'opencode/skills/tokensaver-docs/SKILL.md'
+            self.assertEqual(opencode_skill.read_text(encoding='utf-8'),(ROOT/'plugins/skill/SKILL.md').read_text(encoding='utf-8'))
+            self.assertIn('skills',json.loads((output/'opencode/package.json').read_text())['files'])
+            local_skill=(ROOT/'skills/tokensaver-docs/SKILL.md').read_text(encoding='utf-8').split('---',2)[1]
+            self.assertIn('Markdown',local_skill)
+            self.assertIn('HTML',local_skill)
+            local_text=(ROOT/'skills/tokensaver-docs/SKILL.md').read_text(encoding='utf-8')
+            self.assertIn('사진/이미지/스크린샷',local_text)
+            self.assertIn('디렉터리다',local_text)
             claude = json.loads((output / 'claude/.mcp.json').read_text())
             codex = json.loads((output / 'codex/mcp.json').read_text())
             npm = json.loads((output / 'opencode/package.json').read_text())

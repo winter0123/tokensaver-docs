@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 — release candidate (not yet published)
+
+- Register the bundled TokenSaver Docs skill in OpenCode v2 and guard native conversion/model-choice flows against inferred user consent.
+- Restrict duplicate OpenCode MCP mutation routes while retaining read-only retrieval tools.
+- OpenCode 2.1.3 on macOS arm64 passed the documented session-prompt API validation; quoted CLI prompts and other hosts are not established by that result.
+- Audio remains available through the existing compatibility/runtime paths; native OpenCode v2 audio setup is not exposed by this candidate.
+- Codex and Claude candidate host validation, cross-platform host installation, and release CI remain pending or unresolved; see the release readiness report.
+
 ## 0.4.1
 
 - Fix GitHub Actions checkout shallow clone so release tag resolves in CI builds

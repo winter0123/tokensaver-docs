@@ -49,6 +49,8 @@ class InstallerTests(unittest.TestCase):
             (bundle/'bin'/exe).write_bytes(b'executable')
             (bundle/'index.js').write_text('export const TokenSaverDocsPlugin=()=>({});')
             (bundle/'package.json').write_text('{}')
+            (bundle/'skills/tokensaver-docs').mkdir(parents=True)
+            (bundle/'skills/tokensaver-docs/SKILL.md').write_text('---\nname: tokensaver-docs\ndescription: Convert files to Markdown.\n---\n')
             import platform,sys
             cpu={'amd64':'x64','x86_64':'x64','aarch64':'arm64','arm64':'arm64'}[platform.machine().lower()]
             from tokensaver_docs import __version__
@@ -63,6 +65,7 @@ class InstallerTests(unittest.TestCase):
                     first=install_bundle(bundle,'opencode',**args)
                     self.assertEqual(install_bundle(bundle,'opencode',**args),first)
                     self.assertIn('export { '+expected+' }', (root/'config/plugins/tokensaver-docs.js').read_text())
+                    self.assertEqual((first/'skills/tokensaver-docs/SKILL.md').read_text(), (bundle/'skills/tokensaver-docs/SKILL.md').read_text())
             shim=root/'config/plugins/tokensaver-docs.js';shim.write_text('// user plugin')
             with self.assertRaises(ValueError):install_bundle(bundle,'opencode',**args)
             self.assertEqual(shim.read_text(),'// user plugin')
