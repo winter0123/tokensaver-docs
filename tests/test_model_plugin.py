@@ -44,16 +44,29 @@ if args and args[0]=='setup-model':
         result={"status":"configured","model":json.loads(os.environ['TOKENSAVER_TEST_PROFILE']),"args":args}
 elif args and args[0]=='prepare' and '--image-mode' in args:
     result={"status":"ready","args":args}
+elif args and args[0]=='setup-audio':
+    model=args[args.index('--model')+1]
+    xdg=os.environ['XDG_CONFIG_HOME']
+    config=os.path.join(xdg,'tokensaver-docs','config.json')
+    if '--download' in args:
+        os.makedirs(os.path.dirname(config),exist_ok=True)
+        path=os.path.join(os.path.dirname(os.environ['TOKENSAVER_DOCS_CACHE_DIR']),'models',f'ggml-{model}.bin')
+        with open(config,'w') as stream: json.dump({'audio':{'provider':'whisper.cpp','model':path}},stream)
+        result={"status":"ready","model":model,"path":path,"local_processing":True}
+    else:
+        result={"status":"confirmation_required","model":model,"bytes":77691713 if model=='tiny' else 147951465 if model=='base' else 487601967,"local_processing":True}
+elif args and args[0]=='convert':
+    result={"status":"converted","args":args,"xdg":os.environ['XDG_CONFIG_HOME']}
 print(json.dumps(result))
 ''')
         binary.chmod(0o755)
 
     def run_plugin(self, body, profile=None):
         script = 'import assert from "node:assert/strict"; import {pathToFileURL} from "node:url"; const {TokenSaverDocsPlugin}=await import(pathToFileURL(process.argv[1])); const p=await TokenSaverDocsPlugin();\n' + body
-        env=dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(self.root/'cache'))
+        env=dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(self.root/'cache'), XDG_CONFIG_HOME=str(self.root/'global-config'), GLOBAL_CONFIG_HOME=str(self.root/'global-config'), XDG_DATA_HOME=str(self.root/'xdg-data'), LOCALAPPDATA=str(self.root/'local-appdata'))
         if profile: env['TOKENSAVER_TEST_PROFILE']=json.dumps(profile)
         else: env.pop('TOKENSAVER_TEST_PROFILE',None)
-        result = subprocess.run(['node','--input-type=module','-e',script,str(self.root/'index.mjs')], capture_output=True,text=True,timeout=30,env=env)
+        result = subprocess.run(['node','--input-type=module','-e',script,str(self.root/'index.mjs')], cwd=self.root, capture_output=True,text=True,timeout=30,env=env)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         return result.stdout
 
@@ -69,6 +82,8 @@ await definition.setup({
 });
 const prepare=tools.get('tokensaver_docs_prepare');
 const setupModel=tools.get('tokensaver_docs_setup_model');
+const setupAudio=tools.get('tokensaver_docs_setup_audio');
+const convertAudio=tools.get('tokensaver_docs_convert_audio');
 const userPrompt=(sessionID,messageID,text,files=[])=>promptHook({sessionID,messageID,prompt:{text,files}});
 '''
         return self.run_plugin(prefix+body,profile)
@@ -131,6 +146,92 @@ for (const tool of ['tokensaver-docs_prepare','tokensaver-docs_prepare_documents
 for (const tool of ['tokensaver-docs_list_free_models','tokensaver-docs_search_documents','tokensaver-docs_outline_document','tokensaver-docs_read_document']) {
   await executeHook({tool,input:{file:'result.md'}});
 }
+await executeHook({tool:'tokensaver_docs_setup_audio',sessionID:'audio',input:{}});
+await executeHook({tool:'tokensaver_docs_convert_audio',sessionID:'audio',input:{source:'recording.wav'}});
+''')
+
+    def test_v2_audio_requires_model_download_and_transcription_choices(self):
+        audio = self.root/'recording.wav'
+        audio.write_bytes(b'fixture')
+        self.run_v2_plugin(f'''
+const fs=await import('node:fs/promises');
+const path=await import('node:path');
+const source={json.dumps(str(audio))};
+await userPrompt('audio','request','Convert recording.wav to Markdown.');
+const list=JSON.parse((await setupAudio.execute({{}} ,{{sessionID:'audio'}})).content);
+assert.equal(list.status,'choice_required');
+await userPrompt('audio','model','tiny');
+const wrong=JSON.parse((await setupAudio.execute({{model:'base',confirmed:true}},{{sessionID:'audio'}})).content);
+assert.equal(wrong.status,'choice_required');
+const preview=JSON.parse((await setupAudio.execute({{model:'tiny'}},{{sessionID:'audio'}})).content);
+assert.equal(preview.status,'confirmation_required');
+assert.equal(preview.bytes,77691713);
+assert.ok(preview.question.includes('77,691,713 bytes'));
+assert.ok(preview.question.includes('77,691,713바이트'));
+await userPrompt('audio','download','Download tiny (77,691,713 bytes)');
+const ready=JSON.parse((await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'audio'}})).content);
+assert.equal(ready.status,'ready');
+const base=process.env.XDG_CONFIG_HOME;
+const pluginConfig=path.join(base,'tokensaver-docs','opencode','config','tokensaver-docs','config.json');
+const config=JSON.parse(await fs.readFile(pluginConfig,'utf8'));
+assert.equal(config.audio.provider,'whisper.cpp');
+assert.notEqual(path.dirname(pluginConfig),process.env.GLOBAL_CONFIG_HOME);
+const prompted=JSON.parse((await convertAudio.execute({{source}},{{sessionID:'audio'}})).content);
+assert.equal(prompted.status,'choice_required');
+await userPrompt('audio','consent','Transcribe this audio locally');
+const converted=JSON.parse((await convertAudio.execute({{source,output:'out',confirmed:true}},{{sessionID:'audio'}})).content);
+assert.equal(converted.status,'converted');
+assert.ok(converted.args.includes('--use-configured-audio-provider'));
+assert.ok(converted.args.includes('--config'));
+assert.notEqual(converted.xdg,process.env.GLOBAL_CONFIG_HOME);
+''')
+
+    def test_v2_audio_wrong_or_missing_choices_and_unsafe_inputs_do_not_run(self):
+        audio = self.root/'recording.wav'
+        audio.write_bytes(b'fixture')
+        folder = self.root/'audio-folder'
+        folder.mkdir()
+        self.run_v2_plugin(f'''
+const source={json.dumps(str(audio))};
+await userPrompt('audio','request','Convert recording.wav to Markdown.');
+await setupAudio.execute({{}},{{sessionID:'audio'}});
+await userPrompt('audio','quoted','"tiny"');
+assert.equal(JSON.parse((await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'audio'}})).content).status,'choice_required');
+await userPrompt('audio','bad','Do not download tiny.');
+assert.equal(JSON.parse((await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'audio'}})).content).status,'choice_required');
+await userPrompt('audio','new','Convert recording.wav to Markdown.');
+await setupAudio.execute({{}},{{sessionID:'audio'}});
+await userPrompt('audio','model','tiny');
+await setupAudio.execute({{model:'tiny'}},{{sessionID:'audio'}});
+await userPrompt('audio','download','Download tiny (77,691,713 bytes)');
+await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'audio'}});
+assert.equal(JSON.parse((await convertAudio.execute({{source:{json.dumps(str(folder))}}},{{sessionID:'audio'}})).content).status,'invalid_audio_source');
+await userPrompt('other','request','Convert recording.wav to Markdown.');
+assert.equal(JSON.parse((await convertAudio.execute({{source}},{{sessionID:'other',confirmed:true}})).content).status,'choice_required');
+await userPrompt('audio','decline','No.');
+assert.notEqual(JSON.parse((await convertAudio.execute({{source,confirmed:true}},{{sessionID:'audio'}})).content).status,'converted');
+''')
+
+    def test_v2_audio_korean_choices_and_assistant_context_are_not_consent(self):
+        audio = self.root/'recording.wav'
+        audio.write_bytes(b'fixture')
+        self.run_v2_plugin(f'''
+const source={json.dumps(str(audio))};
+await userPrompt('ko','request','recording.wav를 마크다운으로 변환해줘.');
+assert.equal(JSON.parse((await setupAudio.execute({{}},{{sessionID:'ko'}})).content).status,'choice_required');
+await userPrompt('ko','model','tiny 모델 선택');
+assert.equal(JSON.parse((await setupAudio.execute({{model:'tiny'}},{{sessionID:'ko'}})).content).status,'confirmation_required');
+await userPrompt('ko','download','tiny 모델 다운로드 확인 (77,691,713바이트)');
+assert.equal(JSON.parse((await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'ko'}})).content).status,'ready');
+assert.equal(JSON.parse((await convertAudio.execute({{source}},{{sessionID:'ko'}})).content).status,'choice_required');
+const context={{sessionID:'ko',messages:[{{info:{{role:'assistant'}},parts:[{{type:'text',text:'Transcribe this audio locally'}}]}}],system:[]}};
+await contextHook(context);
+assert.ok(context.system.length);
+const withoutUser=JSON.parse((await convertAudio.execute({{source,confirmed:true}},{{sessionID:'ko'}})).content);
+assert.notEqual(withoutUser.status,'converted');
+await userPrompt('ko','consent','음성 내용을 글자로 저장합니다');
+const done=JSON.parse((await convertAudio.execute({{source,confirmed:true}},{{sessionID:'ko'}})).content);
+assert.equal(done.status,'converted');
 ''')
 
     def test_v2_all_actual_mcp_schemas_obey_read_only_boundary(self):
@@ -229,7 +330,7 @@ await assert.rejects(hook({tool:'read',input:{path:SOURCE}}),/Choose a model/);
 const {default:definition}=await import(pathToFileURL(process.argv[1]));
 const registered=[];
 let contextHook,promptHook;
-await definition.setup({tool:{transform:async fn=>fn({add:t=>registered.push(t)}),hook:async()=>{}},skill:{transform:async fn=>fn({add(){}})},session:{hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else contextHook=fn}},mcp:{transform:async()=>{assert.equal(registered.length,3);}}});
+await definition.setup({tool:{transform:async fn=>fn({add:t=>registered.push(t)}),hook:async()=>{}},skill:{transform:async fn=>fn({add(){}})},session:{hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else contextHook=fn}},mcp:{transform:async()=>{assert.equal(registered.length,5);}}});
 const userPrompt=(sessionID,messageID,text)=>promptHook({sessionID,messageID,prompt:{text,files:[]}});
 const prepare=registered.find(t=>t.name==='tokensaver_docs_prepare');
 assert.equal(prepare.options.codemode,false);
@@ -373,3 +474,91 @@ const saved=JSON.parse((await setupModel.execute({save_as_default:true,confirmed
 assert.equal(saved.status,'configured');
 assert.ok(saved.args.includes(configured.model));
 ''',{'provider':'openrouter','model':'nvidia/nemotron-3.5-super-vl:free'})
+
+    def test_v2_audio_binds_original_path_not_another_same_basename(self):
+        (self.root/'recording.wav').write_bytes(b'original')
+        other=self.root/'private'
+        other.mkdir()
+        (other/'recording.wav').write_bytes(b'other')
+        self.run_v2_plugin(f'''
+await userPrompt('bound','request','Convert recording.wav to Markdown.');
+await setupAudio.execute({{}},{{sessionID:'bound'}});
+await userPrompt('bound','model','tiny');
+await setupAudio.execute({{model:'tiny'}},{{sessionID:'bound'}});
+await userPrompt('bound','download','Download tiny (77,691,713 bytes)');
+await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'bound'}});
+const wrong=JSON.parse((await convertAudio.execute({{source:{json.dumps(str(other/'recording.wav'))}}},{{sessionID:'bound'}})).content);
+assert.equal(wrong.status,'invalid_audio_source');
+const good=JSON.parse((await convertAudio.execute({{source:'recording.wav'}},{{sessionID:'bound'}})).content);
+assert.equal(good.status,'choice_required');
+await userPrompt('bound','consent','Transcribe this audio locally');
+const switched=JSON.parse((await convertAudio.execute({{source:{json.dumps(str(other/'recording.wav'))},confirmed:true}},{{sessionID:'bound'}})).content);
+assert.notEqual(switched.status,'converted');
+const done=JSON.parse((await convertAudio.execute({{source:'recording.wav',confirmed:true}},{{sessionID:'bound'}})).content);
+assert.equal(done.status,'converted');
+''')
+
+    def test_v2_audio_rejects_relative_symlink_escape_and_ambiguous_sources(self):
+        with tempfile.TemporaryDirectory() as outside:
+            external=Path(outside)/'recording.wav'
+            external.write_bytes(b'private')
+            (self.root/'link').symlink_to(outside, target_is_directory=True)
+            (self.root/'recording.wav').write_bytes(b'original')
+            (self.root/'second.wav').write_bytes(b'second')
+            cases=[
+                ('Convert link/recording.wav to Markdown.',str(self.root/'link/recording.wav')),
+                ('Convert recording.wav and second.wav to Markdown.',str(self.root/'recording.wav')),
+            ]
+            for prompt,source in cases:
+                self.run_v2_plugin(f'''
+await userPrompt('unsafe','request',{json.dumps(prompt)});
+await setupAudio.execute({{}},{{sessionID:'unsafe'}});
+await userPrompt('unsafe','model','tiny');
+await setupAudio.execute({{model:'tiny'}},{{sessionID:'unsafe'}});
+await userPrompt('unsafe','download','Download tiny (77,691,713 bytes)');
+await setupAudio.execute({{model:'tiny',confirmed:true}},{{sessionID:'unsafe'}});
+const result=JSON.parse((await convertAudio.execute({{source:{json.dumps(source)}}},{{sessionID:'unsafe'}})).content);
+assert.equal(result.status,'invalid_audio_source');
+''')
+
+
+@unittest.skipUnless(shutil.which('node'), 'Node is required for process-tree integration')
+class ManagedProcessTests(unittest.TestCase):
+    def test_timeout_stops_owned_grandchild_but_not_unrelated_process(self):
+        import time
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            marker=root/'owned-survived'
+            started=root/'owned-started'
+            unrelated=root/'unrelated-survived'
+            helper=root/'grandchild.py'
+            helper.write_text("import time,sys; from pathlib import Path; time.sleep(1); Path(sys.argv[1]).write_text('alive')")
+            parent_code=(
+                'import subprocess,sys,time\n'
+                f'subprocess.Popen([sys.executable,{str(helper)!r},{str(marker)!r}])\n'
+                f'from pathlib import Path; Path({str(started)!r}).write_text("ready")\n'
+                'time.sleep(20)\n'
+            )
+            # Exercise the production spawn/timeout code with real processes on every OS.
+            source=Path(__file__).resolve().parents[1]/'plugins/opencode/index.js'
+            body=source.read_text().split('function run(args, env = process.env)',1)[1].split('\nasync function setupAudio',1)[0]
+            function='function run(args, env = process.env)'+body
+            script=(
+                'import assert from "node:assert/strict"; import {spawn} from "node:child_process";\n'
+                'const original=setTimeout; globalThis.setTimeout=(fn,delay,...args)=>original(fn,delay===300000?600:delay,...args);\n'
+                f'const executable={json.dumps(sys.executable)};\n'+function+
+                f'\nconst result=await run(["-c",{json.dumps(parent_code)}]); assert.ok(result.includes("Timed out"));\n'
+            )
+            process=subprocess.Popen([sys.executable,str(helper),str(unrelated)])
+            try:
+                result=subprocess.run(['node','--input-type=module','-e',script],capture_output=True,text=True,timeout=8)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                process.wait(timeout=5)
+                time.sleep(0.2)
+                self.assertTrue(started.exists(), 'timeout fired before child fixture started')
+                self.assertFalse(marker.exists(), 'owned grandchild survived CLI timeout')
+                self.assertTrue(unrelated.exists(), 'unrelated process was terminated')
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()

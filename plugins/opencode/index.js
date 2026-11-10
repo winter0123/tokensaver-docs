@@ -3,8 +3,8 @@
 import { tool } from '@opencode-ai/plugin';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { join, dirname, extname, resolve } from 'node:path';
-import { readFile, stat } from 'node:fs/promises';
+import { join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
+import { readFile, stat, lstat, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 
@@ -13,6 +13,7 @@ const executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.
 const requestBySession = new Map();
 
 const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. Follow the tool’s setup and image-choice questions: without an actual user choice, stop and ask; never infer a model, defer, image mode, or provider consent. For conversion-only, report the returned Markdown paths and status without rereading the result.';
+const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
 const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current genuine user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze, using that selected model. Do not ask the user to select or repeat the provider/model. This instruction does not grant consent; the tool accepts only explicit approval in the current real user message.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
 
@@ -25,6 +26,50 @@ function isMarkdownConversionRequest(prompt) {
   const convert = /\b(?:convert|turn|transform|export)\b|변환|바꿔|정리해/i.test(text);
   return source && target && convert && !alternative;
 }
+
+function isAudioMarkdownRequest(prompt) {
+  const text = prompt?.text ?? '';
+  const files = prompt?.files ?? [];
+  const source = /\.(?:wav|mp3|m4a|ogg|flac|aac|mp4)\b/i.test(text) || files.some(file => /\.(?:wav|mp3|m4a|ogg|flac|aac|mp4)$/i.test(typeof file === 'string' ? file : file?.name ?? file?.path ?? ''));
+  return source && /\b(?:convert|transcribe|turn|export)\b|변환|음성을\s*글자로|음성.*글자/i.test(text) && /\b(?:to|into|as)\s+(?:a\s+)?(?:markdown|md)\b|(?:마크다운|markdown)(?:으로|로)?|md로/i.test(text);
+}
+
+function audioChoice(text) {
+  const value = text.trim().toLowerCase().replace(/[.!?]$/, '');
+  const choices = {
+    audio_tiny: ['tiny','select tiny','use tiny','tiny 모델 선택','tiny 모델을 선택합니다'],
+    audio_base: ['base','select base','use base','base 모델 선택','base 모델을 선택합니다'],
+    audio_small: ['small','select small','use small','small 모델 선택','small 모델을 선택합니다'],
+    audio_download_tiny: ['download tiny (77,691,713 bytes)','tiny 모델 다운로드 확인 (77,691,713바이트)'],
+    audio_download_base: ['download base (147,951,465 bytes)','base 모델 다운로드 확인 (147,951,465바이트)'],
+    audio_download_small: ['download small (487,601,967 bytes)','small 모델 다운로드 확인 (487,601,967바이트)'],
+    audio_transcribe: ['transcribe this audio locally','transcribe locally','이 음성을 로컬에서 글자로 바꿉니다','음성 내용을 글자로 저장합니다'],
+    audio_decline: ['no','cancel','do not transcribe','아니요','취소','음성 내용을 글자로 바꾸지 않습니다'],
+  };
+  for (const [choice, values] of Object.entries(choices)) if (values.includes(value)) return choice;
+  return null;
+}
+
+function audioChoiceForStage(choice, stage) {
+  return stage === 'model' ? /^audio_(?:tiny|base|small)$/.test(choice ?? '') :
+    stage === 'download' ? /^audio_download_(?:tiny|base|small)$/.test(choice ?? '') :
+    stage === 'consent' ? ['audio_transcribe','audio_decline'].includes(choice) : false;
+}
+
+function audioDataRoot() {
+  if (process.env.XDG_CONFIG_HOME) return join(process.env.XDG_CONFIG_HOME,'tokensaver-docs','opencode');
+  const base = process.platform === 'win32' ? (process.env.LOCALAPPDATA || join(homedir(),'AppData','Local')) :
+    process.platform === 'darwin' ? join(homedir(),'Library','Application Support') :
+    (process.env.XDG_DATA_HOME || join(homedir(),'.local','share'));
+  return join(base,'tokensaver-docs','opencode');
+}
+
+function audioEnvironment() {
+  const root = audioDataRoot();
+  return { ...process.env, XDG_CONFIG_HOME: join(root,'config'), TOKENSAVER_DOCS_CACHE_DIR: process.env.TOKENSAVER_DOCS_CACHE_DIR || join(root,'cache') };
+}
+
+function audioConfigPath() { return join(audioDataRoot(),'config','tokensaver-docs','config.json'); }
 
 function exactChoice(text) {
   const value = text.trim().toLowerCase().replace(/[.!]$/, '');
@@ -44,6 +89,7 @@ function exactChoice(text) {
 }
 
 function choiceReply(text, previous) {
+  if (previous?.audio) return audioChoiceForStage(audioChoice(text), previous.audioStage);
   const choice = exactChoice(text);
   return Boolean(choice && (choice !== 'confirm' || previous?.defaultConfirmation)) ||
     /^(?:i (?:choose|select) )?(?:openrouter|codex|claude) \S+(?: and save this model as default)?[.!]?$/i.test(text.trim());
@@ -116,15 +162,23 @@ function explicitChoiceError(name, input, request) {
   return null;
 }
 
-function run(args) {
+function run(args, env = process.env) {
   return new Promise((resolve) => {
-    const child = spawn(executable, args, { shell: false, windowsHide: true });
+    const child = spawn(executable, args, { shell: false, windowsHide: true, env, detached: process.platform !== 'win32' });
     let output = '';
     let truncated = false;
     let timedOut = false;
-    const analyzing = args.includes('--transcribe-images') || args[args.indexOf('--image-mode') + 1] === 'analyze';
+    const analyzing = args.includes('--transcribe-images') || args[args.indexOf('--image-mode') + 1] === 'analyze' || args.includes('--use-configured-audio-provider');
     const timeout = analyzing ? 7200000 : 300000;
-    const timer = setTimeout(() => { timedOut = true; child.kill(); }, timeout);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (process.platform === 'win32') {
+        const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], {shell:false,windowsHide:true,stdio:'ignore'});
+        killer.on('error', () => child.kill());
+      } else {
+        try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') child.kill('SIGKILL'); }
+      }
+    }, timeout);
     const append = chunk => {
       const text = chunk.toString();
       if (output.length + text.length > 6500) truncated = true;
@@ -135,14 +189,107 @@ function run(args) {
     child.on('error', error => { clearTimeout(timer); resolve(`Unable to start bundled tokensaver-docs: ${error.message}`); });
     child.on('close', code => {
       clearTimeout(timer);
-      if (['prepare','setup-model'].includes(args[0]) && !truncated && !timedOut) {
+      if (['prepare','setup-model','setup-audio'].includes(args[0]) && !truncated && !timedOut) {
         try {
           if (typeof JSON.parse(output).status === 'string') return resolve(output);
         } catch { /* retain process errors below */ }
       }
-      resolve(output + (truncated ? '\n[Output truncated]' : '') + (timedOut ? '\n[Timed out; completed image results remain cached. Retry the same request to resume.]' : code ? `\n[Exit code: ${code}]` : ''));
+      resolve(output + (truncated ? '\n[Output truncated]' : '') + (timedOut ? '\n[Timed out; completed results remain cached. Retry the same request to resume.]' : code ? `\n[Exit code: ${code}]` : ''));
     });
   });
+}
+
+async function setupAudio(request, input) {
+  if (!input.model) {
+    request.pending = true;
+    return choiceError('Ask the user to choose one local multilingual Whisper model: tiny, base, or small (tiny/base/small 모델 중 하나를 선택해 주세요).');
+  }
+  const modelChoice = audioChoice(request.text);
+  if (request.audioStage === 'model') {
+    if (input.confirmed || modelChoice !== `audio_${input.model}`)
+      return choiceError('Ask the user to choose tiny, base, or small; do not download yet.');
+    const result = await run(['setup-audio','--model',input.model],audioEnvironment());
+    const preview = parseResult(result);
+    if (preview?.status !== 'confirmation_required') return result;
+    request.audioStage = 'download';
+    request.audioModel = input.model;
+    request.pending = true;
+    return JSON.stringify({...preview,question:`Download ${input.model} (${preview.bytes.toLocaleString('en-US')} bytes) for local transcription? Reply exactly: “Download ${input.model} (${preview.bytes.toLocaleString('en-US')} bytes)” or “No”. / ${input.model} 모델(${preview.bytes.toLocaleString('en-US')}바이트)을 내려받을까요? “${input.model} 모델 다운로드 확인 (${preview.bytes.toLocaleString('en-US')}바이트)” 또는 “아니요”라고 답해 주세요.`});
+  }
+  if (request.audioStage !== 'download' || input.model !== request.audioModel || input.confirmed !== true ||
+      modelChoice !== `audio_download_${request.audioModel}`)
+    return choiceError('Ask for a separate confirmation of the displayed model download size before downloading.');
+  request.audioStage = 'setup_failed';
+  request.pending = false;
+  const result = await run(['setup-audio','--model',request.audioModel,'--download'],audioEnvironment());
+  const ready = parseResult(result);
+  if (ready?.status !== 'ready' || ready.local_processing !== true || !ready.path) return result;
+  request.audioModelPath = ready.path;
+  request.audioStage = 'transcribe';
+  request.pending = true;
+  return result;
+}
+
+async function requestedAudioSource(prompt) {
+  const pattern = /"([^"\n]+\.(?:wav|mp3|m4a|ogg|flac|aac|mp4))"|'([^'\n]+\.(?:wav|mp3|m4a|ogg|flac|aac|mp4))'|`([^`\n]+\.(?:wav|mp3|m4a|ogg|flac|aac|mp4))`|([^\s"'`]+?\.(?:wav|mp3|m4a|ogg|flac|aac|mp4))(?=$|[\s.,!?을를이가])/gi;
+  const names = [...(prompt.text ?? '').matchAll(pattern)].map(match => match.slice(1).find(Boolean));
+  for (const file of prompt.files ?? []) {
+    const name = typeof file === 'string' ? file : file?.path ?? file?.name;
+    if (typeof name === 'string' && /\.(?:wav|mp3|m4a|ogg|flac|aac|mp4)$/i.test(name)) names.push(name);
+  }
+  const paths = [...new Set(names.map(name => resolve(name)))];
+  if (paths.length !== 1) return null;
+  try {
+    const path = paths[0];
+    const canonical = await realpath(path);
+    const root = await realpath(process.cwd());
+    const outside = relative(root, canonical);
+    if (names.some(name => !isAbsolute(name)) && (outside === '..' || outside.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(outside))) return null;
+    return {path, canonical};
+  } catch { return null; }
+}
+
+async function convertAudio(request, input) {
+  if (!request.audio || !request.messageID || !request.audioModelPath || !['transcribe','consent'].includes(request.audioStage))
+    return choiceError('A current user request and confirmed local Whisper setup are required.');
+  const source = resolve(input.source);
+  const extension = extname(source).toLowerCase();
+  if (!['.wav','.mp3','.m4a','.ogg','.flac','.aac','.mp4'].includes(extension))
+    return JSON.stringify({status:'invalid_audio_source',question:'Provide one supported audio file (.wav, .mp3, .m4a, .ogg, .flac, .aac, or audio .mp4). Folders and mixed inputs are not accepted.'});
+  if (!request.audioRequestedSource)
+    return JSON.stringify({status:'invalid_audio_source',question:'Ask the user for the exact audio file path; do not substitute another file with the same name.'});
+  try {
+    const info = await lstat(source);
+    if (!info.isFile() || info.isSymbolicLink() || await realpath(source) !== request.audioRequestedSource.canonical) return JSON.stringify({status:'invalid_audio_source',question:'Only the originally requested regular, non-symlink audio file is accepted.'});
+  } catch { return JSON.stringify({status:'invalid_audio_source',question:'The named local audio file is unavailable.'}); }
+  if (request.audioStage === 'transcribe') {
+    if (input.confirmed) return choiceError('Ask separately for explicit local transcription consent before converting.');
+    request.audioSource = source;
+    request.audioStage = 'consent';
+    request.pending = true;
+    return choiceError(`Ask: “Transcribe this audio locally” to use only the configured whisper.cpp profile for ${source.split(/[\\/]/).at(-1)}. This does not send audio externally. / ${source.split(/[\\/]/).at(-1)}의 음성 내용을 로컬에서 글자로 저장할까요? “음성 내용을 글자로 저장합니다” 또는 “음성 내용을 글자로 바꾸지 않습니다”라고 답해 주세요.`);
+  }
+  const choice = audioChoice(request.text);
+  if (choice === 'audio_decline') {
+    request.audioDeclined = true;
+    request.pending = false;
+    return JSON.stringify({status:'consent_declined',next:'The user declined local audio transcription. Stop without converting.'});
+  }
+  if (input.confirmed !== true || choice !== 'audio_transcribe' || request.audioSource !== source)
+    return choiceError('Ask for the separate displayed local-transcription choice; do not infer consent from the conversion request.');
+  try {
+    const profiles = JSON.parse(await readFile(audioConfigPath(),'utf8'));
+    if (Object.keys(profiles).some(key => key !== 'audio') || profiles.audio?.provider !== 'whisper.cpp' || profiles.audio.model !== request.audioModelPath)
+      return JSON.stringify({status:'local_audio_profile_required',next:'Only the selected local whisper.cpp profile is allowed; stop without conversion.'});
+  } catch { return JSON.stringify({status:'local_audio_profile_required',next:'The selected local whisper.cpp profile is unavailable; stop without conversion.'}); }
+  request.audioStage = 'conversion_failed';
+  request.pending = false;
+  const result = await run(['convert',source,'--output',input.output ?? 'converted','--config',audioConfigPath(),'--use-configured-audio-provider'],audioEnvironment());
+  if (!result.startsWith('Unable to start bundled tokensaver-docs:') && !result.includes('[Exit code:') && !result.includes('[Timed out;')) {
+    request.audioStage = 'done';
+    request.completed = true;
+  }
+  return result;
 }
 
 export const TokenSaverDocsPlugin = async () => ({
@@ -184,9 +331,14 @@ export const TokenSaverDocsPlugin = async () => ({
       execute: ({provider,model,defer,save_as_default,confirmed}) => run(['setup-model',...(provider ? ['--provider',provider] : []),...(model ? ['--model',model] : []),...(defer ? ['--defer'] : []),...(save_as_default ? ['--save-as-default'] : []),...(confirmed ? ['--confirmed'] : [])]),
     }),
     tokensaver_docs_setup_audio: tool({
-      description: 'Prepare a user-selected multilingual local audio model. Confirm the size with the user before downloading.',
-      args: { model: tool.schema.enum(['tiny','base','small']), confirmed: tool.schema.boolean() },
-      execute: ({model,confirmed}) => run(['setup-audio','--model',model,...(confirmed ? ['--download'] : [])]),
+      description: 'Offer tiny, base, and small local Whisper models. Preview the selected model size first, then download only after a separate explicit user confirmation.',
+      args: { model: tool.schema.enum(['tiny','base','small']).optional(), confirmed: tool.schema.boolean().optional() },
+      execute: ({model,confirmed}) => model ? run(['setup-audio','--model',model,...(confirmed ? ['--download'] : [])],audioEnvironment()) : choiceError('Choose tiny, base, or small.'),
+    }),
+    tokensaver_docs_convert_audio: tool({
+      description: 'Convert one user-named local audio file using only the configured local whisper.cpp profile, after separate explicit transcription consent. Folders and external profiles are blocked.',
+      args: { source: tool.schema.string(), output: tool.schema.string().optional(), confirmed: tool.schema.boolean().optional() },
+      execute: ({source,output}) => run(['convert',source,'--output',output ?? 'converted','--config',audioConfigPath(),'--use-configured-audio-provider'],audioEnvironment()),
     }),
     tokensaver_docs_context: tool({
       description: 'Reuse converted files and return bounded original evidence, source lines and pending items in one call.',
@@ -250,6 +402,18 @@ export default {
         execute: async (input, context) => {
           const sessionID = context.sessionID;
           const request = (sessionID && requestBySession.get(sessionID)) ?? { text: '' };
+          if (name === 'tokensaver_docs_setup_audio') {
+            if (request.audioDeclined || request.completed)
+              return { content: JSON.stringify({status:'stopped',next:'Do not make further audio setup calls for this request.'}) };
+            if (!sessionID || !request.audio || !request.messageID)
+              return { content: choiceError('A current explicit audio-to-Markdown request is required before local model setup.') };
+            return { content: await setupAudio(request,input) };
+          }
+          if (name === 'tokensaver_docs_convert_audio') {
+            if (request.audioDeclined || request.completed)
+              return { content: JSON.stringify({status:'consent_declined',next:'Stop without further audio tools.'}) };
+            return { content: await convertAudio(request,input) };
+          }
           let selected = request.profile;
           let callInput = input;
           if (name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true)) {
@@ -332,6 +496,8 @@ export default {
         allow_unverified_model:boolean}, ['source'], legacy.tool.tokensaver_docs_prepare.execute);
       add('tokensaver_docs_setup_model', {provider:{type:'string',enum:['openrouter','codex','claude']},
         model:string,defer:boolean,save_as_default:boolean,confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_model.execute);
+      add('tokensaver_docs_setup_audio', {model:{type:'string',enum:['tiny','base','small']},confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_audio.execute);
+      add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
     });
     const skillPath = join(skillDirectory,'SKILL.md');
@@ -344,16 +510,20 @@ export default {
     await ctx.session.hook('context', event => {
       const request = requestBySession.get(event.sessionID);
       if (request?.conversion) {
+        if (request.audioDeclined) {
+          event.system.push({type:'text',text:'The user declined local audio transcription. Stop without converting or invoking audio tools.'});
+          return;
+        }
         if (request.completed) {
           event.system.push({type:'text',text:completedConversionInstruction});
           return;
         }
-        event.system.push({type:'text',text:conversionInstruction});
+        event.system.push({type:'text',text:request.audio ? audioConversionInstruction : conversionInstruction});
         if (request.pending && request.profile)
           event.system.push({type:'text',text:selectedModelApprovalInstruction});
       }
     });
-    await ctx.session.hook('prompt', event => {
+    await ctx.session.hook('prompt', async event => {
       const sessionID = event.sessionID;
       if (typeof sessionID !== 'string' || !sessionID.trim() ||
           typeof event.messageID !== 'string' || !event.messageID.trim()) {
@@ -362,11 +532,20 @@ export default {
       }
       const previous = requestBySession.get(sessionID);
       const text = event.prompt?.text ?? '';
-      const conversion = isMarkdownConversionRequest(event.prompt);
+      const audio = isAudioMarkdownRequest(event.prompt);
+      const conversion = audio || isMarkdownConversionRequest(event.prompt);
       const continuing = previous?.pending && !conversion && choiceReply(text,previous);
       const active = conversion || continuing;
       if (active) requestBySession.set(sessionID,{
         text,messageID:event.messageID,conversion:true,pending:continuing,
+        audio:audio || Boolean(continuing && previous?.audio),
+        audioStage:audio ? 'model' : continuing ? previous?.audioStage : undefined,
+        audioModel:continuing ? previous?.audioModel : undefined,
+        audioModelPath:continuing ? previous?.audioModelPath : undefined,
+        audioSource:continuing ? previous?.audioSource : undefined,
+        audioDeclined:continuing ? previous?.audioDeclined : undefined,
+        audioRequestedSource:audio ? await requestedAudioSource(event.prompt) : continuing ? previous?.audioRequestedSource : undefined,
+        files:event.prompt?.files ?? [],
         profile:continuing ? previous?.profile : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
@@ -381,8 +560,8 @@ export default {
       const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
       const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
       if ((mcpName !== null && !safeMcp.has(mcpName)) ||
-          (nativeName !== null && !['prepare','setup_model','read',...safeMcp].includes(nativeName)))
-        throw new Error('Use the guarded native tokensaver_docs_prepare or tokensaver_docs_setup_model tools; duplicate conversion/settings routes are disabled.');
+          (nativeName !== null && !['prepare','setup_model','setup_audio','convert_audio','read',...safeMcp].includes(nativeName)))
+        throw new Error('Use guarded native tokensaver_docs_prepare, tokensaver_docs_setup_audio, or tokensaver_docs_convert_audio; duplicate MCP conversion/settings routes are disabled.');
       const request = requestBySession.get(event.sessionID);
       if (request?.completed)
         throw new Error('Preparation is complete; return the reported Markdown paths and status without further tool calls.');
