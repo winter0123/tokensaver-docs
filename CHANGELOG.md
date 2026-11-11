@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.4.2 — release candidate (not yet published)
+## 0.4.2 — preview
 
 - Register the bundled TokenSaver Docs skill in OpenCode v2 and guard native conversion/model-choice flows against inferred user consent.
 - Restrict duplicate OpenCode MCP mutation routes while retaining read-only retrieval tools.
-- OpenCode 2.1.3 on macOS arm64 passed the documented session-prompt API validation; quoted CLI prompts and other hosts are not established by that result.
-- Audio remains available through the existing compatibility/runtime paths; native OpenCode v2 audio setup is not exposed by this candidate.
-- Codex and Claude candidate host validation, cross-platform host installation, and release CI remain pending or unresolved; see the release readiness report.
+- Preserve an OpenCode conversion request when the assistant asks for image approval before calling the preparation tool.
+- Fix portable Codex MCP executable paths so installed plugins expose their bundled tools.
+- Restore guarded local OpenCode audio setup with separate model-download and speech-to-text choices, exact source-file checks, and process-tree cleanup on timeout.
+- Actual macOS arm64 checks confirmed Codex tool registration and Claude Code/OpenCode HTML conversion. Image and audio host coverage is limited; Windows and Intel Mac real-host behavior remains experimental.
 
 ## 0.4.1
 

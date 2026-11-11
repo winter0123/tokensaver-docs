@@ -537,7 +537,7 @@ export default {
       const continuing = previous?.pending && !conversion && choiceReply(text,previous);
       const active = conversion || continuing;
       if (active) requestBySession.set(sessionID,{
-        text,messageID:event.messageID,conversion:true,pending:continuing,
+        text,messageID:event.messageID,conversion:true,pending:continuing || conversion,
         audio:audio || Boolean(continuing && previous?.audio),
         audioStage:audio ? 'model' : continuing ? previous?.audioStage : undefined,
         audioModel:continuing ? previous?.audioModel : undefined,

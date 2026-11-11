@@ -406,6 +406,41 @@ for (const [session,approval] of [['english','Yes, analyze it.'],['korean','네,
 }
 ''',{'provider':'openrouter','model':'nvidia/nemotron-3.5-super-vl:free'})
 
+    def test_v2_approval_continues_after_assistant_asks_before_prepare(self):
+        self.run_v2_plugin('''
+const session='plain-question';
+await userPrompt(session,'request','Convert photo.png to Markdown.');
+const question={sessionID:session,messages:[
+  {info:{role:'user'},parts:[{type:'text',text:'Convert photo.png to Markdown.'}]},
+  {info:{role:'assistant'},parts:[{type:'text',text:'May I analyze this image? Reply with the approval label.'}]},
+],system:[]};
+await userPrompt(session,'approval','이미지·글자·설명 넣기');
+await contextHook(question);
+const result=JSON.parse((await prepare.execute({source:'photo.png',image_mode:'analyze'},{sessionID:session})).content);
+assert.equal(result.status,'ready');
+assert.ok(result.args.includes('nvidia/nemotron-3.5-super-vl:free'));
+''',{'provider':'openrouter','model':'nvidia/nemotron-3.5-super-vl:free'})
+
+    def test_v2_direct_preserve_and_defer_choices_do_not_need_prepare_first(self):
+        self.run_v2_plugin('''
+const conversion='Convert photo.png to Markdown.';
+await userPrompt('preserve','preserve-request',conversion);
+await userPrompt('preserve','preserve-choice','images only');
+const preserved=JSON.parse((await prepare.execute({source:'photo.png',image_mode:'preserve'},{sessionID:'preserve'})).content);
+assert.equal(preserved.status,'ready');
+assert.ok(preserved.args.includes('preserve'));
+
+await userPrompt('defer','defer-request',conversion);
+await userPrompt('defer','defer-choice','later');
+const deferred=JSON.parse((await setupModel.execute({defer:true},{sessionID:'defer'})).content);
+assert.equal(deferred.status,'deferred');
+
+await userPrompt('unconfigured','request',conversion);
+await userPrompt('unconfigured','approval','이미지·글자·설명 넣기');
+const missingModel=JSON.parse((await prepare.execute({source:'photo.png',image_mode:'analyze'},{sessionID:'unconfigured'})).content);
+assert.equal(missingModel.status,'choice_required');
+''')
+
     def test_v2_one_time_model_choice_is_session_scoped_and_reused_after_approval(self):
         self.run_v2_plugin('''
 const picked='nvidia/nemotron-3.5-super-vl:free';
