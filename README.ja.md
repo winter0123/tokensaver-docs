@@ -3,9 +3,9 @@
 <p align="center">Created by <a href="https://github.com/winter0123">winter0123</a> · <a href="https://github.com/winter0123/tokensaver-docs">Original repository</a> · <a href="AUTHORS.md">Authors</a> · <a href="LICENSE">MIT License</a></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
@@ -17,7 +17,7 @@ OS ボタンを押すと直接ダウンロードされ、インストーラで�
 
 <a id="download"></a>
 
-## ダウンロードとインストール — v0.4.1
+## ダウンロードとインストール — v0.4.2
 
 上のボタンを押すと ZIP が直接ダウンロードされます。すべて展開してインストーラを実行し、**1 Claude Code / 2 Codex / 3 OpenCode** から番号を選びます。Python の別途インストールは不要です。
 
@@ -34,9 +34,9 @@ macOS arm64 の統合インストールはローカルで確認済みです。Wi
 
 | OS | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
-| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-opencode-darwin-arm64.zip) |
-| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-opencode-darwin-x64.zip) |
-| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.1/tokensaver-docs-opencode-win32-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
 

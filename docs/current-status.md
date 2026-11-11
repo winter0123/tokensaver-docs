@@ -1,6 +1,14 @@
-# TokenSaver Docs — local preview status
+# TokenSaver Docs — preview status
 
-Source publication preparation: branded as TokenSaver Docs; source requires Pillow 13 or newer after the dependency audit. Older local preview binaries predate that dependency change and are not public releases.
+## v0.4.2 preview — 2026-11-11
+
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.2). Fixes Codex portable MCP executable paths and OpenCode approval continuation when the assistant asks before using preparation.
+- 237 local tests passed (7 environment skips); dependency audit found no known vulnerabilities. Final source CI passed on Linux, Windows and macOS with Python 3.11/3.13. [Native release CI](https://github.com/winter0123/tokensaver-docs/actions/runs/42935723141) passed on Windows x64 and both Mac CPU targets; all twelve uploaded ZIP digests match the checksum list.
+- macOS arm64: Codex CLI exposed all ten tools with the corrected command; Claude Code and OpenCode converted HTML. Both produced approved image Markdown with extracted text, a description and a linked image. Their full image conversations remain incomplete because of a later host budget/time limit.
+- OpenCode can still attempt blocked follow-up reads and may use its default output directory if the model omits a requested one. Stop a stalled turn after output creation and use the generated file.
+- Windows/Intel Mac real-host behavior, complete Codex image flows, live local audio conversations and universal automatic routing remain unverified. This is a preview, and official directory listings remain separate.
+
+Earlier sections are historical validation records; their paths and limitations apply to the versions named there.
 
 ## Natural-language conversion check — 2026-11-09
 
