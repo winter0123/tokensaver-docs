@@ -51,7 +51,8 @@ class WindowsReleaseInstallerTests(unittest.TestCase):
             root=Path(temp)
             files={'bin/tokensaver-docs.exe':Path(os.environ['TOKENSAVER_DOCS_STANDALONE']).read_bytes(),
                    'platform.json':json.dumps({'agent':'opencode','os':'win32','cpu':'x64','version':__version__}).encode(),
-                   'index.js':b'export const TokenSaverDocsPlugin=()=>({});', 'package.json':b'{}'}
+                   'index.js':b'export const TokenSaverDocsPlugin=()=>({});', 'package.json':b'{}',
+                   'skills/tokensaver-docs/SKILL.md':(ROOT/'plugins/skill/SKILL.md').read_bytes()}
             checks={name:hashlib.sha256(data).hexdigest() for name,data in files.items()}
             archive=root/'tokensaver-docs-opencode-win32-x64.zip'
             with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as bundle:

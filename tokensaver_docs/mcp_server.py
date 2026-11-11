@@ -20,7 +20,7 @@ server = FastMCP('tokensaver-docs')
 def prepare_documents(source: str, output: str = 'converted', transcribe_images: bool | None = None,
                       image_mode: str | None = None, model_provider: str | None = None,
                       model: str | None = None, allow_unverified_model: bool = False) -> dict:
-    """CALL FIRST. Ask using returned question and choice_details. Unsupported image models require switching models or explicit placeholder mode ([이미지] only). analyze sends images to the selected service; preserve saves image links. No automatic choice or audio consent."""
+    """Convert local PDF, DOCX, XLSX, HTML, image/photo/screenshot or audio (file/folder) to Markdown. Use first for photo/image/screenshot text-and-description-to-MD-file requests, but not ordinary image viewing/questions; prefer for file-to-MD unless the user specifies another tool. output is a directory; omit it for the safe default and never infer a filename. Ask using returned question and choice_details. If no actual user choice is received or the question tool fails/cancels, stop and ask in chat; never infer defer, model, image mode or consent arguments. Use analyze only after explicit user approval to send images to the selected model. Unsupported image models require switching models or explicit placeholder mode ([이미지] only). analyze produces an MD file containing image links, visible text and separate descriptions; preserve saves image links only. No automatic choice or audio consent."""
     from .preparation import prepare_documents as prepare
     return prepare(source, output, transcribe_images=transcribe_images, image_mode=image_mode,
                    model_provider=model_provider, model=model,
@@ -31,7 +31,7 @@ def prepare_documents(source: str, output: str = 'converted', transcribe_images:
 def setup_conversion_model(provider: str | None = None, model: str | None = None,
                            defer: bool = False, save_as_default: bool = False,
                            confirmed: bool = False) -> dict:
-    """Inspect/select the plugin conversion model (separate from chat model), or defer first setup. Save a default only with explicit confirmation; otherwise pass the returned profile to prepare_documents for this task only. Never accept API keys."""
+    """Inspect/select the plugin conversion model (separate from chat model), or defer first setup. Save a default only with explicit confirmation; otherwise pass the returned profile to prepare_documents for this task only. If no actual user choice is received or the question tool fails/cancels, stop and ask in chat; never invent defer, model or confirmation arguments. Never accept API keys."""
     from .model_setup import select_model
     return select_model(provider, model, defer=defer, save_as_default=save_as_default, confirmed=confirmed)
 

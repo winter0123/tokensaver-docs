@@ -46,6 +46,7 @@ def install_bundle(bundle, agent, *, destination=None, config_dir=None, register
     if agent=='opencode':
         package=json.loads((bundle/'package.json').read_text())
         if package.get('dependencies'):raise ValueError('OpenCode용 번들 빌드가 필요합니다. --bundle-opencode로 패키징하세요.')
+        if 'skills/tokensaver-docs/SKILL.md' not in checks:raise ValueError('OpenCode 패키지에 TokenSaver Docs 스킬이 없습니다.')
     identity=hashlib.sha256(json.dumps(checks,sort_keys=True).encode()).hexdigest()[:16]
     parent=Path(destination) if destination is not None else cache_root().parent/'plugins'/agent
     if parent.is_symlink():raise ValueError('설치 경로 심볼릭 링크는 허용하지 않습니다.')

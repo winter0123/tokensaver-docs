@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2 — preview
+
+- Register the bundled TokenSaver Docs skill in OpenCode v2 and guard native conversion/model-choice flows against inferred user consent.
+- Restrict duplicate OpenCode MCP mutation routes while retaining read-only retrieval tools.
+- Preserve an OpenCode conversion request when the assistant asks for image approval before calling the preparation tool.
+- Fix portable Codex MCP executable paths so installed plugins expose their bundled tools.
+- Restore guarded local OpenCode audio setup with separate model-download and speech-to-text choices, exact source-file checks, and process-tree cleanup on timeout.
+- Actual macOS arm64 checks confirmed Codex tool registration and Claude Code/OpenCode HTML conversion. Image and audio host coverage is limited; Windows and Intel Mac real-host behavior remains experimental.
+
 ## 0.4.1
 
 - Fix GitHub Actions checkout shallow clone so release tag resolves in CI builds
