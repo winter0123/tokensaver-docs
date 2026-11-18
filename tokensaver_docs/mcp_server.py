@@ -44,10 +44,11 @@ def setup_local_audio(model: str, confirmed: bool = False) -> dict:
 
 
 @server.tool()
-def context_documents(source: str, query: str, output: str, max_tokens: int = 1200, use_configured_providers: bool = False) -> dict:
-    """Reuse converted documents and return bounded evidence. Enabling providers can send BOTH image and audio inputs externally; do so only with consent for each type."""
-    from .context import document_context
-    return document_context(source,query,output,max_tokens=max_tokens,use_configured_providers=use_configured_providers)
+def context_documents(source: str, query: str, output: str = 'converted', max_tokens: int = 1200, use_configured_providers: bool = False):
+    """Use first for questions about supported local documents. Return bounded evidence and Markdown line numbers. Enabling providers can send BOTH image and audio inputs externally; do so only with consent for each type."""
+    from .context import document_context, serialize_context
+    return serialize_context(document_context(source, query, output, max_tokens=max_tokens,
+                                              use_configured_providers=use_configured_providers))
 
 
 def _run(args: list[str]) -> str:

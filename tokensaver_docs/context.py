@@ -8,6 +8,10 @@ from .shared_cache import cache_root
 from .storage import digest, file_hash, load_profiles, load_state
 
 
+def serialize_context(result):
+    return json.dumps(result, ensure_ascii=False)
+
+
 def document_context(source, query, output, *, max_tokens=None, max_chars=6000, use_configured_providers=False):
     source, output = Path(source), Path(output)
     if not query.strip():
@@ -21,7 +25,7 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
         from .cli import token_encoder
         encoder = token_encoder('cl100k_base')
     def fits(value):
-        text = json.dumps(value, ensure_ascii=False)
+        text = serialize_context(value)
         return len(text) <= max_chars and (encoder is None or len(encoder.encode(text, disallowed_special=())) <= max_tokens)
     result = {'status':'ready', 'sources':[], 'excerpts':[], 'pending':[], 'truncated':False, 'next':None}
     if not fits(result):
@@ -93,22 +97,24 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
                     end=starts[min(section+3,len(starts)-1)]
                 anchor=max(range(begin,end), key=lambda i:sum(word in lines[i].casefold() for word in words))
                 candidates.append((score,str(path),begin,end,anchor,lines,record['status']))
-    prefix_next=None
+    continuation = None
     for score,path,begin,end,anchor,lines,status in sorted(candidates,key=lambda item:-item[0]):
+        previous_continuation = continuation
+        original_begin = begin
         context_end=min(anchor+3,end)
         probe={**result, 'sources':list(dict.fromkeys([*result['sources'],path])),
                'excerpts':[*result['excerpts'], {'file':path,'start_line':begin+1,'end_line':context_end,
                            'status':status,'text':'\n'.join(lines[begin:context_end])}],
-               'truncated':True, 'next':{'file':path,'start_line':context_end+1}}
+               'truncated':True, 'next':continuation or {'file':path,'start_line':context_end+1}}
         if anchor > begin and not fits(probe):
-            if prefix_next is None:
-                prefix_next={'file':path,'start_line':begin+1}
             begin=max(begin,anchor-2)
             while begin < anchor:
                 probe['excerpts'][-1].update(start_line=begin+1, text='\n'.join(lines[begin:context_end]))
                 if fits(probe):
                     break
                 begin+=1
+            if begin > original_begin and continuation is None:
+                continuation = {'file':path,'start_line':original_begin+1}
         excerpt={'file':path,'start_line':begin+1,'end_line':begin,'status':status,'text':''}
         if path not in result['sources']:
             result['sources'].append(path)
@@ -117,24 +123,29 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
         for i in range(begin,end):
             excerpt.update(text='\n'.join([*accepted,lines[i]]),end_line=i+1)
             # Reserve continuation metadata before measuring the complete response.
-            result['next']={'file':path,'start_line':i+2}
+            result['next'] = continuation or {'file':path,'start_line':i+2}
             result['truncated']=True
             if not fits(result):
                 excerpt.update(text='\n'.join(accepted),end_line=i)
-                result['next']={'file':path,'start_line':i+1}
+                if continuation is None:
+                    continuation = {'file':path,'start_line':i+1}
                 break
             accepted.append(lines[i])
-        if not accepted:
+        if begin + len(accepted) <= anchor:
             result['excerpts'].pop()
             if not any(e['file']==path for e in result['excerpts']):result['sources'].remove(path)
-        if len(accepted)<end-begin:
-            break
-        result['next']=None
-    else:
-        result['truncated']=bool(result['pending']) or pending_truncated or prefix_next is not None
-        result['next']=prefix_next
+            continuation = previous_continuation or {'file':path,'start_line':original_begin+1}
+    result['truncated'] = bool(result['pending']) or pending_truncated or continuation is not None
+    result['next'] = continuation
     if not result['excerpts'] and result['status']=='ready':
         result['status']='budget_exceeded' if candidates else 'no_match'
+    if result['status'] == 'no_match':
+        with_hint = {**result, 'hint': 'No literal terms matched. If retrying, use short keywords in the document language. If unknown, include English equivalents, for example: 환불 refund.'}
+        if fits(with_hint):
+            result = with_hint
+    if result['next'] is not None and not fits(result):
+        # A long path in a later omitted result must not displace evidence that fits.
+        result['next'] = None
     if not fits(result):
         # Metadata truncation is explicit, never silently exceed the requested budget.
         result={'status':result['status'],'sources':[],'excerpts':[],'pending':[],'truncated':True,'next':None}

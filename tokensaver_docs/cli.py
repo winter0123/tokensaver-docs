@@ -247,8 +247,8 @@ def main(argv=None) -> int:
             from .installer import install_bundle
             print(install_bundle(args.bundle,args.agent,destination=args.destination,config_dir=args.config_dir,expected_version=args.expected_version))
         elif args.command == 'context':
-            from .context import document_context
-            print(json.dumps(document_context(args.input,args.query,args.output,max_tokens=args.max_tokens,max_chars=args.max_chars,use_configured_providers=args.use_configured_providers),ensure_ascii=False))
+            from .context import document_context, serialize_context
+            print(serialize_context(document_context(args.input,args.query,args.output,max_tokens=args.max_tokens,max_chars=args.max_chars,use_configured_providers=args.use_configured_providers)))
         elif args.command == 'mcp':
             mcp_entry()
         elif args.command == 'doctor':

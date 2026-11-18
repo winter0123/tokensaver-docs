@@ -44,6 +44,8 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 
 安装插件并重启助手后，像平时一样提出请求。无需每次输入插件名称或终端命令。
 
+> 用 TokenSaver Docs 查找 /文件路径/policy.pdf 中的退款期限和例外，并注明证据所在的 Markdown 行号。
+
 > 把这个 HTML 文件转成 Markdown：/文件路径/policy.html
 
 > 把这个文件夹中的文档转成 Markdown：/文件夹路径

@@ -12,6 +12,8 @@ class OpenCodePluginTests(unittest.TestCase):
     def test_v2_registers_mcp_and_read_hook(self):
         script = '''
 import { pathToFileURL } from 'node:url';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 const {default: plugin, TokenSaverDocsPlugin} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
 const legacy = await TokenSaverDocsPlugin();
@@ -84,6 +86,18 @@ assert.equal(server.name, 'tokensaver-docs');
 assert.equal(server.type, 'local');
 assert.deepEqual(server.command.slice(-1), ['mcp']);
 assert.equal(hook.name, 'execute.before');
+const evidence = tools.get('tokensaver_docs_context');
+assert.deepEqual(evidence.input.required, ['source','query']);
+assert.equal(evidence.input.properties.use_configured_providers, undefined);
+await hook.fn({tool:evidence.name, sessionID:'evidence', input:{}});
+await assert.rejects(hook.fn({tool:'tokensaver-docs_context_documents',sessionID:'evidence',input:{}}), /guarded native/);
+const evidenceFile = join(process.env.XDG_CONFIG_HOME, 'policy.md');
+await writeFile(evidenceFile, '# Policy\\nRefunds are allowed for seven days.\\nCustom orders are excluded.\\n');
+const evidenceArgs = {source:evidenceFile, query:'Refunds', max_tokens:300};
+const evidenceResult = JSON.parse((await evidence.execute(evidenceArgs, {sessionID:'evidence'})).content);
+assert.equal(evidenceResult.excerpts[0].start_line, 1);
+assert.match(evidenceResult.excerpts[0].text, /Custom orders are excluded/);
+assert.deepEqual(evidenceResult, JSON.parse(await legacy.tool.tokensaver_docs_context.execute(evidenceArgs)));
 await hook.fn({tool: 'other', input: {}});
 '''
         with tempfile.TemporaryDirectory() as tmp:

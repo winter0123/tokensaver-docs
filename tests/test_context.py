@@ -5,6 +5,31 @@ from pathlib import Path
 from tokensaver_docs.context import document_context
 
 class ContextTests(unittest.TestCase):
+    def test_no_match_search_hint_respects_small_response_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'policy.md'
+            source.write_text('# Refund policy', encoding='utf-8')
+            normal = document_context(source, '환불', root / 'out')
+            small = document_context(source, '환불', root / 'out', max_chars=125)
+            self.assertEqual(normal['status'], 'no_match')
+            self.assertIn('document language', normal['hint'])
+            self.assertEqual(small['status'], 'no_match')
+            self.assertLessEqual(len(json.dumps(small, ensure_ascii=False)), 125)
+
+    def test_oversized_high_ranked_match_leaves_room_for_later_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'policy.md'
+            source.write_text('# Policy\nRefund deadline ' + 'details ' * 200 +
+                              '\n# Exceptions\nRefund exclusions apply to custom orders.\n', encoding='utf-8')
+            result = document_context(source, 'refund deadline', root / 'out', max_chars=550)
+            self.assertEqual(result['status'], 'ready')
+            self.assertIn('custom orders', result['excerpts'][0]['text'])
+            self.assertTrue(result['truncated'])
+            self.assertEqual(result['next'], {'file': str(source), 'start_line': 1})
+            self.assertLessEqual(len(json.dumps(result, ensure_ascii=False)), 550)
+
     def test_edited_output_is_not_silently_replaced_for_search(self):
         from unittest.mock import patch
         from tokensaver_docs.preparation import prepare_documents

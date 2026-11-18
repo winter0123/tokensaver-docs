@@ -44,6 +44,8 @@ if args and args[0]=='setup-model':
         result={"status":"configured","model":json.loads(os.environ['TOKENSAVER_TEST_PROFILE']),"args":args}
 elif args and args[0]=='prepare' and '--image-mode' in args:
     result={"status":"ready","args":args}
+elif args and args[0]=='context':
+    result={"status":"no_match" if args[2]=='unmatched' else "ready","args":args}
 elif args and args[0]=='setup-audio':
     model=args[args.index('--model')+1]
     xdg=os.environ['XDG_CONFIG_HOME']
@@ -92,6 +94,55 @@ const userPrompt=(sessionID,messageID,text,files=[])=>promptHook({sessionID,mess
         self.run_plugin('''
 const result=JSON.parse(await p.tool.tokensaver_docs_prepare.execute({source:'a.html', image_mode:'analyze', model_provider:'openrouter', model:'chosen:free', allow_unverified_model:true}));
 assert.deepEqual(result.args,['prepare','a.html','--output','converted','--image-mode','analyze','--model-provider','openrouter','--model','chosen:free','--allow-unverified-model']);
+''')
+
+    def test_v2_document_questions_prefer_search_for_the_named_source(self):
+        self.run_v2_plugin('''
+const instructions = async text => {
+  await userPrompt('s', text, text);
+  const event = {sessionID:'s', system:[]};
+  await contextHook(event);
+  return event.system.map(message => message.text).join(' ');
+};
+for (const text of [
+  'TokenSaver Docs로 ./policy.html에서 환불 기한과 예외를 찾아줘. 근거가 있는 Markdown 줄 번호도 보여줘.',
+  './refunds.html에서 환불 기한과 예외를 찾아줘. 근거 줄 번호도 보여줘.',
+  'Find evidence in policy.pdf.',
+]) {
+  assert.match(await instructions(text), /Call tokensaver_docs_context first/);
+  await executeHook({sessionID:'s', tool:'read', input:{path:'converted/policy.md'}});
+}
+assert.match(await instructions('Find evidence in ./policy.md.'), /Call tokensaver_docs_context first/);
+const readSource = () => executeHook({sessionID:'s', tool:'read', input:{path:'policy.md'}});
+await assert.rejects(readSource(), /Call tokensaver_docs_context first/);
+await assert.rejects(executeHook({sessionID:'s', tool:'tokensaver_docs_prepare', input:{source:'policy.md'}}), /Call tokensaver_docs_context first/);
+await tools.get('tokensaver_docs_context').execute({source:'policy.md', query:'evidence'}, {sessionID:'s'});
+await readSource();
+for (const text of [
+  'What is in ./photo.png?',
+  'Edit policy.md to include this evidence.',
+  'Find evidence in https://example.com/policy.html.',
+  'Use grep to find the refund policy in policy.md.',
+  'Find evidence in a.pdf and b.pdf.',
+  'What does src/app.py do?',
+]) assert.equal(await instructions(text), '', text);
+assert.match(await instructions('이 HTML 파일 ./policy.html을 MD로 정리해줘.'), /call tokensaver_docs_prepare immediately/);
+assert.match(await instructions('./policy.html을 Markdown으로 변환해줘.'), /call tokensaver_docs_prepare immediately/);
+
+assert.match(await instructions('Find evidence in ./policy.md.'), /Call tokensaver_docs_context first/);
+const search = tools.get('tokensaver_docs_context');
+const unmatched = () => search.execute({source:'policy.md', query:'unmatched'}, {sessionID:'s'});
+await unmatched();
+await assert.rejects(readSource(), /Retry tokensaver_docs_context once/);
+await assert.rejects(executeHook({sessionID:'s', tool:'shell', input:{command:'cat ./policy.md'}}), /Retry tokensaver_docs_context once/);
+await executeHook({sessionID:'s', tool:'shell', input:{command:'git status'}});
+await unmatched();
+await assert.rejects(unmatched(), /search limit for this document question/);
+await assert.rejects(readSource(), /search limit for this document question/);
+await instructions('Find other evidence in ./policy.md.');
+await search.execute({source:'policy.md', query:'evidence'}, {sessionID:'s'});
+await assert.rejects(unmatched(), /Use the evidence already returned/);
+await readSource();
 ''')
 
     def test_v2_displayed_choices_continue_and_authorize_only_the_selected_action(self):
@@ -330,7 +381,7 @@ await assert.rejects(hook({tool:'read',input:{path:SOURCE}}),/Choose a model/);
 const {default:definition}=await import(pathToFileURL(process.argv[1]));
 const registered=[];
 let contextHook,promptHook;
-await definition.setup({tool:{transform:async fn=>fn({add:t=>registered.push(t)}),hook:async()=>{}},skill:{transform:async fn=>fn({add(){}})},session:{hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else contextHook=fn}},mcp:{transform:async()=>{assert.equal(registered.length,5);}}});
+await definition.setup({tool:{transform:async fn=>fn({add:t=>registered.push(t)}),hook:async()=>{}},skill:{transform:async fn=>fn({add(){}})},session:{hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else contextHook=fn}},mcp:{transform:async()=>{assert.ok(registered.some(tool=>tool.name==='tokensaver_docs_prepare'));assert.ok(registered.some(tool=>tool.name==='tokensaver_docs_context'));}}});
 const userPrompt=(sessionID,messageID,text)=>promptHook({sessionID,messageID,prompt:{text,files:[]}});
 const prepare=registered.find(t=>t.name==='tokensaver_docs_prepare');
 assert.equal(prepare.options.codemode,false);

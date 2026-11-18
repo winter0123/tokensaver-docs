@@ -44,6 +44,8 @@ macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bun
 
 Install the plugin, restart your agent, then ask normally. You do not have to type the plugin name or a terminal command.
 
+> Use TokenSaver Docs to find the refund deadline and exceptions in /path/to/policy.pdf. Include the Markdown line numbers.
+
 > Convert this HTML file to Markdown: /path/to/policy.html
 
 > Convert the documents in this folder to Markdown: /path/to/documents

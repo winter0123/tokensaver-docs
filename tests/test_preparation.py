@@ -98,7 +98,7 @@ class PreparationChoiceTests(unittest.TestCase):
             result = io.StringIO()
             with patch.dict(os.environ, XDG_CONFIG_HOME=str(root/'config')), contextlib.redirect_stdout(result):
                 self.assertEqual(main(['prepare', str(root/'image.png'), '--output', str(root/'out')]), 2)
-            self.assertEqual(json.loads(result.getvalue())['status'], 'setup_required')
+            self.assertEqual(json.loads(result.getvalue())['status'], 'choice_required')
             self.assertFalse((root/'out').exists())
 
     def test_text_only_document_formats_do_not_need_an_image_choice(self):

@@ -56,6 +56,32 @@ class PortabilityTests(unittest.TestCase):
    root=Path(temp);(root/'doc.md').write_text('# 안내\n환불은 7일\n')
    asyncio.run(verify(root))
 
+ def test_mcp_context_text_respects_token_budget(self):
+  try:
+   from mcp import ClientSession, StdioServerParameters
+   from mcp.client.stdio import stdio_client
+   import tiktoken
+  except ImportError:
+   self.skipTest('선택 MCP 또는 토큰 패키지 없음')
+  import json
+  import sys
+  async def verify(source):
+   params = StdioServerParameters(command=sys.executable, args=['-m','tokensaver_docs.mcp_server'],
+                                  env={name: os.environ[name] for name in ('TIKTOKEN_CACHE_DIR',) if name in os.environ})
+   async with stdio_client(params) as (reader, writer):
+    async with ClientSession(reader, writer) as session:
+     await session.initialize()
+     result = await session.call_tool('context_documents', {'source':str(source), 'query':'환불', 'max_tokens':300})
+     self.assertFalse(result.isError, str(result.content))
+     self.assertEqual(len(result.content), 1)
+     text = result.content[0].text
+     self.assertLessEqual(len(tiktoken.get_encoding('cl100k_base').encode(text)), 300)
+     self.assertIn('맞춤 제작', json.loads(text)['excerpts'][0]['text'])
+  with tempfile.TemporaryDirectory() as temp:
+   source = Path(temp)/'policy.md'
+   source.write_text('# 안내\n"환불"은 7일 이내\n맞춤 제작은 제외합니다.\n' + '추가 조건이 적용됩니다.\n' * 120, encoding='utf-8')
+   asyncio.run(verify(source))
+
  def test_mcp_conversion_does_not_use_configured_provider_implicitly(self):
   try:from tokensaver_docs.mcp_server import convert_documents
   except ImportError:self.skipTest('선택 MCP 패키지 없음')

@@ -1,9 +1,9 @@
 ---
 name: tokensaver-docs
-description: Convert local PDF, DOCX, XLSX, HTML, photos, images, screenshots or audio to Markdown. Use for file/folder-to-MD requests and relevant passage retrieval.
+description: Find answers and cite Markdown lines from local PDF, DOCX, XLSX, HTML or Markdown. Also convert local files, including images and audio, to Markdown.
 ---
 
-OpenCode v2: use native `tokensaver_docs_prepare`, `tokensaver_docs_setup_model`, and `tokensaver_docs_read` first. They call the bundled runtime directly without a model-written shell command. MCP preparation is retained for other hosts and compatibility. If a plugin tool is missing, report it instead of choosing a shell/execute fallback automatically. Respect an alternative tool or command explicitly chosen by the user.
+For document questions, use `tokensaver_docs_context` first in OpenCode or `context_documents` over MCP. Use the preparation tool for requests to create a Markdown file. Use the tool explicitly named by the user when given.
 
 # Documents: tool first
 
@@ -11,7 +11,7 @@ For supported local file/folder-to-Markdown requests, including “turn this pho
 
 Call `prepare_documents(source, output)` first (OpenCode v1: `tokensaver_docs_prepare`; v2: native `tokensaver_docs_prepare`). Return the tool's question and explain the result of each option. Never choose a model or image mode for the user. If no actual user choice is received, or the question tool fails or is cancelled, stop and ask the user in chat; never invent a choice or pass inferred defer, model, image-mode or consent arguments. Return actual paths/status after preparation.
 
-On first-use `setup_required`, ask “변환에 사용할 모델을 선택할까요? 일반 문서의 글자는 모델을 선택하지 않아도 추출할 수 있어요.” Offer “모델 선택하기” and “나중에 선택하기”. Use `setup_conversion_model` (OpenCode v1: `tokensaver_docs_setup_model`; CLI: `setup-model`) to inspect/select or record `defer=true` only after that choice. A conversion model may differ from the current chat model; do not guess its identity or image capabilities. `save_as_default=true` needs explicit confirmation; a one-time choice is passed as `model_provider` and `model` to preparation and does not change defaults. Never request API keys in chat.
+Text-only conversion works without model setup. If the user chooses image analysis and no model is selected, use `setup_conversion_model` (OpenCode: `tokensaver_docs_setup_model`; CLI: `setup-model`) to inspect or select a model. Use the preparation tool’s image choices for local image preservation or placeholders. A conversion model may differ from the current chat model; do not guess its identity or image capabilities. `save_as_default=true` needs explicit confirmation; a one-time choice is passed as `model_provider` and `model` to preparation and does not change defaults. Never request API keys in chat.
 
 If the model cannot accept images, ask “선택한 모델은 이미지를 읽을 수 없어요. 이미지 속 글자와 내용을 MD에 담으려면 이미지 지원 모델이 필요해요. 모델을 바꿀까요?” Explain both choices:
 
@@ -22,7 +22,7 @@ For missing models or unverified capabilities, repeat the tool's actual reason; 
 
 For an image-supporting model, ask whether the Markdown should contain **이미지·글자·설명 넣기** (`image_mode="analyze"`) or **이미지만 넣기** (`"preserve"`). Analyze produces an actual Markdown file with an image link, visible text and a separate image description; HTML images use the same image engine. Preserve includes the image link but neither extracted text nor description. Analysis may send images externally. CLI: `prepare --image-mode analyze|preserve|placeholder`. Legacy `transcribe_images=true/false` and `--transcribe-images` / `--skip-image-transcription` still mean analyze/preserve; false never means placeholder. Do not invent image counts or claim unsupported document objects were extracted.
 
-For a question, call `context_documents` (`tokensaver_docs_context` in OpenCode) with the path, question and budget. Read returned Markdown lines for follow-up evidence. Placeholder and preserved-only images have no analyzed content; report this limit.
+For questions about supported local documents, call `context_documents` (`tokensaver_docs_context` in OpenCode) before reading the original or full Markdown. Pass the source path, focused search terms and a token budget. Use the same output directory as earlier conversions when known. Cite the returned Markdown path and line range. If more evidence is needed, use `next.file` and `next.start_line` for a bounded follow-up read when available or narrow the query. Placeholder and preserved-only images have no analyzed content; report this limit.
 
 Do not read raw HTML, Base64 or original binaries into model context. Do not automatically write conversion scripts or delegate conversion to another agent as a fallback; respect an explicit user request for either. An OpenCode raw-read hook may block until the user chooses; use the preparation tool and read its returned Markdown path. The tool handles text, tables, image extraction, order and caching. Alt text is not analysis. If the tool fails or rejects a format, report its status; do not fall back to raw attachment reading.
 

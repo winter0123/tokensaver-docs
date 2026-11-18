@@ -95,8 +95,8 @@ for example: "Use tokensaver-docs to find the refund deadline and exceptions in
 ./documents. Reuse existing conversions."
 
 Text PDF, Word, Excel and HTML are extracted locally. Scanned PDF pages are rendered
-using bundled PDFium. First use offers model selection or deferral; document text
-does not require an AI model. The plugin conversion model is separate from the host
+using bundled PDFium. Text-only conversion runs without model setup. If the
+user chooses image analysis, the plugin asks for a model when one is needed. The plugin conversion model is separate from the host
 chat model, and unknown host settings are not guessed. Use `setup_conversion_model`
 (OpenCode v1: `tokensaver_docs_setup_model`) or CLI `setup-model` to inspect a selection.
 Use `setup-model --defer` to choose later. A request-only model selection leaves the

@@ -21,12 +21,23 @@ class ModelPreparationTests(unittest.TestCase):
         self.source.write_text('<p>Before</p><img src="a.png"><p>After</p>')
         self.output = self.root/'out'
 
-    def test_first_use_returns_setup_without_output_or_inference(self):
+    def test_first_use_asks_for_a_model_only_after_choosing_image_analysis(self):
         with patch('tokensaver_docs.providers.generate') as generate:
             result = prepare_documents(self.source, self.output, onboarding=True)
-        self.assertEqual(result['status'], 'setup_required')
-        self.assertIn('나중에 선택하기', result['choices'])
+            analysis = prepare_documents(self.source, self.output, image_mode='analyze', onboarding=True)
+        self.assertEqual(result['status'], 'choice_required')
+        self.assertIn('이미지만 넣기', result['choices'])
+        self.assertEqual(analysis['status'], 'configuration_required')
         self.assertFalse(self.output.exists())
+        generate.assert_not_called()
+
+    def test_first_use_converts_text_without_model_setup(self):
+        source = self.root / 'policy.html'
+        source.write_text('<p>Returns within seven days.</p>', encoding='utf-8')
+        with patch('tokensaver_docs.providers.generate') as generate:
+            result = prepare_documents(source, self.output, onboarding=True)
+        self.assertEqual(result['status'], 'ready')
+        self.assertIn('Returns within seven days.', Path(result['files'][0]['output']).read_text(encoding='utf-8'))
         generate.assert_not_called()
 
     def test_nonvision_selection_asks_switch_or_placeholder_before_conversion(self):

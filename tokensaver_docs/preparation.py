@@ -78,15 +78,10 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
         override = validate_image_profile({'provider': model_provider, 'model': model})
     selected = None
     if strict:
-        from .model_setup import load_model_selection, setup_status
+        from .model_setup import load_model_selection
         selected = override or load_model_selection()
-        if mode is None and not selected and setup_status()['status'] == 'setup_required':
-            return _choice('setup_required', '변환에 사용할 모델을 선택할까요? 일반 문서의 글자는 모델을 선택하지 않아도 추출할 수 있어요.', [
-                {'label': '모델 선택하기', 'action': 'select_model', 'description': '플러그인의 변환 모델을 선택해요. 대화 중인 모델과 다를 수 있어요.'},
-                {'label': '나중에 선택하기', 'action': 'defer', 'description': '모델 설정을 미뤄요. 이미지가 있으면 처리 방법을 따로 물어봐요.'},
-            ])
-        has_images = _needs_image_choice(source, output)
-        if has_images and mode in (None, 'analyze'):
+        has_images = mode in (None, 'analyze') and _needs_image_choice(source, output)
+        if has_images and mode == 'analyze':
             if not selected:
                 return _model_choice('configuration_required', '이미지 처리 모델이 아직 선택되지 않았어요. 모델을 선택하거나 이미지 위치에 [이미지]만 표시할 수 있어요.')
             from .providers import inspect_image_model

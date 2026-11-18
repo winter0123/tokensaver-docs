@@ -3,7 +3,7 @@
 import { tool } from '@opencode-ai/plugin';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
+import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
 import { readFile, stat, lstat, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -16,12 +16,20 @@ const conversionInstruction = 'For this explicit conversion request only, call t
 const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
 const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current genuine user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze, using that selected model. Do not ask the user to select or repeat the provider/model. This instruction does not grant consent; the tool accepts only explicit approval in the current real user message.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
+const documentQuestionInstruction = 'Call tokensaver_docs_context first for this local document question. Pass the named path and literal search keywords. For a non-English question on a document of unknown language, include English equivalents in the same query. This tool handles unconverted documents without model setup. Cite the returned Markdown lines and use tokensaver_docs_read for any needed continuation.';
+const retryDocumentSearchInstruction = 'The search found no matching terms. Retry tokensaver_docs_context once with shorter literal keywords from the likely document language. Include English equivalents if the previous query had only non-English words.';
+const documentSearchExhausted = 'The search limit for this document question has been reached. Report any evidence already returned or state that no matching evidence was found.';
+
+function documentQuestionGuidance(request) {
+  if (request.documentSearchStatus !== 'no_match') return documentQuestionInstruction;
+  return request.documentSearches >= 2 ? documentSearchExhausted : retryDocumentSearchInstruction;
+}
 
 function isMarkdownConversionRequest(prompt) {
   const text = prompt?.text ?? '';
   const files = prompt?.files ?? [];
   const source = files.length > 0 || /\b(?:image|photo|picture|screenshot|document|file|folder|pdf|docx?|xlsx?|html|htm|pptx?)\b|\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|pdf|docx?|xlsx?|html|htm|pptx?)\b|이미지|사진|스크린샷|캡처|문서|파일|폴더/i.test(text);
-  const target = /\b(?:to|into|as)\s+(?:an?\s+)?(?:markdown|md)(?:\s+(?:file|document))?|\b(?:markdown|md)\s+file\b|마크다운(?:으로|\s*파일)|md\s*파일(?:로)?|md로/i.test(text);
+  const target = /\b(?:to|into|as)\s+(?:an?\s+)?(?:markdown|md)(?:\s+(?:file|document))?|\b(?:markdown|md)\s+file\b|(?:마크다운|markdown)(?:으로|\s*파일)|md\s*파일(?:로)?|md로/i.test(text);
   const alternative = /\b(?:pandoc|libreoffice|obsidian)\b|\b(?:another|different|external|my)\s+(?:converter|tool|command|script)\b|(?:다른|별도|직접 지정한)\s*(?:변환기|도구|명령|스크립트)|\buse\s+(?!tokensaver\b)(?:the\s+)?[a-z][\w.@/-]*\s+to\s+(?:convert|turn|make|write|save)/i.test(text);
   const convert = /\b(?:convert|turn|transform|export)\b|변환|바꿔|정리해/i.test(text);
   return source && target && convert && !alternative;
@@ -32,6 +40,15 @@ function isAudioMarkdownRequest(prompt) {
   const files = prompt?.files ?? [];
   const source = /\.(?:wav|mp3|m4a|ogg|flac|aac|mp4)\b/i.test(text) || files.some(file => /\.(?:wav|mp3|m4a|ogg|flac|aac|mp4)$/i.test(typeof file === 'string' ? file : file?.name ?? file?.path ?? ''));
   return source && /\b(?:convert|transcribe|turn|export)\b|변환|음성을\s*글자로|음성.*글자/i.test(text) && /\b(?:to|into|as)\s+(?:a\s+)?(?:markdown|md)\b|(?:마크다운|markdown)(?:으로|로)?|md로/i.test(text);
+}
+
+function documentQuestionSource(text) {
+  const localDocument = /(?:^|[\s"'`(])((?![a-z][\w+.-]*:\/\/)[^\s"'`<>]+?\.(?:pdf|docx|xlsx|html?|md))(?=$|[\s"'`),.!?:;]|에서|의|을|를|에)/gi;
+  const question = /\b(?:find|what|when|where|which|summari[sz]e|cite|evidence|line numbers?)\b|찾아|알려|보여|뭐|요약|근거|줄\s*번호/i;
+  const otherTask = /\b(?:edit|rewrite|patch|rename|delete)\b|(?:수정|편집|고쳐|삭제|바꿔)(?:해|줘|주세요)|\b(?:use|with)\s+(?:the\s+)?(?:cat|read|grep|rg|sed|python3?|pandoc|libreoffice|obsidian)\b|(?:cat|read|grep|rg|sed|python3?|pandoc|libreoffice|obsidian)(?:으로|로)/i;
+  if (!question.test(text) || otherTask.test(text)) return null;
+  const sources = [...new Set(Array.from(text.matchAll(localDocument), match => match[1]))];
+  return sources.length === 1 ? sources[0] : null;
 }
 
 function audioChoice(text) {
@@ -165,7 +182,11 @@ function explicitChoiceError(name, input, request) {
 function run(args, env = process.env) {
   return new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env, detached: process.platform !== 'win32' });
+    const isContext = args[0] === 'context';
+    // Python's 6000 character cap can occupy twice as many UTF-16 code units.
+    const limit = isContext ? 12002 : 6500;
     let output = '';
+    let diagnostics = '';
     let truncated = false;
     let timedOut = false;
     const analyzing = args.includes('--transcribe-images') || args[args.indexOf('--image-mode') + 1] === 'analyze' || args.includes('--use-configured-audio-provider');
@@ -179,16 +200,22 @@ function run(args, env = process.env) {
         try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') child.kill('SIGKILL'); }
       }
     }, timeout);
-    const append = chunk => {
-      const text = chunk.toString();
-      if (output.length + text.length > 6500) truncated = true;
-      output += text.slice(0, Math.max(0, 6500 - output.length));
+    const append = text => {
+      if (output.length + text.length > limit) truncated = true;
+      output += text.slice(0, Math.max(0, limit - output.length));
     };
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
     child.stdout.on('data', append);
-    child.stderr.on('data', append);
+    child.stderr.on('data', text => {
+      if (isContext) diagnostics += text.slice(0, Math.max(0, 6500 - diagnostics.length));
+      else append(text);
+    });
     child.on('error', error => { clearTimeout(timer); resolve(`Unable to start bundled tokensaver-docs: ${error.message}`); });
     child.on('close', code => {
       clearTimeout(timer);
+      if (isContext && code === 0 && !truncated && !timedOut) return resolve(output.trimEnd());
+      if (isContext && diagnostics) append(diagnostics);
       if (['prepare','setup-model','setup-audio'].includes(args[0]) && !truncated && !timedOut) {
         try {
           if (typeof JSON.parse(output).status === 'string') return resolve(output);
@@ -341,9 +368,9 @@ export const TokenSaverDocsPlugin = async () => ({
       execute: ({source,output}) => run(['convert',source,'--output',output ?? 'converted','--config',audioConfigPath(),'--use-configured-audio-provider'],audioEnvironment()),
     }),
     tokensaver_docs_context: tool({
-      description: 'Reuse converted files and return bounded original evidence, source lines and pending items in one call.',
-      args: { source: tool.schema.string(), query: tool.schema.string(), output: tool.schema.string(), max_tokens: tool.schema.number().int().min(1).max(10000).optional() },
-      execute: ({source,query,output,max_tokens}) => run(['context',source,query,'--output',output,'--max-tokens',String(max_tokens ?? 1200)]),
+      description: 'First tool for questions about local PDF, DOCX, XLSX, HTML or Markdown. Pass the original path and focused search terms to get relevant passages with Markdown line numbers in one call. Works on unconverted files without model setup. Use prepare for requests to create a Markdown file.',
+      args: { source: tool.schema.string(), query: tool.schema.string(), output: tool.schema.string().optional(), max_tokens: tool.schema.number().int().min(1).max(10000).optional() },
+      execute: ({source,query,output,max_tokens}) => run(['context',source,query,'--output',output ?? 'converted','--max-tokens',String(max_tokens ?? 1200)]),
     }),
     tokensaver_docs_convert: tool({
       description: 'Convert local documents without using configured external providers. Returns status and output paths.',
@@ -402,6 +429,15 @@ export default {
         execute: async (input, context) => {
           const sessionID = context.sessionID;
           const request = (sessionID && requestBySession.get(sessionID)) ?? { text: '' };
+          const searchingDocument = name === 'tokensaver_docs_context' && request.documentQuestion &&
+            typeof input.source === 'string' && resolve(input.source) === resolve(request.documentQuestion);
+          if (searchingDocument) {
+            if (request.documentSearches >= 2 || request.documentSearchStatus === 'ready') {
+              throw new Error(request.documentSearchStatus === 'no_match'
+                ? documentSearchExhausted : 'Use the evidence already returned for this document or read its Markdown continuation.');
+            }
+            request.documentSearches += 1;
+          }
           if (name === 'tokensaver_docs_setup_audio') {
             if (request.audioDeclined || request.completed)
               return { content: JSON.stringify({status:'stopped',next:'Do not make further audio setup calls for this request.'}) };
@@ -456,6 +492,9 @@ export default {
           }
           const result = await execute(callInput);
           const parsed = parseResult(result);
+          if (searchingDocument) {
+            request.documentSearchStatus = parsed?.status;
+          }
           if (name === 'tokensaver_docs_prepare' && request.conversion) {
             if (['ready','needs_review'].includes(parsed?.status)) {
               request.pending = false;
@@ -499,16 +538,20 @@ export default {
       add('tokensaver_docs_setup_audio', {model:{type:'string',enum:['tiny','base','small']},confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_audio.execute);
       add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
+      add('tokensaver_docs_context', {source:string,query:{type:'string',description:'Search keywords as they appear in the document. For a Korean question and unknown document language, include English equivalents, e.g. "환불 기한 refund deadline".'},output:string,max_tokens:{type:'integer',minimum:1,maximum:10000}}, ['source','query'], legacy.tool.tokensaver_docs_context.execute);
     });
     const skillPath = join(skillDirectory,'SKILL.md');
     const skillContent = await readFile(skillPath,'utf8');
     await ctx.skill.transform(editor => editor.add({
       id:'tokensaver-docs-opencode',name:'TokenSaver Docs for OpenCode',
-      description:'Convert local PDF, DOCX, XLSX, HTML, photos, images, screenshots or audio to Markdown. Use for file/folder-to-MD requests and relevant passage retrieval.',
+      description:'Answer questions about local PDF, DOCX, XLSX, HTML or Markdown with evidence and Markdown line numbers. Also convert local documents and media to Markdown.',
       path:skillPath,content:skillContent,
     }));
     await ctx.session.hook('context', event => {
       const request = requestBySession.get(event.sessionID);
+      if (request?.documentQuestion && (!request.documentSearches || request.documentSearchStatus === 'no_match')) {
+        event.system.push({type:'text',text:documentQuestionGuidance(request)});
+      }
       if (request?.conversion) {
         if (request.audioDeclined) {
           event.system.push({type:'text',text:'The user declined local audio transcription. Stop without converting or invoking audio tools.'});
@@ -536,6 +579,7 @@ export default {
       const conversion = audio || isMarkdownConversionRequest(event.prompt);
       const continuing = previous?.pending && !conversion && choiceReply(text,previous);
       const active = conversion || continuing;
+      const documentQuestion = !active && documentQuestionSource(text);
       if (active) requestBySession.set(sessionID,{
         text,messageID:event.messageID,conversion:true,pending:continuing || conversion,
         audio:audio || Boolean(continuing && previous?.audio),
@@ -549,6 +593,7 @@ export default {
         profile:continuing ? previous?.profile : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
+      else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
       else requestBySession.delete(sessionID);
     });
     await ctx.mcp.transform(editor => {
@@ -560,9 +605,21 @@ export default {
       const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
       const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
       if ((mcpName !== null && !safeMcp.has(mcpName)) ||
-          (nativeName !== null && !['prepare','setup_model','setup_audio','convert_audio','read',...safeMcp].includes(nativeName)))
+          (nativeName !== null && !['prepare','setup_model','setup_audio','convert_audio','read','context',...safeMcp].includes(nativeName)))
         throw new Error('Use guarded native tokensaver_docs_prepare, tokensaver_docs_setup_audio, or tokensaver_docs_convert_audio; duplicate MCP conversion/settings routes are disabled.');
       const request = requestBySession.get(event.sessionID);
+      if (event.tool === 'tokensaver_docs_prepare' && request?.documentQuestion &&
+          typeof event.input?.source === 'string' && resolve(event.input.source) === resolve(request.documentQuestion)) {
+        throw new Error(documentQuestionGuidance(request));
+      }
+      const readPath = event.input?.path ?? event.input?.filePath ?? event.input?.file;
+      if (request?.documentQuestion && (!request.documentSearches || request.documentSearchStatus === 'no_match')) {
+        const namedRead = ['read','grep','tokensaver_docs_read'].includes(event.tool) && typeof readPath === 'string' &&
+          resolve(readPath) === resolve(request.documentQuestion);
+        const namedShell = event.tool === 'shell' && typeof event.input?.command === 'string' &&
+          event.input.command.includes(basename(request.documentQuestion));
+        if (namedRead || namedShell) throw new Error(documentQuestionGuidance(request));
+      }
       if (request?.completed)
         throw new Error('Preparation is complete; return the reported Markdown paths and status without further tool calls.');
       const fileAccess = /(?:^|__|_)(?:read(?:_[a-z]+)?|glob|grep|search|webfetch|websearch|write|edit|shell|bash|execute)(?:_|$)/i.test(event.tool);
