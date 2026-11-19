@@ -11,6 +11,14 @@ For supported local file/folder-to-Markdown requests, including “turn this pho
 
 Call `prepare_documents(source, output)` first (OpenCode v1: `tokensaver_docs_prepare`; v2: native `tokensaver_docs_prepare`). Return the tool's question and explain the result of each option. Never choose a model or image mode for the user. If no actual user choice is received, or the question tool fails or is cancelled, stop and ask the user in chat; never invent a choice or pass inferred defer, model, image-mode or consent arguments. Return actual paths/status after preparation.
 
+## OpenCode V2 interactive choices
+
+Use OpenCode's built-in `question` tool to show selectable image modes and model options. The plugin observes **completed question-tool answers**, associates them with the current conversion session, and accepts the selected option when the native tool is retried. Once the user submits a selection in the UI, **continue in the same turn**; do not ask them to retype or copy the same answer into chat. A cancelled question, an unanswered form or arguments supplied by the model alone are not permission.
+
+When listing OpenRouter models, include **OpenRouter** and the fact that choosing a model does not yet authorize sending images in the question prompt. If the user chooses image text/description analysis, request one **separate question-tool confirmation** before external transfer. The confirmation question must state the **exact OpenRouter provider and selected model ID** and clearly say that images will be sent to that service; offer an explicit consent option (e.g. `분석 동의`) and a decline option (e.g. `동의 안 함`). If approved, call `tokensaver_docs_prepare` for the same input with `image_mode: "analyze"`, `model_provider: "openrouter"`, and the exact selected model. Never infer consent from model selection or an agent-written explanation.
+
+For `이미지만 넣기` or `이미지 링크만 넣기`, continue immediately using `image_mode: "preserve"`, with no image analysis or external transfer. For placeholders, use `image_mode: "placeholder"`. Do not add a model-selection step to preserve/placeholder conversion.
+
 Text-only conversion works without model setup. If the user chooses image analysis and no model is selected, use `setup_conversion_model` (OpenCode: `tokensaver_docs_setup_model`; CLI: `setup-model`) to inspect or select a model. Use the preparation tool’s image choices for local image preservation or placeholders. A conversion model may differ from the current chat model; do not guess its identity or image capabilities. `save_as_default=true` needs explicit confirmation; a one-time choice is passed as `model_provider` and `model` to preparation and does not change defaults. Never request API keys in chat.
 
 If the model cannot accept images, ask “선택한 모델은 이미지를 읽을 수 없어요. 이미지 속 글자와 내용을 MD에 담으려면 이미지 지원 모델이 필요해요. 모델을 바꿀까요?” Explain both choices:
