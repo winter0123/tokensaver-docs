@@ -93,15 +93,27 @@ def parser() -> argparse.ArgumentParser:
     choice.add_argument('--transcribe-images', action='store_true', dest='transcribe_images', default=None, help='선택한 모델로 이미지 속 글자와 설명을 MD에 포함')
     choice.add_argument('--skip-image-transcription', action='store_false', dest='transcribe_images', help='이미지만 저장하고 내용은 정리하지 않음')
     prepare.add_argument('--image-mode', choices=('analyze', 'preserve', 'placeholder'), help='이미지·글자·설명 / 이미지만 / [이미지] 위치 표시')
-    prepare.add_argument('--model-provider', choices=('openrouter', 'codex', 'claude'))
+    prepare.add_argument('--model-provider', choices=('openrouter', 'codex', 'claude', 'local'))
     prepare.add_argument('--model', help='이번 변환에만 사용할 모델')
     prepare.add_argument('--allow-unverified-model', action='store_true', help='지원 여부가 확인되지 않은 모델 사용에 명시적 동의')
     model_setup = sub.add_parser('setup-model', help='최초 변환 모델 선택·확인·나중에 설정')
-    model_setup.add_argument('--provider', choices=('openrouter', 'codex', 'claude'))
+    model_setup.add_argument('--provider', choices=('openrouter', 'codex', 'claude', 'local'))
     model_setup.add_argument('--model')
     model_setup.add_argument('--defer', action='store_true')
     model_setup.add_argument('--save-as-default', action='store_true')
     model_setup.add_argument('--confirmed', action='store_true')
+    preferences = sub.add_parser('preferences', help='전역 이미지 처리 설정 조회/변경 (최초 1회)')
+    preferences.add_argument('--set-mode', choices=('analyze', 'preserve', 'placeholder'))
+    preferences.add_argument('--runtime', choices=('opencode', 'codex', 'claude', 'api', 'local'))
+    preferences.add_argument('--provider', choices=('openrouter', 'codex', 'claude', 'ollama', 'lmstudio', 'openai_compatible'))
+    preferences.add_argument('--model')
+    preferences.add_argument('--endpoint')
+    preferences.add_argument('--network-policy', choices=('local_only', 'internal_only', 'external_allowed'))
+    preferences.add_argument('--allow-external-images', action='store_true')
+    catalog = sub.add_parser('list-image-models', help='구성된 제공자의 모델 목록 확인')
+    catalog.add_argument('--provider', choices=('openrouter', 'ollama', 'lmstudio', 'openai_compatible'), required=True)
+    catalog.add_argument('--endpoint')
+    catalog.add_argument('--network-policy', choices=('local_only', 'internal_only'), default='local_only')
     setup = sub.add_parser('setup-audio',help='선택한 다국어 Whisper 모델 준비')
     setup.add_argument('--model',choices=('tiny','base','small'),required=True)
     setup.add_argument('--download',action='store_true',help='선택한 모델 다운로드·설정에 동의')
@@ -290,6 +302,24 @@ def main(argv=None) -> int:
             result = select_model(args.provider, args.model, defer=args.defer, save_as_default=args.save_as_default, confirmed=args.confirmed)
             print(json.dumps(result, ensure_ascii=False))
             return 2 if result['status'] in ('setup_required', 'confirmation_required') else 0
+        elif args.command == 'preferences':
+            from .workflow import configure_preferences, current_preferences
+            if args.set_mode:
+                result = configure_preferences(
+                    args.set_mode, runtime=args.runtime, provider=args.provider, model=args.model,
+                    endpoint=args.endpoint, network_policy=args.network_policy,
+                    allow_external_images=args.allow_external_images)
+            elif any((args.runtime, args.provider, args.model, args.endpoint,
+                      args.network_policy, args.allow_external_images)):
+                raise ValueError('설정을 바꾸려면 --set-mode를 함께 지정하세요.')
+            else:
+                result = current_preferences()
+            print(json.dumps(result, ensure_ascii=False))
+        elif args.command == 'list-image-models':
+            from .providers import catalog_image_models
+            result = catalog_image_models(args.provider, endpoint=args.endpoint,
+                                          network_policy=args.network_policy)
+            print(json.dumps(result, ensure_ascii=False))
         elif args.command == 'setup-audio':
             from .audio_setup import setup_audio
             print(json.dumps(setup_audio(args.model,confirmed=args.download),ensure_ascii=False))
