@@ -141,7 +141,7 @@ function matchesModelChoice(text, provider, model) {
 // OpenCode question UI replies are tool results, not new chat messages. Only
 // trust answers from an actually completed question tool call; model-supplied
 // prepare arguments and quoted conversation text are never consent evidence.
-function recordQuestionAnswers(event, request) {
+export function recordQuestionAnswers(event, request) {
   if (event.tool !== 'question' || event.status !== 'completed' || !request?.conversion) return;
   const questions = event.input?.questions;
   const answers = event.result?.output?.answers ?? event.result?.metadata?.answers;
