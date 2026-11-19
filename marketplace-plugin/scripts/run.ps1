@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
             $expected = ($line -split '\s+')[0].ToLowerInvariant()
             $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($expected -ne $actual) { throw 'SHA-256 mismatch.' }
-            Add-Type -AssemblyName System.IO.Compression
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
             $zip = [IO.Compression.ZipFile]::OpenRead($archive)
             try {
                 foreach ($entry in $zip.Entries) {
