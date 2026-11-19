@@ -159,6 +159,7 @@ export function recordQuestionAnswers(event, request) {
         ['analyze','preserve','placeholder'].includes(choice)) {
       request.uiMode = choice;
       request.uiConsent = null;
+      request.uiPersistentConsent = null;
       continue;
     }
     // User-selected model only, scoped to OpenRouter in the question itself.
@@ -169,6 +170,7 @@ export function recordQuestionAnswers(event, request) {
         // tentative until a provider+model-specific transmission approval.
         request.uiModel = {provider:'openrouter', model:match[1]};
         request.uiConsent = null;
+        request.uiPersistentConsent = null;
         continue;
       }
     }
@@ -181,6 +183,10 @@ export function recordQuestionAnswers(event, request) {
         prompt.toLowerCase().includes(selectedModel.model.toLowerCase()) &&
         choice === 'confirm') {
       request.uiConsent = {...selectedModel};
+      if (/(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt)) {
+        // Explicitly scoped to future conversions, not just this one.
+        request.uiPersistentConsent = {...selectedModel};
+      }
     }
   }
 }
@@ -637,8 +643,9 @@ export default {
             const named = typeof input.provider === 'string' &&
               typeof input.model === 'string' && prompt.toLowerCase().includes(input.provider.toLowerCase()) &&
               prompt.toLowerCase().includes(input.model.toLowerCase());
-            const actualQuestion = request.uiConsent &&
-              request.uiConsent.provider === input.provider && request.uiConsent.model === input.model;
+            const actualQuestion = request.uiPersistentConsent &&
+              request.uiPersistentConsent.provider === input.provider &&
+              request.uiPersistentConsent.model === input.model;
             if ((!explicitlyPersistent || !explicitlyExternal || !named) && !actualQuestion)
               return { content: choiceError('Persistent external image transfer must be explicitly authorized by the user with the exact provider/model; a model choice alone is not consent.') };
           }
@@ -835,6 +842,7 @@ export default {
         uiMode:continuing ? previous?.uiMode : undefined,
         uiModel:continuing ? previous?.uiModel : undefined,
         uiConsent:continuing ? previous?.uiConsent : undefined,
+        uiPersistentConsent:continuing ? previous?.uiPersistentConsent : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
