@@ -3,9 +3,9 @@
 <p align="center">Created by <a href="https://github.com/winter0123">winter0123</a> · <a href="https://github.com/winter0123/tokensaver-docs">Original repository</a> · <a href="AUTHORS.md">Authors</a> · <a href="LICENSE">MIT License</a></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
@@ -17,7 +17,7 @@ Click your OS button to download, then choose your agent in the installer.
 
 <a id="download"></a>
 
-## Download and install — v0.5.4
+## Download and install — v0.5.5
 
 Extract the entire ZIP and run the installer once. Select the installed Codex, Claude Code, or OpenCode agents to register. No separate Python is needed.
 
@@ -36,13 +36,13 @@ Paste the command for your OS. It downloads and verifies the installer bundle, t
 **macOS**
 
 ```sh
-curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/install.sh' -o tokensaver-docs-install.sh && sh tokensaver-docs-install.sh --repo winter0123/tokensaver-docs --version v0.5.4
+curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/install.sh' -o tokensaver-docs-install.sh && sh tokensaver-docs-install.sh --repo winter0123/tokensaver-docs --version v0.5.5
 ```
 
 **Windows PowerShell**
 
 ```powershell
-& { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/install.ps1' -OutFile tokensaver-docs-install.ps1 -ErrorAction Stop; & .\tokensaver-docs-install.ps1 -Repo winter0123/tokensaver-docs -Version v0.5.4 }
+& { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/install.ps1' -OutFile tokensaver-docs-install.ps1 -ErrorAction Stop; & .\tokensaver-docs-install.ps1 -Repo winter0123/tokensaver-docs -Version v0.5.5 }
 ```
 
 <details>
@@ -50,9 +50,9 @@ curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/relea
 
 | Operating system | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
-| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-opencode-darwin-arm64.zip) |
-| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-opencode-darwin-x64.zip) |
-| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.4/tokensaver-docs-opencode-win32-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.5/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
 
@@ -68,7 +68,7 @@ When your agent can open the attachment, the tool uses the original name and a d
 
 ## Automatic project research archive
 
-Since v0.5.4, you can enable the archive once per project using the command printed by the installer. After that, ask normally.
+Since v0.5.5, you can enable the archive once per project using the command printed by the installer. After that, ask normally.
 
 > Look up the return policy and summarize it in this project.
 

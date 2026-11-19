@@ -1,5 +1,10 @@
 # TokenSaver Docs — preview status
 
+## v0.5.5 public preview
+
+- The installer shows download and verification stages and identifies each selected plugin before registration.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.5) · [Build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44458720586)
+
 ## v0.5.4 public preview
 
 - Interactive macOS and Windows launchers show a keyboard checklist. The macOS checklist was tested in a pseudo-terminal, including navigation, checkmarks and saving only selected agents.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5 — preview
+
+- Show separate download, verification and per-agent installation status lines while keeping transfer statistics hidden.
+
 ## 0.5.4 — preview
 
 - Select agents with an interactive keyboard checklist before installing them together.
