@@ -1,9 +1,0 @@
-{
-  "name": "tokensaver-docs",
-  "version": "0.5.6",
-  "description": "TokenSaver Docs: prepare documents once and retrieve bounded evidence.",
-  "author": {
-    "name": "winter0123",
-    "url": "https://github.com/winter0123"
-  }
-}
