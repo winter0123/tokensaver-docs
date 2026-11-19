@@ -22,13 +22,72 @@ for number in 1 2 3; do
 done
 if [ "$#" -eq 0 ]; then
     [ -n "$available" ] || { echo 'Install at least one supported agent CLI first.' >&2; exit 2; }
-    echo 'Installed agents:'
-    for number in $available; do
-        case "$number" in 1) label='Claude Code';; 2) label=Codex;; 3) label=OpenCode;; esac
-        printf '%s) %s\\n' "$number" "$label"
-    done
-    printf 'Choose one or more numbers separated by commas or spaces (Enter for all): '
-    IFS= read -r choice || exit 2
+    if [ -t 0 ] && [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]; then
+        set -- $available
+        rows=$#
+        cursor=1
+        checked=
+        redraw=0
+        terminal=$(stty -g)
+        trap 'stty "$terminal"' EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' HUP TERM
+        stty -icanon -echo min 1 time 0
+        printf 'Tab or arrows to move, Space to check, Enter to install.\\n'
+        key_byte() { dd bs=1 count=1 2>/dev/null | od -An -tu1 | tr -d ' '; }
+        while :; do
+            if [ "$redraw" -eq 1 ]; then printf '\\033[%sA' "$rows"; fi
+            index=0
+            for number do
+                index=$((index + 1))
+                pointer=' '
+                [ "$index" -ne "$cursor" ] || pointer='>'
+                mark=' '
+                case "$checked " in *" $number "*) mark=x;; esac
+                case "$number" in 1) label='Claude Code';; 2) label=Codex;; 3) label=OpenCode;; esac
+                printf '\\r\\033[2K%s [%s] %s\\n' "$pointer" "$mark" "$label"
+            done
+            redraw=1
+            key=$(key_byte)
+            if [ "$key" = 27 ]; then
+                stty -icanon -echo min 0 time 2
+                prefix=$(key_byte)
+                suffix=$(key_byte)
+                stty -icanon -echo min 1 time 0
+                case "$prefix:$suffix" in 91:65|79:65|91:90) key=up;; 91:66|79:66) key=down;; esac
+            fi
+            case "$key" in
+                9|down) cursor=$((cursor % rows + 1));;
+                up) cursor=$(((cursor + rows - 2) % rows + 1));;
+                32)
+                    index=0
+                    for number do
+                        index=$((index + 1))
+                        if [ "$index" -eq "$cursor" ]; then
+                            case "$checked " in
+                                *" $number "*) checked=$(printf '%s' "$checked" | tr -d "$number");;
+                                *) checked="$checked $number";;
+                            esac
+                            break
+                        fi
+                    done
+                    ;;
+                10|13) case "$checked" in *[123]*) break;; *) printf '\\007';; esac;;
+                ''|4) exit 2;;
+            esac
+        done
+        stty "$terminal"
+        trap - EXIT INT HUP TERM
+        choice=$checked
+    else
+        echo 'Installed agents:'
+        for number in $available; do
+            case "$number" in 1) label='Claude Code';; 2) label=Codex;; 3) label=OpenCode;; esac
+            printf '%s) %s\\n' "$number" "$label"
+        done
+        printf 'Choose one or more numbers separated by commas or spaces (Enter for all): '
+        IFS= read -r choice || exit 2
+    fi
 else
     choice=$1
 fi
@@ -55,6 +114,7 @@ activation=agent
 case "$agents " in *' codex claude '*) activation=codex-claude;; esac
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
+echo 'Installing selected plugins...'
 while [ "$#" -gt 0 ]; do
     agent=$1
     shift
@@ -77,9 +137,42 @@ $Labels = @{ '1' = 'Claude Code'; '2' = 'Codex'; '3' = 'OpenCode' }
 $Available = @('1', '2', '3' | Where-Object { Get-Command -Name $Names[$_] -ErrorAction SilentlyContinue })
 if (-not $PSBoundParameters.ContainsKey('Choice')) {
     if ($Available.Count -eq 0) { throw 'Install at least one supported agent CLI first.' }
-    Write-Host 'Installed agents:'
-    foreach ($Number in $Available) { Write-Host "$Number) $($Labels[$Number])" }
-    $Choice = Read-Host 'Choose one or more numbers separated by commas or spaces (Enter for all)'
+    if (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+        Write-Host 'Tab or arrows to move, Space to check, Enter to install.'
+        $Checked = @{}
+        $Cursor = 0
+        $Top = [Console]::CursorTop
+        while ($true) {
+            [Console]::SetCursorPosition(0, $Top)
+            for ($Row = 0; $Row -lt $Available.Count; $Row++) {
+                $Number = $Available[$Row]
+                $Pointer = if ($Row -eq $Cursor) { '>' } else { ' ' }
+                $Mark = if ($Checked.ContainsKey($Number)) { 'x' } else { ' ' }
+                [Console]::WriteLine("$Pointer [$Mark] $($Labels[$Number])")
+            }
+            $Top = [Console]::CursorTop - $Available.Count
+            $Key = [Console]::ReadKey($true)
+            if ($Key.Key -eq 'Enter' -and $Checked.Count -gt 0) { break }
+            switch ($Key.Key) {
+                Tab {
+                    $Step = if ($Key.Modifiers -band [ConsoleModifiers]::Shift) { -1 } else { 1 }
+                    $Cursor = ($Cursor + $Available.Count + $Step) % $Available.Count
+                }
+                DownArrow { $Cursor = ($Cursor + 1) % $Available.Count }
+                UpArrow { $Cursor = ($Cursor + $Available.Count - 1) % $Available.Count }
+                Spacebar {
+                    $Number = $Available[$Cursor]
+                    if ($Checked.ContainsKey($Number)) { $Checked.Remove($Number) }
+                    else { $Checked[$Number] = $true }
+                }
+            }
+        }
+        $Choice = $Checked.Keys -join ','
+    } else {
+        Write-Host 'Installed agents:'
+        foreach ($Number in $Available) { Write-Host "$Number) $($Labels[$Number])" }
+        $Choice = Read-Host 'Choose one or more numbers separated by commas or spaces (Enter for all)'
+    }
 }
 if ([string]::IsNullOrWhiteSpace($Choice)) {
     $Selected = $Available
@@ -97,6 +190,7 @@ $Activation = if ($Agents -contains 'codex' -and $Agents -contains 'claude') { '
 $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
 try {
+    Write-Host 'Installing selected plugins...'
     for ($Index = 0; $Index -lt $Agents.Count; $Index++) {
         $Agent = $Agents[$Index]
         $Mode = if ($Index -eq $Agents.Count - 1) { $Activation } else { 'none' }
@@ -136,7 +230,7 @@ def create_platform_downloads(folder):
             archive.writestr(info, MAC_INSTALL if system == 'darwin' else WINDOWS_INSTALL.encode('utf-8-sig'))
             archive.writestr('README.txt', 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nExtract the entire ZIP first.\n'
                 + ('Double-click install.command, or run: sh install.command\n' if system == 'darwin' else 'Open PowerShell in this folder and run: .\\install.ps1\n')
-                + 'Choose one or more installed agents from the installer menu. Press Enter to select all.\n'
+                + 'Use Tab or the arrow keys to move, Space to check agents, and Enter to install.\n'
                 + 'Restart your agent after installation. Do not run the internal common runtime directly.\n')
         created.append(path)
     return created

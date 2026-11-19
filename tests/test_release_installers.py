@@ -68,7 +68,7 @@ class WindowsReleaseInstallerTests(unittest.TestCase):
                 bundle.writestr('checksums.json',json.dumps(checks))
             (root/'checksums.txt').write_text(hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name+'\n')
             wrapper=root/'test.ps1'
-            wrapper.write_text('function Invoke-WebRequest { param($Uri,$OutFile,$TimeoutSec) Copy-Item (Join-Path $env:INSTALL_TEST_FILES (($Uri -split "/")[-1])) $OutFile }\n& $env:INSTALL_TEST_SCRIPT -Repo owner/repo -Version $env:INSTALL_TEST_VERSION -Agent opencode\n',encoding='utf-8')
+            wrapper.write_text('function Invoke-WebRequest { param($Uri,$OutFile,$TimeoutSec,[switch]$UseBasicParsing) Copy-Item (Join-Path $env:INSTALL_TEST_FILES (($Uri -split "/")[-1])) $OutFile }\n& $env:INSTALL_TEST_SCRIPT -Repo owner/repo -Version $env:INSTALL_TEST_VERSION -Agent opencode\n',encoding='utf-8')
             cache=root/'cache';cache.mkdir()
             (cache/'sentinel').write_text('keep my cached documents')
             env=dict(os.environ, TOKENSAVER_DOCS_CACHE_DIR=str(cache), XDG_CONFIG_HOME=str(root/'config'), INSTALL_TEST_FILES=str(root), INSTALL_TEST_SCRIPT=str(ROOT/'scripts/install.ps1'), INSTALL_TEST_VERSION='v'+__version__)

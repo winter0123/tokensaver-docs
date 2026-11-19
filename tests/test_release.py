@@ -135,6 +135,46 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('1) Claude Code', result.stdout)
             self.assertFalse(log.exists())
 
+            import errno
+            import pty
+            import select
+            import time
+            master, slave = pty.openpty()
+            try:
+                with subprocess.Popen(['sh', str(launcher)], stdin=slave, stdout=slave, stderr=slave,
+                                      env={**env, 'TERM':'xterm'}) as process:
+                    os.close(slave)
+                    slave = None
+                    output = b''
+                    try:
+                        deadline = time.monotonic() + 10
+                        def read_until(marker):
+                            nonlocal output
+                            while marker not in output:
+                                readable, _, _ = select.select([master], [], [], max(0, deadline - time.monotonic()))
+                                self.assertTrue(readable, output.decode(errors='replace'))
+                                try:
+                                    chunk = os.read(master, 4096)
+                                except OSError as error:
+                                    if error.errno != errno.EIO:
+                                        raise
+                                    chunk = b''
+                                self.assertTrue(chunk, output.decode(errors='replace'))
+                                output += chunk
+                        read_until(b'> [ ] Codex')
+                        os.write(master, b'\r \x1b[B \r')
+                        read_until(b'[x] Codex')
+                        read_until(b'[x] OpenCode')
+                        self.assertEqual(process.wait(timeout=10), 0)
+                    finally:
+                        if process.poll() is None:
+                            process.kill()
+            finally:
+                if slave is not None:
+                    os.close(slave)
+                os.close(master)
+            self.assertEqual(log.read_text().splitlines(), ['opencode none', 'codex agent'])
+
     def test_missing_platform_and_wrong_tag_cannot_prepare_release(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);self.fixture(root/'artifacts')

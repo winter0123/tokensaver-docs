@@ -22,8 +22,9 @@ asset="tokensaver-docs-${agent:+$agent-}darwin-${arch}.zip"
 base="https://github.com/$repo/releases/download/$version"
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
-curl -fL --proto '=https' --connect-timeout 15 --max-time 300 "$base/checksums.txt" -o "$task_tmp/checksums.txt"
-curl -fL --proto '=https' --connect-timeout 15 --max-time 300 "$base/$asset" -o "$task_tmp/bundle.zip"
+echo 'Preparing installation...'
+curl -fsSL --proto '=https' --connect-timeout 15 --max-time 300 "$base/checksums.txt" -o "$task_tmp/checksums.txt"
+curl -fsSL --proto '=https' --connect-timeout 15 --max-time 300 "$base/$asset" -o "$task_tmp/bundle.zip"
 expected=$(awk -v name="$asset" '$2 == name { print $1 }' "$task_tmp/checksums.txt")
 [ "${#expected}" -eq 64 ] || { echo 'Missing checksum' >&2; exit 2; }
 actual=$(shasum -a 256 "$task_tmp/bundle.zip" | awk '{print $1}')

@@ -13,9 +13,11 @@ $BaseUrl = "https://github.com/$Repo/releases/download/$Version"
 $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
 try {
-  Invoke-WebRequest "$BaseUrl/checksums.txt" -OutFile (Join-Path $TaskTemp 'checksums.txt') -TimeoutSec 300
+  $ProgressPreference = 'SilentlyContinue'
+  Write-Host 'Preparing installation...'
+  Invoke-WebRequest -UseBasicParsing "$BaseUrl/checksums.txt" -OutFile (Join-Path $TaskTemp 'checksums.txt') -TimeoutSec 300
   $Archive = Join-Path $TaskTemp 'bundle.zip'
-  Invoke-WebRequest "$BaseUrl/$Asset" -OutFile $Archive -TimeoutSec 300
+  Invoke-WebRequest -UseBasicParsing "$BaseUrl/$Asset" -OutFile $Archive -TimeoutSec 300
   $Rows = @(Get-Content (Join-Path $TaskTemp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1] -eq $Asset })
   if ($Rows.Count -ne 1) { throw 'Missing or duplicate checksum' }
   $Expected = ($Rows[0] -split '\s+')[0]
