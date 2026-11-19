@@ -93,7 +93,7 @@ def parser() -> argparse.ArgumentParser:
     choice.add_argument('--transcribe-images', action='store_true', dest='transcribe_images', default=None, help='선택한 모델로 이미지 속 글자와 설명을 MD에 포함')
     choice.add_argument('--skip-image-transcription', action='store_false', dest='transcribe_images', help='이미지만 저장하고 내용은 정리하지 않음')
     prepare.add_argument('--image-mode', choices=('analyze', 'preserve', 'placeholder'), help='이미지·글자·설명 / 이미지만 / [이미지] 위치 표시')
-    prepare.add_argument('--model-provider', choices=('openrouter', 'codex', 'claude', 'local'))
+    prepare.add_argument('--model-provider', choices=('openrouter', 'codex', 'claude'))
     prepare.add_argument('--model', help='이번 변환에만 사용할 모델')
     prepare.add_argument('--allow-unverified-model', action='store_true', help='지원 여부가 확인되지 않은 모델 사용에 명시적 동의')
     model_setup = sub.add_parser('setup-model', help='최초 변환 모델 선택·확인·나중에 설정')
