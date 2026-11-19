@@ -109,15 +109,15 @@ function audioEnvironment() {
 function audioConfigPath() { return join(audioDataRoot(),'config','tokensaver-docs','config.json'); }
 
 function exactChoice(text) {
-  const value = text.trim().toLowerCase().replace(/[.!]$/, '');
+  const value = text.trim().toLowerCase().replace(/\s*\(recommended\)$/i, '').replace(/[.!]$/, '');
   const labels = {
     defer: ['later','defer','not now','나중에','나중에 선택하기'],
     select_model: ['모델 선택하기','모델 바꾸기'],
-    preserve: ['preserve','images only','image links only','이미지 링크만','보존(preserve)','이미지만 넣기'],
+    preserve: ['preserve','images only','image links only','이미지 링크만','보존(preserve)','이미지만 넣기','이미지 넣기','이미지 링크만 넣기','이미지만 넣기로 변환','이미지 링크만 넣고, 이미지 속 글자나 설명은 넣지 마','only include the image links in the markdown, with no extracted image text and no descriptions'], 
     placeholder: ['placeholder','[이미지]','플레이스홀더(placeholder)','현재 모델로 계속하기'],
     analyze: ['이미지·글자·설명 넣기','이미지 분석에 동의합니다'],
     decline: ['no','no, do not analyze the image','no, do not analyze it','cancel','아니요','취소'],
-    confirm: ['yes','confirm','네','예','확인'],
+    confirm: ['yes','confirm','네','예','확인','승인','분석 동의','외부 전송 및 분석 동의','분석 진행'], 
   };
   for (const [choice, values] of Object.entries(labels))
     if (values.includes(value)) return choice;
@@ -162,9 +162,11 @@ function recordQuestionAnswers(event, request) {
       continue;
     }
     // User-selected model only, scoped to OpenRouter in the question itself.
-    if (/(?:모델|model)/i.test(prompt) && /openrouter/i.test(prompt)) {
+    if (/(?:모델|model)/i.test(prompt) && /(?:openrouter|외부 전송|external transfer)/i.test(prompt)) {
       const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
-      if (match) {
+      if (match && (/(?:openrouter)/i.test(prompt) || /:free$/.test(match[1]) || match[1] === 'openrouter/free')) {
+        // Free model identifiers from the built-in OpenRouter chooser are
+        // tentative until a provider+model-specific transmission approval.
         request.uiModel = {provider:'openrouter', model:match[1]};
         request.uiConsent = null;
         continue;
