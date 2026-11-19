@@ -18,6 +18,7 @@ class ModelPluginTests(unittest.TestCase):
         plugin = Path(__file__).resolve().parents[1] / 'plugins/opencode/index.js'
         routing = 'research-routing.json'
         shutil.copy2(plugin.parents[2] / 'tokensaver_docs/data' / routing, self.root / routing)
+        shutil.copy2(plugin.with_name('runtime.js'), self.root / 'runtime.js')
         (self.root/'index.mjs').write_text(plugin.read_text().replace(
             '../../tokensaver_docs/data/' + routing, './' + routing))
         package = self.root/'node_modules/@opencode-ai/plugin'
@@ -697,10 +698,10 @@ class ManagedProcessTests(unittest.TestCase):
             # Exercise the production spawn/timeout code with real processes on every OS.
             source=Path(__file__).resolve().parents[1]/'plugins/opencode/index.js'
             body=source.read_text().split('function run(args, env = process.env)',1)[1].split('\nasync function setupAudio',1)[0]
-            function='function run(args, env = process.env)'+body
+            function='async function run(args, env = process.env)'+body
             script=(
                 'import assert from "node:assert/strict"; import {spawn} from "node:child_process";\n'
-                'const original=setTimeout; globalThis.setTimeout=(fn,delay,...args)=>original(fn,delay===300000?600:delay,...args);\n'
+                'const original=setTimeout; globalThis.setTimeout=(fn,delay,...args)=>original(fn,delay===300000?600:delay,...args);\n'\n                'const ensureTokenSaverExecutable=async()=>executable; const dirname=()=>""; const fileURLToPath=()=>"";\n'
                 f'const executable={json.dumps(sys.executable)};\n'+function+
                 f'\nconst result=await run(["-c",{json.dumps(parent_code)}]); assert.ok(result.includes("Timed out"));\n'
             )
