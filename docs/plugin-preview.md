@@ -1,15 +1,15 @@
 # Building self-contained plugin bundles
 
-GitHub prerelease [v0.4.2](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.2) is available. This guide covers maintainer builds; npm/PyPI and official directory listings are not published.
+GitHub prerelease [v0.5.1](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.1) is available. This guide covers maintainer builds; npm/PyPI and official directory listings are not published.
 
 The chosen distribution is GitHub source plus GitHub Releases, with no hosted
 server or required PyPI/npm publication. See [release installation and updates](distribution.md).
 
-Current-source builds include the unreleased project research archive. After
+Current-source builds include the project research archive. After
 installing a candidate bundle, run the activation command it prints from a
 disposable project. Verify natural-language capture, the linked Markdown summary
 and bounded retrieval in a separate session. Record host-specific results in
-[verification status](current-status.md). The [activation guide](advanced-usage.md#project-research-archive-unreleased)
+[verification status](current-status.md). The [activation guide](advanced-usage.md#project-research-archive)
 covers supported hooks and the manual sync path.
 
 ## Build (maintainers only)

@@ -29,7 +29,7 @@ The v2 tool guard permits only these read-only MCP tools
 `tokensaver-docs_search_research`. Other
 MCP conversion and settings methods are not available through the v2 plugin.
 
-## Project research archive (unreleased)
+## Project research archive
 
 With the updated bundle, run the activation command printed by the installer
 from the project directory. OpenCode v1 and v2 register research files saved to

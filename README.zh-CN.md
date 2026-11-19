@@ -3,9 +3,9 @@
 <p align="center">Created by <a href="https://github.com/winter0123">winter0123</a> · <a href="https://github.com/winter0123/tokensaver-docs">Original repository</a> · <a href="AUTHORS.md">Authors</a> · <a href="LICENSE">MIT License</a></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
@@ -17,7 +17,7 @@
 
 <a id="download"></a>
 
-## 下载与安装 — v0.4.2
+## 下载与安装 — v0.5.1
 
 点击上方按钮会直接下载 ZIP。完整解压后运行安装程序，再选择 **1 Claude Code / 2 Codex / 3 OpenCode**。无需单独安装 Python。
 
@@ -34,19 +34,19 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 
 | 操作系统 | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
-| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-darwin-arm64.zip) |
-| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-darwin-x64.zip) |
-| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.1/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
 
-## 项目调研归档（尚未发布）
+## 项目调研归档
 
-上方下载的是已公开的 v0.4.2 预览版。调研归档可通过安装更新后的源码或使用该源码构建的插件包体验。
+上方的 v0.5.1 预览版下载包含项目调研归档功能。
 
 在项目目录中执行更新后的插件安装程序输出的启用命令。使用源码 CLI 时，运行 `tokensaver-docs knowledge enable .`。之后可以说“Look up the return policy and summarize it in this project”。在已启用采集钩子的宿主中，保存到 `docs/research/inbox/` 的资料会归档到 `docs/tokensaver-docs/`，保留原件版本并生成带证据链接的摘要。在后续会话中询问已保存的调研内容，默认可在 500 词元的预算内检索相关证据。
 
-[设置、支持的宿主与检索](docs/advanced-usage.md#project-research-archive-unreleased)
+[设置、支持的宿主与检索](docs/advanced-usage.md#project-research-archive)
 
 ## 直接用自然语言提出请求
 

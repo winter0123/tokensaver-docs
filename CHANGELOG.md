@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1 — preview
 
 - Archive plain-text (`.txt`) originals and link report citations to searchable Markdown copies.
 - Add opt-in project research archiving with versioned originals, searchable Markdown evidence and human-readable summaries. Automatic registration uses project-scoped Codex and Claude Code hooks and OpenCode v1/v2 events.

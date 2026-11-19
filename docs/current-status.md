@@ -1,5 +1,13 @@
 # TokenSaver Docs — preview status
 
+## v0.5.1 public preview
+
+- The public release includes unified installers and agent-specific ZIPs for
+  Apple Silicon, Intel Mac and Windows x64.
+- Source CI and all three native bundle jobs passed. Real host coverage is
+  described in the local verification section below.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.1) · [Native build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44434418827)
+
 ## Local macOS verification of the unreleased archive
 
 - The three Apple Silicon bundles built and passed manifest checksum checks.

@@ -121,10 +121,10 @@ Caches contain document text: treat them as private and review any outputs befor
 
 CLI diagnostic and status messages currently include Korean; plugin tool names and schemas are in English.
 
-## Project research archive (unreleased)
+## Project research archive
 
-The updated source and plugin builds support a local research archive. The
-published v0.4.2 download predates this feature. From your project directory,
+The v0.5.1 preview and the source both support a local research archive. From
+your project directory,
 run the activation command printed by the updated plugin installer. With a
 source CLI installed with the `tokens` extra, run:
 
