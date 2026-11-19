@@ -1,6 +1,6 @@
 # Building self-contained plugin bundles
 
-GitHub prerelease [v0.5.1](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.1) is available. This guide covers maintainer builds; npm/PyPI and official directory listings are not published.
+GitHub prerelease [v0.5.2](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.2) is available. This guide covers maintainer builds; npm/PyPI and official directory listings are not published.
 
 The chosen distribution is GitHub source plus GitHub Releases, with no hosted
 server or required PyPI/npm publication. See [release installation and updates](distribution.md).

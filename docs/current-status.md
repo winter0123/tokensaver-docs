@@ -1,5 +1,12 @@
 # TokenSaver Docs — preview status
 
+## v0.5.2 public preview
+
+- The unified ZIP installer detects and registers installed Codex, Claude Code
+  and OpenCode CLIs in one run. It prints one research activation command for
+  the project. Individual agent archives are also available.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.2) · [Build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44438333027)
+
 ## v0.5.1 public preview
 
 - The public release includes unified installers and agent-specific ZIPs for

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 — preview
+
+- Register all detected Codex, Claude Code and OpenCode installations in one run from the unified ZIP. Print a single project activation command.
+- Recognize attachment-first Markdown conversion requests in Korean, Japanese and Simplified Chinese in the OpenCode v2 integration.
+
 ## 0.5.1 — preview
 
 - Archive plain-text (`.txt`) originals and link report citations to searchable Markdown copies.
