@@ -7,7 +7,7 @@
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
@@ -60,61 +60,9 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 
 经批准的网站原文存档、本地音频转写和图片自动分析可按项目选择启用。[设置与详细用法](docs/advanced-usage.md#project-research-archive) · [验证结果](docs/current-status.md#v051-public-preview)
 
-<a id="source-install"></a>
-
-## 安装源码 CLI
-
-需要 Python 3.11+ 和 Git。此安装不会自动注册助手插件。
-
-<details>
-<summary><strong>macOS / Linux</strong></summary>
-
-```sh
-python3 -m venv "$HOME/.tokensaver-docs/venv"
-source "$HOME/.tokensaver-docs/venv/bin/activate"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-</details>
-
-<details>
-<summary><strong>Windows PowerShell</strong></summary>
-
-```powershell
-py -3 -m venv "$HOME\.tokensaver-docs\venv"
-& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-</details>
-
-打开新终端后，请再次运行对应的第二行。若 PowerShell 阻止激活，可在后续命令中以 `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` 代替 `tokensaver-docs`，无需更改执行策略。
-
 ## 选择或更换图片模型
 
-**以下命令供源码 CLI 用户使用；插件用户可直接向助手请求更换模型。** 在已激活安装环境的终端中选择一种方式，模型将保存为默认值。首次设置和更换使用同一命令。
-
-**① Claude Code** — 先安装 CLI 并登录，运行后输入账号可用的准确模型名称。
-
-```sh
-tokensaver-docs configure --kind image --provider claude
-```
-
-**② Codex** — 先安装 CLI 并登录，运行后输入账号可用的准确模型名称。
-
-```sh
-tokensaver-docs configure --kind image --provider codex
-```
-
-**③ OpenCode + OpenRouter** — 设置 `OPENROUTER_API_KEY` 环境变量，运行后从免费图片输入模型候选列表中选择编号。实际可用性取决于账号与服务。不要在助手对话中发送 API 密钥。
-
-```sh
-tokensaver-docs configure --kind image --provider openrouter
-```
-
-OpenCode 是助手，OpenRouter 是模型服务；其他助手也能选择 OpenRouter 处理转换。此设置只影响图片转换模型，不会改变助手的聊天模型或音频模型。Claude Code/Codex 遵循各自 CLI 的登录、用量与计费条件。普通文档文字提取不需要模型或密钥。
-
-查看当前模型：`tokensaver-docs setup-model`
+如需更换图片模型，可以直接说“帮我换个图片转换模型”。
 
 ## 支持的文件
 

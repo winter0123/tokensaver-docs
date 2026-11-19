@@ -7,7 +7,7 @@
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
@@ -60,61 +60,9 @@ v0.5.2 から、インストーラーに表示されるコマンドをプロジ�
 
 許可した公開サイトの原文保存、ローカル音声の文字起こし、画像の自動分析はプロジェクトごとに有効にできます。[設定と詳細な使い方](docs/advanced-usage.md#project-research-archive) · [検証結果](docs/current-status.md#v051-public-preview)
 
-<a id="source-install"></a>
-
-## ソース CLI のインストール
-
-Python 3.11 以上と Git が必要です。この手順ではエージェントにプラグインを自動登録しません。
-
-<details>
-<summary><strong>macOS / Linux</strong></summary>
-
-```sh
-python3 -m venv "$HOME/.tokensaver-docs/venv"
-source "$HOME/.tokensaver-docs/venv/bin/activate"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-</details>
-
-<details>
-<summary><strong>Windows PowerShell</strong></summary>
-
-```powershell
-py -3 -m venv "$HOME\.tokensaver-docs\venv"
-& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-</details>
-
-新しいターミナルでは、該当する 2 行目を再実行してください。PowerShell で有効化がブロックされる場合は、後続の `tokensaver-docs` を `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` に置き換えられます。実行ポリシーの変更は不要です。
-
 ## 画像モデルの選択・変更
 
-**以下はソース CLI ユーザー向けです。プラグインではエージェントにモデル変更を依頼できます。** インストール環境を有効化したターミナルで、いずれか 1 つを選びます。選択したモデルは既定値として保存されます。初回設定と変更は同じコマンドです。
-
-**① Claude Code** — CLI をインストールしてログインし、実行後にアカウントで利用できる正確なモデル名を入力します。
-
-```sh
-tokensaver-docs configure --kind image --provider claude
-```
-
-**② Codex** — CLI をインストールしてログインし、実行後にアカウントで利用できる正確なモデル名を入力します。
-
-```sh
-tokensaver-docs configure --kind image --provider codex
-```
-
-**③ OpenCode + OpenRouter** — 環境変数 `OPENROUTER_API_KEY` を設定し、実行後に無料の画像入力対応モデル候補から番号を選びます。実際の利用可否はアカウントとサービスによって異なります。API キーをエージェントの会話に貼り付けないでください。
-
-```sh
-tokensaver-docs configure --kind image --provider openrouter
-```
-
-OpenCode はエージェント、OpenRouter はモデルサービスです。他のエージェントでも変換用に OpenRouter を選べます。この設定が変えるのは画像変換モデルのみで、会話モデルや音声モデルは別です。Claude Code/Codex は各 CLI の認証・利用上限・課金条件に従います。通常の文書テキスト抽出にモデルや API キーは不要です。
-
-現在のモデルを確認：`tokensaver-docs setup-model`
+画像モデルを変更するには、エージェントに「画像変換モデルを変えて」と依頼してください。
 
 ## 対応ファイル
 

@@ -2,6 +2,38 @@
 
 [빠른 시작으로 돌아가기](../README.ko.md) · [최신 검증 상태](current-status.md)
 
+## 소스 CLI 설치
+
+이 절차는 개발 및 터미널 직접 사용에 필요한 소스 CLI를 설치합니다. 일반 사용자의 플러그인 설치는 [빠른 시작](../README.ko.md#download)을 따르세요.
+
+**내 컴퓨터의 운영체제 하나만 선택하세요.** Python 3.11 이상과 Git이 필요합니다.
+
+<details open>
+<summary><strong>macOS / Linux — 터미널에 복사</strong></summary>
+
+```sh
+python3 -m venv "$HOME/.tokensaver-docs/venv"
+source "$HOME/.tokensaver-docs/venv/bin/activate"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+새 터미널을 열면 두 번째 줄을 다시 실행하세요.
+
+</details>
+
+<details>
+<summary><strong>Windows — PowerShell에 복사</strong></summary>
+
+```powershell
+py -3 -m venv "$HOME\.tokensaver-docs\venv"
+& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+새 터미널을 열면 두 번째 줄을 다시 실행하세요. 활성화가 차단되면 정책을 바꾸는 대신 `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"`를 이후 명령의 `tokensaver-docs` 대신 사용하세요.
+
+</details>
+
 ## 개발자용: 체크아웃한 소스에서 실행
 
 일반 사용자는 위의 빠른 시작을 따르면 됩니다. 아래는 저장소를 직접 체크아웃한 개발자를 위한 macOS·Linux 예시입니다. Python 3.11 이상이 필요합니다.

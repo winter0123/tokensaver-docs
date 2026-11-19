@@ -7,7 +7,7 @@
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
@@ -60,80 +60,9 @@ v0.5.2부터 설치기가 안내하는 명령을 작업 프로젝트에서 한 �
 
 승인한 사이트의 공개 웹 원문 저장, 로컬 음성 전사, 이미지 자동 분석은 프로젝트별로 선택할 수 있습니다. [프로젝트 설정과 상세 사용법](docs/advanced-usage.ko.md#프로젝트-조사-자료-자동-보관) · [검증 결과](docs/current-status.md#v051-public-preview)
 
-<a id="source-install"></a>
-
-## 소스 CLI 설치
-
-**내 컴퓨터의 운영체제 하나만 선택하세요.** Python 3.11 이상과 Git이 필요합니다.
-
-<details open>
-<summary><strong>macOS / Linux — 터미널에 복사</strong></summary>
-
-```sh
-python3 -m venv "$HOME/.tokensaver-docs/venv"
-source "$HOME/.tokensaver-docs/venv/bin/activate"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-새 터미널을 열면 두 번째 줄을 다시 실행하세요.
-
-</details>
-
-<details>
-<summary><strong>Windows — PowerShell에 복사</strong></summary>
-
-```powershell
-py -3 -m venv "$HOME\.tokensaver-docs\venv"
-& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-새 터미널을 열면 두 번째 줄을 다시 실행하세요. 활성화가 차단되면 정책을 바꾸는 대신 `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"`를 이후 명령의 `tokensaver-docs` 대신 사용하세요.
-
-</details>
-
 ## 모델 선택·변경
 
-**아래 명령은 소스 CLI 사용자용입니다.** 플러그인 사용자는 위 안내처럼 에이전트에게 모델 변경을 요청하세요. 이미지 속 글자와 설명이 필요할 때, 아래 세 가지 중 하나만 선택하세요. 설치한 환경이 활성화된 터미널에서 실행합니다. 처음 선택할 때와 나중에 변경할 때 같은 명령을 사용하며, 선택한 모델을 기본값으로 저장합니다.
-
-<details>
-<summary><strong>① Claude Code — 로그인한 CLI의 모델 사용</strong></summary>
-
-Claude Code CLI를 설치하고 로그인한 상태에서 실행하세요. 실행 후 **해당 계정에서 사용할 정확한 모델 이름**을 입력합니다.
-
-```sh
-tokensaver-docs configure --kind image --provider claude
-```
-
-</details>
-
-<details>
-<summary><strong>② Codex — 로그인한 CLI의 모델 사용</strong></summary>
-
-Codex CLI를 설치하고 로그인한 상태에서 실행하세요. 실행 후 **해당 계정에서 사용할 정확한 모델 이름**을 입력합니다.
-
-```sh
-tokensaver-docs configure --kind image --provider codex
-```
-
-</details>
-
-<details>
-<summary><strong>③ OpenCode + OpenRouter — 무료 모델 목록에서 선택</strong></summary>
-
-`OPENROUTER_API_KEY` 환경변수를 설정한 뒤 실행하세요. **무료 이미지 입력 지원 후보 목록에서 번호를 선택**합니다. 실제 사용 가능 여부는 계정과 서비스 상태에 따라 달라집니다. 키를 에이전트 대화에 입력하지 마세요.
-
-```sh
-tokensaver-docs configure --kind image --provider openrouter
-```
-
-OpenCode는 에이전트, OpenRouter는 모델 제공 서비스입니다. 이 명령은 OpenCode의 대화 모델을 바꾸지 않습니다. Claude Code·Codex에서도 OpenRouter를 변환 제공자로 선택할 수 있습니다.
-
-</details>
-
-이미지 없는 문서의 글자는 모델·API 키 없이 추출합니다. 위 설정은 **이미지 변환 모델**에만 적용하며, 에이전트의 대화 모델과 음성 모델은 별개입니다. Claude Code·Codex 방식은 각 CLI의 로그인·사용량 한도·과금 조건을 따릅니다.
-
-현재 모델 확인: `tokensaver-docs setup-model`
+이미지 모델을 바꾸려면 에이전트에게 “이미지 변환 모델 바꿔줘”라고 요청하세요.
 
 ## 지원 파일
 

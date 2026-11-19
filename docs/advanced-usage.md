@@ -2,6 +2,38 @@
 
 [Back to quick start](../README.md) · [Verification status](current-status.md)
 
+## Install the source CLI
+
+This procedure installs the source CLI for development or direct terminal use. For plugin installation, use the [release installer](../README.md#download).
+
+**Choose your operating system.** Requires Python 3.11+ and Git.
+
+<details open>
+<summary><strong>macOS / Linux — paste into your terminal</strong></summary>
+
+```sh
+python3 -m venv "$HOME/.tokensaver-docs/venv"
+source "$HOME/.tokensaver-docs/venv/bin/activate"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+In a new terminal, run the second line again.
+
+</details>
+
+<details>
+<summary><strong>Windows — paste into PowerShell</strong></summary>
+
+```powershell
+py -3 -m venv "$HOME\.tokensaver-docs\venv"
+& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
+python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
+```
+
+In a new terminal, run the second line again. If activation is blocked, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs` below, without changing execution policy.
+
+</details>
+
 ## Convert once
 
 For agents, start with `prepare_documents` (OpenCode v1: `tokensaver_docs_prepare`;

@@ -7,7 +7,7 @@
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
 <a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
-<p align="center"><a href="#source-install">Linux · Source install</a> · <a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
+<p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
@@ -60,80 +60,9 @@ When an enabled agent saves research materials, TokenSaver keeps **versioned ori
 
 Public web snapshots from approved sites, local audio transcription, and automatic image analysis are optional per project. [Setup and advanced usage](docs/advanced-usage.md#project-research-archive) · [Verification results](docs/current-status.md#v051-public-preview)
 
-<a id="source-install"></a>
-
-## Install the source CLI
-
-**Choose your operating system.** Requires Python 3.11+ and Git.
-
-<details open>
-<summary><strong>macOS / Linux — paste into your terminal</strong></summary>
-
-```sh
-python3 -m venv "$HOME/.tokensaver-docs/venv"
-source "$HOME/.tokensaver-docs/venv/bin/activate"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-In a new terminal, run the second line again.
-
-</details>
-
-<details>
-<summary><strong>Windows — paste into PowerShell</strong></summary>
-
-```powershell
-py -3 -m venv "$HOME\.tokensaver-docs\venv"
-& "$HOME\.tokensaver-docs\venv\Scripts\Activate.ps1"
-python -m pip install 'tokensaver-docs[mcp,tokens] @ git+https://github.com/winter0123/tokensaver-docs.git'
-```
-
-In a new terminal, run the second line again. If activation is blocked, use `& "$HOME\.tokensaver-docs\venv\Scripts\tokensaver-docs.exe"` instead of `tokensaver-docs` below, without changing execution policy.
-
-</details>
-
 ## Choose or change a model
 
-**These commands are for source CLI users.** Plugin users can ask their agent to change the model as described above. Choose one service if you want visible image text and descriptions. Run commands in a terminal with the installed environment activated. Use the same command for initial setup and later changes; your model becomes the saved default.
-
-<details>
-<summary><strong>① Claude Code — use your signed-in CLI</strong></summary>
-
-Install and sign in to the Claude Code CLI first. Run this, then **enter the exact model name available to your account**.
-
-```sh
-tokensaver-docs configure --kind image --provider claude
-```
-
-</details>
-
-<details>
-<summary><strong>② Codex — use your signed-in CLI</strong></summary>
-
-Install and sign in to the Codex CLI first. Run this, then **enter the exact model name available to your account**.
-
-```sh
-tokensaver-docs configure --kind image --provider codex
-```
-
-</details>
-
-<details>
-<summary><strong>③ OpenCode + OpenRouter — choose from free model candidates</strong></summary>
-
-Set the `OPENROUTER_API_KEY` environment variable first. Run this, then **choose a number from the free image-input model candidate list**. Actual availability depends on your account and the service. Do not share keys in agent chat.
-
-```sh
-tokensaver-docs configure --kind image --provider openrouter
-```
-
-OpenCode is the agent; OpenRouter is the model service. This does not change OpenCode's chat model. Claude Code and Codex users can also select OpenRouter as the conversion provider.
-
-</details>
-
-Plain document text needs no model or API key. These settings change the **image conversion model**, independently of your agent's chat model and audio model. Claude Code/Codex use their CLI authentication, usage limits, and billing conditions.
-
-Check your model: `tokensaver-docs setup-model`
+To switch image models, ask your agent “Change the image conversion model.”
 
 ## Supported files
 
