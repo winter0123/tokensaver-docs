@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "tokensaver-docs": {
+      "type": "stdio",
+      "command": "tokensaver-docs",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}
