@@ -1,14 +1,42 @@
-# Tokensaver marketplace integration
+# Tokensaver Marketplace — installation only, no manual MCP configuration
 
-The [Tokensaver marketplace](https://github.com/winter0123/Tokensaver) is a lightweight catalog; **the Git-sourced plugin contains the skill and MCP metadata, but not the operating-system-specific native executable**.
+The independent [Tokensaver catalog](https://github.com/winter0123/Tokensaver) points at a small **skills + CLI** plugin package inside this repository. The original engine, caches, standalone release bundles, and native tools remain intact.
 
-## Requirements
+## Codex
 
-1. Install the TokenSaver Docs native runtime using the release installer described in [distribution.md](distribution.md). Alternatively, build/install the Python package in a suitable environment.
-2. Make the `tokensaver-docs` command available on `PATH` for the Codex/Claude Code process, and verify `tokensaver-docs --help` succeeds. The current release bundle installer stores its runtime in per-user versioned storage and **does not guarantee a global PATH command**, so merely running that installer is not sufficient for this Git-sourced MCP configuration.
-3. Register the shared marketplace: `codex plugin marketplace add winter0123/Tokensaver` or `claude plugin marketplace add winter0123/Tokensaver`.
-4. Install `tokensaver-docs@tokensaver` using the host plugin manager. Confirm MCP tools respond before relying on the plugin.
+```sh
+codex plugin marketplace add winter0123/Tokensaver
+```
 
-The standalone native release bundles remain the supported self-contained alternative. Their local plugin registration currently uses `tokensaver-docs-marketplace` until a separate validated migration is implemented. Do **not** remove that marketplace or delete its data automatically. If both sources are installed, disable one copy to avoid duplicate MCP registrations.
+Install `tokensaver-docs@tokensaver` in the Codex plugin manager. The catalog targets `marketplace-plugin/`, **not** the root of this repository. The new package contains `.codex-plugin/plugin.json` and a SKILL. No user-managed MCP server or PATH change is needed.
 
-The root `plugin.json`/`mcp.json` and `.claude-plugin/plugin.json`/`.mcp.json` support the Git-backed catalog. They do not replace the OS-specific release artifacts. Windows and macOS live-host installation has not been verified for this new path; GitHub catalog registration and plugin launch should be tested on each host.
+## Claude Code
+
+```sh
+claude plugin marketplace add winter0123/Tokensaver
+claude plugin install tokensaver-docs@tokensaver
+```
+
+Uses the same `marketplace-plugin/` SKILL via its own `.claude-plugin/plugin.json`. It does not contain a `.mcp.json` file.
+
+## OpenCode
+
+OpenCode is not part of the Codex/Claude marketplace protocol. Install the independent OpenCode plugin via the host CLI:
+
+```sh
+opencode plugin add 'github:winter0123/tokensaver-docs#main::path:plugins/opencode'
+```
+
+The Git package includes its plugin JS, skill and startup runtime resolver. The bundled ZIP release installation path remains supported. The OpenCode plugin may use an **internally registered** local MCP server, but users do not install or configure one manually.
+
+## Runtime behavior
+
+The first actual document operation (or initial OpenCode plugin setup) automatically downloads the **v0.5.6** native release appropriate for macOS arm64/x64 or Windows x64, unless a verified runtime is already cached or bundled. The archive is checked against the GitHub release `checksums.txt` before being unpacked into user-local storage. This step requires GitHub network access and may require consent for download/command execution. The checksum manifest is published on the same origin; it is not a cryptographic release signature. No OS package manager, Python installation, global PATH modifications, manual MCP registration or separate server process setup is required by this marketplace package.
+
+Linux does not have an official native release archive yet; follow the source-install instructions instead. Unsupported platforms must fail clearly rather than claim installation succeeded.
+
+Existing `tokensaver-docs-marketplace` registrations are **not migrated or deleted**. Avoid enabling both legacy and Git-installed copies at once. Existing caches and user documents are not touched.
+
+## Review and validation
+
+Marketplace/plugin configuration is prepared on feature branches. The two PRs must be merged in dependency order before `main` resolves the new packages. Real macOS/Windows Codex, Claude Code, and OpenCode installs and first-run downloads remain to be verified; do not advertise production one-click support before these tests pass.
