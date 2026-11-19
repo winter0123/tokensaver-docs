@@ -29,6 +29,8 @@ Windows：在解压目录中打开 PowerShell，运行 `.\install.ps1`。如设�
 
 macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已通过自动测试；新的 Windows 统一安装脚本及真实 Windows／Intel 助手安装仍属实验性支持。文件尚未签名或公证。Linux 目前仅提供源码安装。
 
+**下个版本支持多选安装。** 输入一个或多个已检测到的助手编号，或按回车全选。终端下载安装命令会打开同一菜单，并将插件注册到所选助手。上方 v0.5.2 ZIP 会安装到检测到的全部助手。
+
 <details>
 <summary>高级：按助手下载单独 ZIP</summary>
 

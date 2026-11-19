@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Show detected agents in the unified installer and allow one, several, or all to be selected.
+- Open the same plugin installer menu from the macOS and Windows terminal download scripts when no agent is supplied.
+
 ## 0.5.2 — preview
 
 - Register all detected Codex, Claude Code and OpenCode installations in one run from the unified ZIP. Print a single project activation command.

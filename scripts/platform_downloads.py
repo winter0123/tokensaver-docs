@@ -10,21 +10,49 @@ MAC_INSTALL = '''#!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 echo 'TokenSaver Docs by winter0123'
-choice=${1:-4}
-case "$choice" in
-    1) agents=claude;; 2) agents=codex;; 3) agents=opencode;;
-    ''|4)
-        agents=
-        for agent in opencode codex claude; do
-            if command -v "$agent" >/dev/null; then agents="${agents:+$agents }$agent"; fi
-        done
-        [ -n "$agents" ] || { echo 'Install at least one supported agent CLI first.' >&2; exit 2; }
-        ;;
-    *) echo 'Invalid selection'; exit 2;;
-esac
+agent_name() {
+    case "$1" in 1) echo claude;; 2) echo codex;; 3) echo opencode;; esac
+}
+available=
+for number in 1 2 3; do
+    agent=$(agent_name "$number")
+    if command -v "$agent" >/dev/null; then
+        available="$available $number"
+    fi
+done
+if [ "$#" -eq 0 ]; then
+    [ -n "$available" ] || { echo 'Install at least one supported agent CLI first.' >&2; exit 2; }
+    echo 'Installed agents:'
+    for number in $available; do
+        case "$number" in 1) label='Claude Code';; 2) label=Codex;; 3) label=OpenCode;; esac
+        printf '%s) %s\\n' "$number" "$label"
+    done
+    printf 'Choose one or more numbers separated by commas or spaces (Enter for all): '
+    IFS= read -r choice || exit 2
+else
+    choice=$1
+fi
+set -f
+selection=$(printf '%s' "$choice" | tr ',' ' ')
+set -- $selection
+if [ "$#" -eq 0 ]; then
+    case "$choice" in *,*) echo 'Invalid selection' >&2; exit 2;; esac
+    set -- $available
+fi
+[ "$#" -gt 0 ] || { echo 'Install at least one supported agent CLI first.' >&2; exit 2; }
+selected=
+for number do
+    case "$number" in 1|2|3) ;; *) echo 'Invalid selection' >&2; exit 2;; esac
+    case "$available " in *" $number "*) ;; *) echo 'Selected agent CLI is not installed.' >&2; exit 2;; esac
+    selected="$selected $number"
+done
+agents=
+for number in 3 2 1; do
+    case "$selected " in *" $number "*) agents="$agents $(agent_name "$number")";; esac
+done
 set -- $agents
 activation=agent
-case " $agents " in *' codex claude '*) activation=codex-claude;; esac
+case "$agents " in *' codex claude '*) activation=codex-claude;; esac
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
 while [ "$#" -gt 0 ]; do
@@ -41,15 +69,30 @@ while [ "$#" -gt 0 ]; do
 done
 echo 'Installed. Restart the selected agents to load TokenSaver Docs.'
 '''
-WINDOWS_INSTALL = '''param([string]$Choice = '4')
+WINDOWS_INSTALL = '''param([string]$Choice)
 $ErrorActionPreference = 'Stop'
 Write-Host 'TokenSaver Docs by winter0123'
-if (-not $Choice -or $Choice -eq '4') {
-    $Agents = @('opencode', 'codex', 'claude' | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue })
-    if ($Agents.Count -eq 0) { throw 'Install at least one supported agent CLI first.' }
-} else {
-    $Agents = @(switch ($Choice) { '1' { 'claude' } '2' { 'codex' } '3' { 'opencode' } default { throw 'Invalid selection' } })
+$Names = @{ '1' = 'claude'; '2' = 'codex'; '3' = 'opencode' }
+$Labels = @{ '1' = 'Claude Code'; '2' = 'Codex'; '3' = 'OpenCode' }
+$Available = @('1', '2', '3' | Where-Object { Get-Command -Name $Names[$_] -ErrorAction SilentlyContinue })
+if (-not $PSBoundParameters.ContainsKey('Choice')) {
+    if ($Available.Count -eq 0) { throw 'Install at least one supported agent CLI first.' }
+    Write-Host 'Installed agents:'
+    foreach ($Number in $Available) { Write-Host "$Number) $($Labels[$Number])" }
+    $Choice = Read-Host 'Choose one or more numbers separated by commas or spaces (Enter for all)'
 }
+if ([string]::IsNullOrWhiteSpace($Choice)) {
+    $Selected = $Available
+} else {
+    $Selected = @($Choice.Trim() -split '[,\\s]+' | Where-Object { $_ })
+    if ($Selected.Count -eq 0) { throw 'Invalid selection' }
+    foreach ($Number in $Selected) {
+        if (-not $Names.ContainsKey($Number)) { throw 'Invalid selection' }
+        if ($Available -notcontains $Number) { throw 'Selected agent CLI is not installed.' }
+    }
+}
+if ($Selected.Count -eq 0) { throw 'Install at least one supported agent CLI first.' }
+$Agents = @('3', '2', '1' | Where-Object { $Selected -contains $_ } | ForEach-Object { $Names[$_] })
 $Activation = if ($Agents -contains 'codex' -and $Agents -contains 'claude') { 'codex-claude' } else { 'agent' }
 $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
@@ -93,7 +136,7 @@ def create_platform_downloads(folder):
             archive.writestr(info, MAC_INSTALL if system == 'darwin' else WINDOWS_INSTALL.encode('utf-8-sig'))
             archive.writestr('README.txt', 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nExtract the entire ZIP first.\n'
                 + ('Double-click install.command, or run: sh install.command\n' if system == 'darwin' else 'Open PowerShell in this folder and run: .\\install.ps1\n')
-                + 'The installer connects every supported agent CLI it finds.\n'
+                + 'Choose one or more installed agents from the installer menu. Press Enter to select all.\n'
                 + 'Restart your agent after installation. Do not run the internal common runtime directly.\n')
         created.append(path)
     return created

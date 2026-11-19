@@ -66,7 +66,10 @@ class ReleaseTests(unittest.TestCase):
             binary=root/'common/bin/tokensaver-docs'
             binary.write_text('#!/bin/sh\ntest -f "$2/marker" || exit 8\nprintf "%s\\n" "$4" > "$TEST_AGENT_LOG"\nexit "${TEST_EXIT_CODE:-0}"\n')
             launcher=root/'install.command';launcher.write_text(MAC_INSTALL)
-            env=dict(os.environ,TEST_AGENT_LOG=str(root/'called'))
+            codex = root / 'codex'
+            codex.write_text('#!/bin/sh\nexit 0\n')
+            codex.chmod(0o755)
+            env=dict(os.environ,PATH=str(root)+os.pathsep+os.environ['PATH'],TEST_AGENT_LOG=str(root/'called'))
             result=subprocess.run(['sh',str(launcher),'2'],text=True,capture_output=True,env=env)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual((root/'called').read_text().strip(),'codex')
@@ -112,10 +115,25 @@ class ReleaseTests(unittest.TestCase):
             launcher = root / 'install.command'
             launcher.write_text(MAC_INSTALL)
             log = root / 'calls'
-            env = dict(os.environ, PATH=str(commands) + os.pathsep + os.environ['PATH'], TEST_AGENT_LOG=str(log))
-            result = subprocess.run(['sh', str(launcher)], text=True, capture_output=True, env=env)
+            env = dict(os.environ, PATH=str(commands) + os.pathsep + os.defpath, TEST_AGENT_LOG=str(log))
+            result = subprocess.run(['sh', str(launcher)], input='\n', text=True, capture_output=True, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(log.read_text().splitlines(), ['opencode none', 'codex none', 'claude codex-claude'])
+            self.assertIn('1) Claude Code', result.stdout)
+            self.assertIn('2) Codex', result.stdout)
+            self.assertIn('3) OpenCode', result.stdout)
+
+            log.unlink()
+            result = subprocess.run(['sh', str(launcher)], input='2, 1 2\n', text=True, capture_output=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(log.read_text().splitlines(), ['codex none', 'claude codex-claude'])
+
+            log.unlink()
+            (commands / 'claude').unlink()
+            result = subprocess.run(['sh', str(launcher)], input='2,1\n', text=True, capture_output=True, env=env)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertNotIn('1) Claude Code', result.stdout)
+            self.assertFalse(log.exists())
 
     def test_missing_platform_and_wrong_tag_cannot_prepare_release(self):
         with tempfile.TemporaryDirectory() as temp:

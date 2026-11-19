@@ -29,6 +29,8 @@ Install the CLI for your chosen agent first, then restart the agent after instal
 
 macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bundle tests; the unified Windows launcher and real Windows/Intel host installation remain experimental. Binaries are unsigned/not notarized. Linux currently has source installation only.
 
+**Multi-select in the next release.** Pick one or more detected agents by number, or press Enter to select all. The terminal downloader opens the same menu and registers the selected plugins. The v0.5.2 ZIP above registers all detected agents.
+
 <details>
 <summary>Advanced: individual agent archives</summary>
 

@@ -10,7 +10,10 @@ Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/to
 
 The README OS buttons download `tokensaver-docs-win32-x64.zip`, `tokensaver-docs-darwin-arm64.zip`, or `tokensaver-docs-darwin-x64.zip` immediately. These unified archives share identical runtime files and contain the agent-specific payloads without changing their checksums. Extract the whole ZIP, then run `install.command` on macOS (`sh install.command` also works) or `.\install.ps1` in PowerShell on Windows. The unified installer registers all detected Codex, Claude Code and OpenCode installations by default. The installer reconstructs the selected bundle in a temporary folder; the existing runtime verifies its manifest before installation. Failed registration does not display success.
 
-The installer prints one activation command per project for all registered agents. For a single agent, use its individual ZIP or pass 1, 2, or 3 to the unified installer.
+The published v0.5.2 unified installer registers all detected agents. In builds
+from the updated source, the installer shows only detected agents. Enter one
+or more numbers separated by commas or spaces, or press Enter to select all.
+The installer prints one activation command per project for the selected agents. For a single agent, use its individual ZIP or pass 1, 2, or 3 to the unified installer.
 
 The original nine ZIP files remain advanced downloads. Linux has a source-install link rather than a binary-download button. The Windows launcher does not change execution policy. Windows/Intel real host installation remains experimental.
 
@@ -48,6 +51,12 @@ name-based discovery.
 On macOS arm64, Codex CLI registered the corrected plugin and its ten tools; Claude Code and OpenCode converted HTML through their installed plugins. Approved image artifacts in Claude Code and OpenCode passed extracted-text, description and linked-image checks, but their host turns later hit a budget or time limit. OpenCode may use its default output directory when the model omits the requested one. Full Codex image flows, universal natural-language routing, local audio conversations and Windows/Intel Mac real-host behavior remain unverified. See [the current status](current-status.md).
 
 ## Release installer templates
+
+In builds from the updated source, run the terminal installer with the
+repository and release version to download and verify the unified ZIP, then open
+the same multi-select plugin menu. Use `--agent` on macOS or `-Agent` on Windows
+to select a single agent directly. The v0.5.2 download scripts still require the
+agent option.
 
 The package build targets are macOS Apple Silicon, macOS Intel and Windows x64.
 The v0.5.2 preview was exercised on macOS Apple Silicon; Windows and Intel

@@ -36,6 +36,14 @@ class MacReleaseInstallerTests(unittest.TestCase):
             self.assertNotEqual(result.returncode,0)
             self.assertFalse(log.exists())
 
+            archive = root/'tokensaver-docs-darwin-arm64.zip'
+            with zipfile.ZipFile(archive, 'w') as bundle:
+                bundle.writestr('install.command', '#!/bin/sh\nread -r choices\nprintf "%s" "$choices" > "$INSTALL_TEST_LOG"\n')
+            checks.write_text(hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name+'\n')
+            result = subprocess.run(command[:-2], input='2, 3\n', env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(log.read_text(), '2, 3')
+
     def test_missing_argument_has_usage(self):
         result=subprocess.run(['sh',str(ROOT/'scripts/install.sh'),'--repo'],capture_output=True,text=True)
         self.assertEqual(result.returncode,2)
