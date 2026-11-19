@@ -51,6 +51,64 @@ class MarketplaceMetadataTests(unittest.TestCase):
         self.assertIn("ensureTokenSaverExecutable", source)
         self.assertIn("./research-routing.json", source)
 
+    def test_opencode_question_ui_result_is_consumed_without_chat_reentry(self):
+        """Exercise the actual Git plugin module with a stub-only SDK import."""
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        import os
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ("index.js", "runtime.js", "research-routing.json"):
+                shutil.copy2(OPENCODE / name, root / name)
+            (root / "package.json").write_text('{"type":"module"}')
+            stub = root / "node_modules" / "@opencode-ai" / "plugin"
+            stub.mkdir(parents=True)
+            (stub / "package.json").write_text('{"type":"module","exports":"./index.js"}')
+            (stub / "index.js").write_text("export const tool = () => ({});")
+            script = """
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {recordQuestionAnswers} = await import(pathToFileURL(process.argv[1]));
+const request = {conversion:true,text:'Convert test.html to MD'};
+function answer(question, options, selected, status='completed') {
+  recordQuestionAnswers({
+    tool:'question', status,
+    input:{questions:[{question,options:options.map(label=>({label}))}]},
+    result:{output:{answers:[[selected]]}}
+  },request);
+}
+answer('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지·글자·설명 넣기','이미지 링크만 넣기'], '이미지·글자·설명 넣기');
+assert.equal(request.uiMode,'analyze');
+assert.equal(request.uiConsent,null);
+answer('이미지 분석할 모델을 선택하세요 (외부 전송됩니다).',
+  ['nvidia/nemotron-3.5-super-vl:free (Recommended)'],
+  'nvidia/nemotron-3.5-super-vl:free (Recommended)');
+assert.deepEqual(request.uiModel,{provider:'openrouter',model:'nvidia/nemotron-3.5-super-vl:free'});
+assert.equal(request.uiConsent,null);
+answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
+  ['분석 동의','동의 안 함'],'분석 동의');
+assert.deepEqual(request.uiConsent,request.uiModel);
+answer('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지 링크만 넣기 (Recommended)','이미지·글자·설명 넣기'],
+  '이미지 링크만 넣기 (Recommended)');
+assert.equal(request.uiMode,'preserve');
+assert.equal(request.uiConsent,null);
+answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
+  ['분석 동의','동의 안 함'],'분석 동의','error');
+assert.equal(request.uiConsent,null);
+answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
+  ['동의 안 함'],'분석 동의');
+assert.equal(request.uiConsent,null);
+"""
+            run = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(root / "index.js")],
+                cwd=root, env=dict(os.environ, XDG_CONFIG_HOME=temp),
+                capture_output=True, text=True, timeout=20)
+            self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_opencode_activation_does_not_bootstrap_runtime(self):
         """Plugin setup must be fast/offline even for a new Git installation."""
         source = (OPENCODE / "index.js").read_text(encoding="utf-8")
