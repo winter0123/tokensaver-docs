@@ -56,6 +56,7 @@ class PreparationChoiceTests(unittest.TestCase):
             repo = Path(__file__).resolve().parents[1]
             routing = 'research-routing.json'
             (root / routing).write_bytes((repo / 'tokensaver_docs/data' / routing).read_bytes())
+            (root / 'runtime.js').write_bytes((repo / 'plugins/opencode/runtime.js').read_bytes())
             plugin.write_text((repo/'plugins/opencode/index.js').read_text().replace(
                 '../../tokensaver_docs/data/' + routing, './' + routing))
             package = root/'node_modules/@opencode-ai/plugin'
