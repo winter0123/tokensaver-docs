@@ -25,7 +25,7 @@ macOS：双击 `install.command`，或在解压目录中运行 `sh install.comma
 
 Windows：在解压目录中打开 PowerShell，运行 `.\install.ps1`。如设备策略阻止执行，请遵循该策略；安装程序不会修改执行策略。
 
-需要先安装所选助手的 CLI。安装后重启助手并发送 **“把这个 HTML 文件转成 Markdown：/文件路径/policy.html”**。更换模型时发送 **“更改 tokensaver-docs 的图片转换模型”**。
+请先安装所选助手的 CLI，安装插件后重启助手。
 
 macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已通过自动测试；新的 Windows 统一安装脚本及真实 Windows／Intel 助手安装仍属实验性支持。文件尚未签名或公证。Linux 目前仅提供源码安装。
 
@@ -40,31 +40,25 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 
 </details>
 
-## 项目调研归档
+## 附上文件，直接提出请求
 
-上方的 v0.5.1 预览版下载包含项目调研归档功能。
+把文件或图片附到聊天中，像平时一样提出请求。
 
-在项目目录中执行更新后的插件安装程序输出的启用命令。使用源码 CLI 时，运行 `tokensaver-docs knowledge enable .`。之后可以说“Look up the return policy and summarize it in this project”。在已启用采集钩子的宿主中，保存到 `docs/research/inbox/` 的资料会归档到 `docs/tokensaver-docs/`，保留原件版本并生成带证据链接的摘要。在后续会话中询问已保存的调研内容，默认可在 500 词元的预算内检索相关证据。
+> 把这个文件转成 Markdown。
 
-[设置、支持的宿主与检索](docs/advanced-usage.md#project-research-archive)
+> 把这张图片里的文字和图片说明整理成 Markdown。
 
-## 直接用自然语言提出请求
+助手可以读取附件时，工具会使用原文件名和默认保存位置生成 Markdown，并告诉你保存结果的位置。如果首次需要设置图片模型或同意分析，请回答屏幕上的问题。
 
-安装插件并重启助手后，像平时一样提出请求。无需每次输入插件名称或终端命令。
+## 自动归档项目调研资料
 
-> 用 TokenSaver Docs 查找 /文件路径/policy.pdf 中的退款期限和例外，并注明证据所在的 Markdown 行号。
+从 v0.5.1 开始，在项目中运行一次安装程序提示的启用命令，即可开启归档。
 
-> 把这个 HTML 文件转成 Markdown：/文件路径/policy.html
+> 查一下退货政策，整理到项目里。
 
-> 把这个文件夹中的文档转成 Markdown：/文件夹路径
+启用采集的助手保存调研材料后，工具会在项目中保留**按版本保存的原件、用于检索的 Markdown 和供人阅读的摘要**。摘要会链接可核查的原件和证据行。只有 URL 的资料将记录为参考链接。在新会话中询问以前的调研，工具会在默认 500 词元的预算内查找相关证据。
 
-> 提取图片中的文字并添加图片说明，保存为 Markdown：/文件路径/photo.png
-
-> 我想更换转换模型，请告诉我可选的方式。
-
-助手会根据请求，从已安装的技能和工具中选择 TokenSaver Docs。如需首次模型设置或图片处理选择，请回答提示，并确认实际保存路径及部分完成、待检查等状态。
-
-如果助手采用其他方式，可以补充“请用 tokensaver-docs 处理这项任务”。是否自动选择取决于助手，安装本身不能保证每次都会调用。
+经批准的网站原文存档、本地音频转写和图片自动分析可按项目选择启用。[设置与详细用法](docs/advanced-usage.md#project-research-archive) · [验证结果](docs/current-status.md#v051-public-preview)
 
 <a id="source-install"></a>
 
@@ -121,26 +115,6 @@ tokensaver-docs configure --kind image --provider openrouter
 OpenCode 是助手，OpenRouter 是模型服务；其他助手也能选择 OpenRouter 处理转换。此设置只影响图片转换模型，不会改变助手的聊天模型或音频模型。Claude Code/Codex 遵循各自 CLI 的登录、用量与计费条件。普通文档文字提取不需要模型或密钥。
 
 查看当前模型：`tokensaver-docs setup-model`
-
-## 转换文件或文件夹
-
-将 `./documents` 替换为输入路径。例：`policy.html` → `converted/policy.html.md`。
-
-**提取文字，并在图片位置保留 `[이미지]` 标记：**
-
-```sh
-tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
-```
-
-**加入图片、图片文字和说明：** 先设置模型与登录或 API 密钥。图片会发送到所选服务。
-
-```sh
-tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
-```
-
-无法自动确认 Claude Code/Codex 的图片支持能力。只有自行确认支持图片后，才在命令末尾加上 `--allow-unverified-model`；已知不支持的模型仍会被阻止。音频需要单独设置，参见[英文详细指南](docs/advanced-usage.md)。
-
-原文件及已有 Markdown 的人工修改会保留；相同文档和已完成的图片分析会从缓存复用。部分运行时提示和图片占位符仍使用韩语。
 
 ## 支持的文件
 

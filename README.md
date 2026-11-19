@@ -25,7 +25,7 @@ macOS: double-click `install.command`, or run `sh install.command` in the extrac
 
 Windows: open PowerShell in the extracted folder and run `.\install.ps1`. If device policy blocks it, follow your device policy; the installer does not change it.
 
-Your chosen agent CLI must already be installed. Restart the agent after installation and ask **“Convert this HTML file to Markdown: /path/to/policy.html.”** To change models, ask **“Change the tokensaver-docs image conversion model.”**
+Install the CLI for your chosen agent first, then restart the agent after installing the plugin.
 
 macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bundle tests; the unified Windows launcher and real Windows/Intel host installation remain experimental. Binaries are unsigned/not notarized. Linux currently has source installation only.
 
@@ -40,33 +40,25 @@ macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bun
 
 </details>
 
-## Project research archive
+## Attach a file and ask
 
-The v0.5.1 preview downloads above include project research archiving.
+Attach a file or image to your chat and ask in your own words.
 
-Enable the archive once per project with the command printed by the updated plugin installer. For an updated source CLI, run `tokensaver-docs knowledge enable .`. Then ask “Look up the refund policy and summarize it in this project.” On a host with the capture hooks active, research files saved to `docs/research/inbox/` are archived under `docs/tokensaver-docs/` with versioned originals, a Markdown index and summaries with evidence links. In a new session, ask about the saved policy to retrieve relevant passages within the default 500-token response budget.
+> Turn this file into a Markdown file.
 
-The archive preserves Markdown and plain-text (`.txt`) source files. It also preserves details an agent adds to a submitted file, so check the cited source before relying on a claim. [Local host verification](docs/current-status.md#local-macos-verification-of-the-unreleased-archive)
+> Put the text in this image and a description of it into a Markdown file.
 
-[Setup, supported hosts and retrieval](docs/advanced-usage.md#project-research-archive)
+When your agent can open the attachment, the tool uses the original name and a default destination, then tells you where it saved the Markdown. Answer any first-use image model or analysis prompts shown by the agent.
 
-## Use it by asking your agent
+## Automatic project research archive
 
-Install the plugin, restart your agent, then ask normally. You do not have to type the plugin name or a terminal command.
+Since v0.5.1, you can enable the archive once per project using the command printed by the installer. After that, ask normally.
 
-> Use TokenSaver Docs to find the refund deadline and exceptions in /path/to/policy.pdf. Include the Markdown line numbers.
+> Look up the return policy and summarize it in this project.
 
-> Convert this HTML file to Markdown: /path/to/policy.html
+When an enabled agent saves research materials, TokenSaver keeps **versioned originals, searchable Markdown and a summary for readers** in the project. Reports link to available originals and evidence lines. References with only a URL are recorded as links. In a new session, ask about the saved research to find relevant excerpts within the default 500-token budget.
 
-> Convert the documents in this folder to Markdown: /path/to/documents
-
-> Extract the text and describe this image in Markdown: /path/to/photo.png
-
-> I want to change the conversion model. Show me my options.
-
-Your agent selects TokenSaver Docs from the installed skills and tools based on your request. Answer any first-use model or image-handling questions, then check the actual saved paths and any partial/review-needed status.
-
-If the agent chooses another approach, you can say “Use tokensaver-docs for this task.” Automatic selection depends on the agent and is not guaranteed just by installing the plugin.
+Public web snapshots from approved sites, local audio transcription, and automatic image analysis are optional per project. [Setup and advanced usage](docs/advanced-usage.md#project-research-archive) · [Verification results](docs/current-status.md#v051-public-preview)
 
 <a id="source-install"></a>
 
@@ -142,26 +134,6 @@ OpenCode is the agent; OpenRouter is the model service. This does not change Ope
 Plain document text needs no model or API key. These settings change the **image conversion model**, independently of your agent's chat model and audio model. Claude Code/Codex use their CLI authentication, usage limits, and billing conditions.
 
 Check your model: `tokensaver-docs setup-model`
-
-## Usage
-
-Replace `./documents` with a file or folder. Results go into `./converted`. **Example: `policy.html` → `converted/policy.html.md`.**
-
-**Extract text and mark image positions with `[이미지]`**
-
-```sh
-tokensaver-docs prepare "./documents" --output "./converted" --image-mode placeholder
-```
-
-**Include images, visible image text, and descriptions** — configure your model first. Images are sent to the selected provider.
-
-```sh
-tokensaver-docs prepare "./documents" --output "./converted" --image-mode analyze
-```
-
-Claude Code/Codex image support cannot be verified automatically. Add `--allow-unverified-model` only after checking image support yourself; known incompatible models remain blocked. Audio requires separate setup in the [advanced guide](docs/advanced-usage.md).
-
-Existing Markdown and user edits are preserved. Identical documents and completed image analysis are reused from cache.
 
 ## Supported files
 
