@@ -51,6 +51,36 @@ class MarketplaceMetadataTests(unittest.TestCase):
         self.assertIn("ensureTokenSaverExecutable", source)
         self.assertIn("./research-routing.json", source)
 
+    def test_opencode_activation_does_not_bootstrap_runtime(self):
+        """Plugin setup must be fast/offline even for a new Git installation."""
+        source = (OPENCODE / "index.js").read_text(encoding="utf-8")
+        setup = source.split("export default {", 1)[1]
+        self.assertIn("await findTokenSaverExecutable(", setup)
+        self.assertNotIn("await ensureTokenSaverExecutable(", setup)
+        self.assertIn("if (installedExecutable) {", setup)
+        self.assertIn("await ctx.mcp.transform(", setup)
+
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        # No archive, no cache, and no consent: merely resolving an installed
+        # executable must return null without attempting a download.
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            script = """
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+const {findTokenSaverExecutable} = await import(pathToFileURL(process.argv[1]));
+assert.equal(await findTokenSaverExecutable(process.argv[2]), null);
+"""
+            env = dict(os.environ, TOKENSAVER_DOCS_RUNTIME_HOME=temp,
+                       TOKENSAVER_DOCS_NO_BOOTSTRAP="1")
+            proc = subprocess.run(
+                ["node", "--input-type=module", "-e", script,
+                 str(OPENCODE / "runtime.js"), temp],
+                env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
