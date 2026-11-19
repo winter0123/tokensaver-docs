@@ -106,6 +106,16 @@ const result=JSON.parse(await p.tool.tokensaver_docs_prepare.execute({source:'a.
 assert.deepEqual(result.args,['prepare','a.html','--output','converted','--image-mode','analyze','--model-provider','openrouter','--model','chosen:free','--allow-unverified-model']);
 ''')
 
+    def test_v2_routes_attached_file_make_md_request(self):
+        self.run_v2_plugin("""
+for (const text of ['이 파일 MD 파일로 만들어줘.', '이 이미지 글자랑 설명 MD 파일로 정리해줘.', 'このファイルを Markdown にして。', 'この画像の文字と説明を Markdown にまとめて。', '把这个文件转成 Markdown。', '把这张图片里的文字和图片说明整理成 Markdown。']) {
+  await userPrompt('attached','request',text,[{name:'receipt.png'}]);
+  const context={sessionID:'attached',system:[],messages:[]};
+  await contextHook(context);
+  assert.match(context.system.map(item=>item.text).join(' '),/call tokensaver_docs_prepare immediately/);
+}
+""")
+
     def test_v2_research_routes_natural_prompts_and_skips_unnecessary_sync(self):
         self.run_v2_plugin('''
 const context = async () => {

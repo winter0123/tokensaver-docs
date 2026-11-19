@@ -10,6 +10,12 @@ Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/to
 
 The README OS buttons download `tokensaver-docs-win32-x64.zip`, `tokensaver-docs-darwin-arm64.zip`, or `tokensaver-docs-darwin-x64.zip` immediately. These unified archives share identical runtime files and contain the agent-specific payloads without changing their checksums. Extract the whole ZIP, then run `install.command` on macOS (`sh install.command` also works) or `.\install.ps1` in PowerShell on Windows. Choose 1 for Claude Code, 2 for Codex or 3 for OpenCode. The installer reconstructs the selected bundle in a temporary folder; the existing runtime verifies its manifest before installation. Failed registration does not display success.
 
+Unified installers built from the current source also support automatic registration
+for all installed agents. Run the installer once. The installer detects
+Codex, Claude Code and OpenCode from the terminal and prints one activation
+command per project for the registered agents. For a single agent, use its individual ZIP or pass 1, 2, or 3 to the unified installer.
+The published v0.5.1 installer uses the earlier single-agent menu.
+
 The original nine ZIP files remain advanced downloads. Linux has a source-install link rather than a binary-download button. The Windows launcher does not change execution policy. Windows/Intel real host installation remains experimental.
 
 ## Preview release: maintainer checklist

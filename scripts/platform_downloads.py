@@ -9,34 +9,62 @@ AGENTS = ('claude', 'codex', 'opencode')
 MAC_INSTALL = '''#!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-printf 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nChoose your agent\\n1) Claude Code\\n2) Codex\\n3) OpenCode\\nEnter 1, 2 or 3: '
-read -r choice
-case "$choice" in 1) agent=claude;; 2) agent=codex;; 3) agent=opencode;; *) echo 'Invalid selection'; exit 2;; esac
+echo 'TokenSaver Docs by winter0123'
+choice=${1:-4}
+case "$choice" in
+    1) agents=claude;; 2) agents=codex;; 3) agents=opencode;;
+    ''|4)
+        agents=
+        for agent in opencode codex claude; do
+            if command -v "$agent" >/dev/null; then agents="${agents:+$agents }$agent"; fi
+        done
+        [ -n "$agents" ] || { echo 'Install at least one supported agent CLI first.' >&2; exit 2; }
+        ;;
+    *) echo 'Invalid selection'; exit 2;;
+esac
+set -- $agents
+activation=agent
+case " $agents " in *' codex claude '*) activation=codex-claude;; esac
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
-cp -R "$root/common/." "$task_tmp/"
-cp -R "$root/plugins/$agent/." "$task_tmp/"
-chmod +x "$task_tmp/bin/tokensaver-docs"
-"$task_tmp/bin/tokensaver-docs" install-plugin "$task_tmp" --agent "$agent"
-echo 'Installed. Restart your agent to load TokenSaver Docs.'
+while [ "$#" -gt 0 ]; do
+    agent=$1
+    shift
+    agent_bundle="$task_tmp/$agent"
+    mkdir "$agent_bundle"
+    cp -R "$root/common/." "$agent_bundle/"
+    cp -R "$root/plugins/$agent/." "$agent_bundle/"
+    chmod +x "$agent_bundle/bin/tokensaver-docs"
+    mode=none
+    if [ "$#" -eq 0 ]; then mode=$activation; fi
+    "$agent_bundle/bin/tokensaver-docs" install-plugin "$agent_bundle" --agent "$agent" --activation "$mode"
+done
+echo 'Installed. Restart the selected agents to load TokenSaver Docs.'
 '''
-WINDOWS_INSTALL = '''$ErrorActionPreference = 'Stop'
+WINDOWS_INSTALL = '''param([string]$Choice = '4')
+$ErrorActionPreference = 'Stop'
 Write-Host 'TokenSaver Docs by winter0123'
-Write-Host 'https://github.com/winter0123/tokensaver-docs'
-Write-Host 'Choose your agent'
-Write-Host '1) Claude Code'
-Write-Host '2) Codex'
-Write-Host '3) OpenCode'
-$Choice = Read-Host 'Enter 1, 2 or 3'
-$Agent = switch ($Choice) { '1' { 'claude' } '2' { 'codex' } '3' { 'opencode' } default { throw 'Invalid selection' } }
+if (-not $Choice -or $Choice -eq '4') {
+    $Agents = @('opencode', 'codex', 'claude' | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue })
+    if ($Agents.Count -eq 0) { throw 'Install at least one supported agent CLI first.' }
+} else {
+    $Agents = @(switch ($Choice) { '1' { 'claude' } '2' { 'codex' } '3' { 'opencode' } default { throw 'Invalid selection' } })
+}
+$Activation = if ($Agents -contains 'codex' -and $Agents -contains 'claude') { 'codex-claude' } else { 'agent' }
 $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
 try {
-    Copy-Item -Path (Join-Path $PSScriptRoot 'common/*') -Destination $TaskTemp -Recurse -Force
-    Copy-Item -Path (Join-Path $PSScriptRoot "plugins/$Agent/*") -Destination $TaskTemp -Recurse -Force
-    & (Join-Path $TaskTemp 'bin/tokensaver-docs.exe') install-plugin $TaskTemp --agent $Agent
-    if ($LASTEXITCODE -ne 0) { throw 'Plugin registration failed' }
-    Write-Host 'Installed. Restart your agent to load TokenSaver Docs.'
+    for ($Index = 0; $Index -lt $Agents.Count; $Index++) {
+        $Agent = $Agents[$Index]
+        $Mode = if ($Index -eq $Agents.Count - 1) { $Activation } else { 'none' }
+        $Bundle = Join-Path $TaskTemp $Agent
+        New-Item -ItemType Directory -Path $Bundle | Out-Null
+        Copy-Item -Path (Join-Path $PSScriptRoot 'common/*') -Destination $Bundle -Recurse -Force
+        Copy-Item -Path (Join-Path $PSScriptRoot "plugins/$Agent/*") -Destination $Bundle -Recurse -Force
+        & (Join-Path $Bundle 'bin/tokensaver-docs.exe') install-plugin $Bundle --agent $Agent --activation $Mode
+        if ($LASTEXITCODE -ne 0) { throw "Plugin registration failed for $Agent" }
+    }
+    Write-Host 'Installed. Restart the selected agents to load TokenSaver Docs.'
 } finally { Remove-Item -Recurse -Force $TaskTemp }
 '''
 
@@ -65,7 +93,7 @@ def create_platform_downloads(folder):
             archive.writestr(info, MAC_INSTALL if system == 'darwin' else WINDOWS_INSTALL.encode('utf-8-sig'))
             archive.writestr('README.txt', 'TokenSaver Docs by winter0123\nhttps://github.com/winter0123/tokensaver-docs\nExtract the entire ZIP first.\n'
                 + ('Double-click install.command, or run: sh install.command\n' if system == 'darwin' else 'Open PowerShell in this folder and run: .\\install.ps1\n')
-                + 'Choose 1 (Claude Code), 2 (Codex), or 3 (OpenCode). The selected agent CLI must already be installed.\n'
+                + 'The installer connects every supported agent CLI it finds.\n'
                 + 'Restart your agent after installation. Do not run the internal common runtime directly.\n')
         created.append(path)
     return created

@@ -108,6 +108,7 @@ def parser() -> argparse.ArgumentParser:
     install_plugin = sub.add_parser('install-plugin', help='검증된 로컬 플러그인 패키지를 설치하고 에이전트에 연결')
     install_plugin.add_argument('bundle',type=Path)
     install_plugin.add_argument('--agent',choices=('claude','codex','opencode'),required=True)
+    install_plugin.add_argument('--activation', choices=('agent', 'none', 'codex-claude'), default='agent', help=argparse.SUPPRESS)
     install_plugin.add_argument('--destination',type=Path)
     install_plugin.add_argument('--config-dir',type=Path)
     install_plugin.add_argument('--expected-version', help='Release 설치기가 요청한 패키지 버전')
@@ -296,11 +297,13 @@ def main(argv=None) -> int:
             import shlex
             from .installer import install_bundle
             target = install_bundle(args.bundle,args.agent,destination=args.destination,config_dir=args.config_dir,expected_version=args.expected_version)
-            binary = str(target.resolve() / 'bin' / ('tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'))
-            launcher = "& '" + binary.replace("'", "''") + "'" if os.name == 'nt' else shlex.quote(binary)
-            project_hook = {'codex': ' --codex-project-hooks', 'claude': ' --claude-project-hooks'}.get(args.agent, '')
             print(target)
-            print(f'From the project directory, enable research storage:\n  {launcher} knowledge enable .{project_hook}')
+            if args.activation != 'none':
+                binary = str(target.resolve() / 'bin' / ('tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'))
+                launcher = "& '" + binary.replace("'", "''") + "'" if os.name == 'nt' else shlex.quote(binary)
+                hosts = ('codex', 'claude') if args.activation == 'codex-claude' else (args.agent,)
+                project_hooks = ''.join(f' --{host}-project-hooks' for host in hosts if host in ('codex', 'claude'))
+                print(f'From the project directory, enable research storage once:\n  {launcher} knowledge enable .{project_hooks}')
         elif args.command == 'context':
             from .context import document_context, serialize_context
             print(serialize_context(document_context(args.input,args.query,args.output,max_tokens=args.max_tokens,max_chars=args.max_chars,use_configured_providers=args.use_configured_providers)))

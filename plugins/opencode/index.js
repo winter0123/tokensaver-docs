@@ -47,10 +47,10 @@ async function researchProject(directory) {
 function isMarkdownConversionRequest(prompt) {
   const text = prompt?.text ?? '';
   const files = prompt?.files ?? [];
-  const source = files.length > 0 || /\b(?:image|photo|picture|screenshot|document|file|folder|pdf|docx?|xlsx?|html|htm|pptx?)\b|\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|pdf|docx?|xlsx?|html|htm|pptx?)\b|이미지|사진|스크린샷|캡처|문서|파일|폴더/i.test(text);
-  const target = /\b(?:to|into|as)\s+(?:an?\s+)?(?:markdown|md)(?:\s+(?:file|document))?|\b(?:markdown|md)\s+file\b|(?:마크다운|markdown)(?:으로|\s*파일)|md\s*파일(?:로)?|md로/i.test(text);
+  const source = files.length > 0 || /\b(?:image|photo|picture|screenshot|document|file|folder|pdf|docx?|xlsx?|html|htm|pptx?)\b|\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|pdf|docx?|xlsx?|html|htm|pptx?)\b|이미지|사진|스크린샷|캡처|문서|파일|폴더|ファイル|画像|文件|图片/i.test(text);
+  const target = /\b(?:to|into|as)\s+(?:an?\s+)?(?:markdown|md)(?:\s+(?:file|document))?|\b(?:markdown|md)\s+file\b|(?:마크다운|markdown)(?:으로|\s*파일)|md\s*파일(?:로)?|md로|markdown\s*(?:に|へ)|(?:转成|整理成)\s*markdown/i.test(text);
   const alternative = /\b(?:pandoc|libreoffice|obsidian)\b|\b(?:another|different|external|my)\s+(?:converter|tool|command|script)\b|(?:다른|별도|직접 지정한)\s*(?:변환기|도구|명령|스크립트)|\buse\s+(?!tokensaver\b)(?:the\s+)?[a-z][\w.@/-]*\s+to\s+(?:convert|turn|make|write|save)/i.test(text);
-  const convert = /\b(?:convert|turn|transform|export)\b|변환|바꿔|정리해/i.test(text);
+  const convert = /\b(?:convert|turn|transform|export)\b|변환|바꿔|정리해|(?:変換して|まとめて|markdown\s*にして|转成|整理成)|(?:md|markdown|마크다운)\s*(?:파일\s*)?(?:로|으로)\s*만들/i.test(text);
   return source && target && convert && !alternative;
 }
 

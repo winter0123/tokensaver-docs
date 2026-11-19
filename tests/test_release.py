@@ -67,14 +67,14 @@ class ReleaseTests(unittest.TestCase):
             binary.write_text('#!/bin/sh\ntest -f "$2/marker" || exit 8\nprintf "%s\\n" "$4" > "$TEST_AGENT_LOG"\nexit "${TEST_EXIT_CODE:-0}"\n')
             launcher=root/'install.command';launcher.write_text(MAC_INSTALL)
             env=dict(os.environ,TEST_AGENT_LOG=str(root/'called'))
-            result=subprocess.run(['sh',str(launcher)],input='2\n',text=True,capture_output=True,env=env)
+            result=subprocess.run(['sh',str(launcher),'2'],text=True,capture_output=True,env=env)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual((root/'called').read_text().strip(),'codex')
             self.assertTrue((root/'plugins/codex/marker').exists())
-            failed=subprocess.run(['sh',str(launcher)],input='2\n',text=True,capture_output=True,env={**env,'TEST_EXIT_CODE':'9'})
+            failed=subprocess.run(['sh',str(launcher),'2'],text=True,capture_output=True,env={**env,'TEST_EXIT_CODE':'9'})
             self.assertEqual(failed.returncode,9)
             self.assertNotIn('Installed.',failed.stdout)
-            invalid=subprocess.run(['sh',str(launcher)],input='0\n',text=True,capture_output=True,env=env)
+            invalid=subprocess.run(['sh',str(launcher),'0'],text=True,capture_output=True,env=env)
             self.assertEqual(invalid.returncode,2)
 
     def test_windows_launcher_parses_and_rejects_invalid_selection(self):
@@ -84,10 +84,38 @@ class ReleaseTests(unittest.TestCase):
         from scripts.platform_downloads import WINDOWS_INSTALL
         with tempfile.TemporaryDirectory() as temp:
             script=Path(temp)/'install.ps1';script.write_text(WINDOWS_INSTALL,encoding='utf-8-sig')
-            result=subprocess.run([shell,'-NoProfile','-File',str(script)],input='0\n',text=True,capture_output=True)
+            result=subprocess.run([shell,'-NoProfile','-File',str(script),'0'],text=True,capture_output=True)
             self.assertNotEqual(result.returncode,0)
             self.assertIn('Invalid selection',result.stderr)
             self.assertFalse((Path(temp)/'common').exists())
+
+    @unittest.skipIf(sys.platform == 'win32', 'POSIX launcher runs on macOS')
+    def test_unified_launcher_defaults_to_all_installed_agents(self):
+        import os
+        from scripts.platform_downloads import AGENTS, MAC_INSTALL
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            commands = root / 'commands'
+            commands.mkdir()
+            common = root / 'common/bin'
+            common.mkdir(parents=True)
+            for agent in AGENTS:
+                stub = commands / agent
+                stub.write_text('#!/bin/sh\nexit 0\n')
+                stub.chmod(0o755)
+                bundle = root / 'plugins' / agent
+                bundle.mkdir(parents=True)
+                (bundle / 'marker').write_text(agent)
+            binary = common / 'tokensaver-docs'
+            binary.write_text('#!/bin/sh\ntest "$(cat "$2/marker")" = "$4" || exit 8\n'
+                              'printf "%s %s\\n" "$4" "$6" >> "$TEST_AGENT_LOG"\n')
+            launcher = root / 'install.command'
+            launcher.write_text(MAC_INSTALL)
+            log = root / 'calls'
+            env = dict(os.environ, PATH=str(commands) + os.pathsep + os.environ['PATH'], TEST_AGENT_LOG=str(log))
+            result = subprocess.run(['sh', str(launcher)], text=True, capture_output=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(log.read_text().splitlines(), ['opencode none', 'codex none', 'claude codex-claude'])
 
     def test_missing_platform_and_wrong_tag_cannot_prepare_release(self):
         with tempfile.TemporaryDirectory() as temp:
