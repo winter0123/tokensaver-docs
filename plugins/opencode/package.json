@@ -12,7 +12,9 @@
     "README.md",
     "LICENSE",
     "NOTICE",
-    "AUTHORS.md"
+    "AUTHORS.md",
+    "runtime.js",
+    "scripts"
   ],
   "license": "MIT",
   "dependencies": {
