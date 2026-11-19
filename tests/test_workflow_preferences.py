@@ -97,9 +97,14 @@ class WorkflowPreferencesTests(unittest.TestCase):
         response = {'data': [{'id':'vision-local'}, {'id':'text-local'}, {'not_id':'invalid'}]}
         with patch.object(providers, '_local_request', return_value=response) as request:
             result = providers.catalog_image_models('ollama')
-        self.assertEqual([x['id'] for x in result['models']], ['vision-local','text-local'])
+        self.assertEqual([x['id'] for x in result['models']], ['text-local','vision-local'])
         self.assertTrue(all(x['vision']=='unknown' for x in result['models']))
         request.assert_called_once_with('http://127.0.0.1:11434/v1/models')
+        with patch.object(providers, '_local_request', return_value=response):
+            page = providers.catalog_image_models('ollama', query='vision', limit=1)
+        self.assertEqual([m['id'] for m in page['models']], ['vision-local'])
+        self.assertEqual(page['total'], 1)
+        self.assertFalse(page['has_more'])
 
     def test_local_inference_uses_selected_endpoint_and_never_external_provider(self):
         from tokensaver_docs import providers
