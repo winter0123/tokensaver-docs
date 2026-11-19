@@ -5,6 +5,12 @@ The platform-specific release includes the `tokensaver-docs` executable. The
 OpenCode v2 tools can analyze images with an explicitly selected model after the
 user approves image analysis; no image is sent for analysis without that choice.
 
+## Git-installed OpenCode 2 plugin startup
+
+For the GitHub `::path:plugins/opencode` package, **server plugin activation does not download the native runtime**. The V2 plugin registers its native document tools immediately and only checks for a previously bundled/cached CLI. The first actual `tokensaver_docs_prepare` or other native document tool call then downloads the pinned release into the per-user cache, verifying its published SHA-256, and executes it. If that runtime exists at the next OpenCode service startup, the optional internal local MCP bridge is registered automatically. Users do not configure MCP themselves.
+
+The original ZIP bundle carries its own executable, so its previous activation and internal MCP behavior are preserved. This fix does not modify other plugins in `~/.opencode/plugins/`; errors about unrelated local plugins exporting an invalid default V2 definition need separate diagnosis.
+
 ## OpenCode v2
 
 The bundle exposes a v2 plugin definition alongside the compatibility MCP server.
