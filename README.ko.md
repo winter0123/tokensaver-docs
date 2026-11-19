@@ -3,9 +3,9 @@
 <p align="center">Created by <a href="https://github.com/winter0123">winter0123</a> · <a href="https://github.com/winter0123/tokensaver-docs">Original repository</a> · <a href="AUTHORS.md">Authors</a> · <a href="LICENSE">MIT License</a></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
@@ -17,9 +17,9 @@
 
 <a id="download"></a>
 
-## 다운로드와 설치 — v0.5.2
+## 다운로드와 설치 — v0.5.3
 
-ZIP 전체를 풀고 설치 프로그램을 한 번 실행하세요. 설치기가 Codex·Claude Code·OpenCode 중 이 컴퓨터에서 감지한 에이전트에 모두 등록합니다. Python을 따로 설치할 필요가 없습니다.
+ZIP 전체를 풀고 설치 프로그램을 한 번 실행하세요. 설치 화면에서 사용할 에이전트를 선택하세요. Python을 따로 설치할 필요가 없습니다.
 
 macOS: `install.command`를 더블클릭하거나, 압축을 푼 폴더에서 `sh install.command`를 실행하세요.
 
@@ -29,16 +29,30 @@ Windows: 압축을 푼 폴더에서 PowerShell을 열고 `.\install.ps1`을 실�
 
 macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac 바이너리 번들 검사는 통과했으나 새 Windows 통합 설치 프로그램과 실제 Windows·Intel 호스트 설치는 실험적입니다. 바이너리는 서명·공증 전입니다. Linux는 현재 소스 설치만 제공합니다.
 
-**다음 배포에 포함될 복수 선택 설치.** 설치 화면에서 감지된 에이전트 번호를 여러 개 입력하거나 Enter로 전체를 고릅니다. 터미널 다운로드 명령도 같은 선택 화면을 열고 각 에이전트에 플러그인으로 등록합니다. 위 v0.5.2 ZIP은 감지된 에이전트 전체에 설치합니다.
+### 터미널에서 플러그인 설치
+
+운영체제에 맞는 명령을 터미널에 붙여 넣으세요. 설치기가 파일을 내려받아 검증하고 감지된 에이전트를 보여줍니다. 번호는 쉼표로 여러 개 입력할 수 있으며, Enter만 누르면 전체를 선택합니다. 선택한 에이전트에 플러그인으로 등록됩니다.
+
+**macOS**
+
+```sh
+curl -fL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/install.sh' -o tokensaver-docs-install.sh && sh tokensaver-docs-install.sh --repo winter0123/tokensaver-docs --version v0.5.3
+```
+
+**Windows PowerShell**
+
+```powershell
+Invoke-WebRequest 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/install.ps1' -OutFile tokensaver-docs-install.ps1 -ErrorAction Stop; & .\tokensaver-docs-install.ps1 -Repo winter0123/tokensaver-docs -Version v0.5.3
+```
 
 <details>
 <summary>고급: 에이전트별 개별 ZIP</summary>
 
 | 운영체제 | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
-| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-opencode-darwin-arm64.zip) |
-| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-opencode-darwin-x64.zip) |
-| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.2/tokensaver-docs-opencode-win32-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.3/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
 
@@ -54,7 +68,7 @@ macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac
 
 ## 프로젝트 조사 자료 자동 보관
 
-v0.5.2부터 설치기가 안내하는 명령을 작업 프로젝트에서 한 번 실행하면 자동 보관을 켤 수 있습니다. 이후에는 평소처럼 요청하세요.
+v0.5.3부터 설치기가 안내하는 명령을 작업 프로젝트에서 한 번 실행하면 자동 보관을 켤 수 있습니다. 이후에는 평소처럼 요청하세요.
 
 > 반품 정책 찾아보고 프로젝트에 정리해줘.
 

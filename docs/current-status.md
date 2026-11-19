@@ -1,5 +1,11 @@
 # TokenSaver Docs — preview status
 
+## v0.5.3 public preview
+
+- The terminal downloader and unified ZIP open the same multi-select menu for
+  installed Codex, Claude Code and OpenCode CLIs.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.3) · [Build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44440865059)
+
 ## v0.5.2 public preview
 
 - The unified ZIP installer detects and registers installed Codex, Claude Code

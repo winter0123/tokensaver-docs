@@ -4,14 +4,13 @@ No service or remote MCP server is needed. The tools run on the user's computer.
 The planned distribution uses GitHub for source and versioned release archives.
 PyPI, npm and official plugin directories are separate distribution channels.
 
-Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **[v0.5.2 is published as a prerelease](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.2).** The commands below use its versioned assets. Windows and Intel Mac passed automated bundle tests; real host installation remains experimental.
+Source repository: [winter0123/tokensaver-docs](https://github.com/winter0123/tokensaver-docs). **[v0.5.3 is published as a prerelease](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.3).** The commands below use its versioned assets. Windows and Intel Mac passed automated bundle tests; real host installation remains experimental.
 
 ## Direct downloads
 
-The README OS buttons download `tokensaver-docs-win32-x64.zip`, `tokensaver-docs-darwin-arm64.zip`, or `tokensaver-docs-darwin-x64.zip` immediately. These unified archives share identical runtime files and contain the agent-specific payloads without changing their checksums. Extract the whole ZIP, then run `install.command` on macOS (`sh install.command` also works) or `.\install.ps1` in PowerShell on Windows. The unified installer registers all detected Codex, Claude Code and OpenCode installations by default. The installer reconstructs the selected bundle in a temporary folder; the existing runtime verifies its manifest before installation. Failed registration does not display success.
+The README OS buttons download `tokensaver-docs-win32-x64.zip`, `tokensaver-docs-darwin-arm64.zip`, or `tokensaver-docs-darwin-x64.zip` immediately. These unified archives share identical runtime files and contain the agent-specific payloads without changing their checksums. Extract the whole ZIP, then run `install.command` on macOS (`sh install.command` also works) or `.\install.ps1` in PowerShell on Windows. The unified installer lets you select which detected Codex, Claude Code and OpenCode installations to register. The installer reconstructs the selected bundle in a temporary folder; the existing runtime verifies its manifest before installation. Failed registration does not display success.
 
-The published v0.5.2 unified installer registers all detected agents. In builds
-from the updated source, the installer shows only detected agents. Enter one
+The unified v0.5.3 installer shows only detected agents. Enter one
 or more numbers separated by commas or spaces, or press Enter to select all.
 The installer prints one activation command per project for the selected agents. For a single agent, use its individual ZIP or pass 1, 2, or 3 to the unified installer.
 
@@ -24,15 +23,15 @@ Version `0.4.2` is published as a preview. Earlier releases remain available. Th
 1. Verify the intended commit passes source CI, then create and push the matching version tag:
 
    ```sh
-   git tag v0.5.2
-   git push origin v0.5.2
+   git tag v0.5.3
+   git push origin v0.5.3
    ```
 
-2. In GitHub **Actions → Prepare draft release → Run workflow**, select the reviewed release commit and enter `v0.5.2` as the tag. The workflow checks the version, builds macOS arm64, macOS x64, and Windows x64, then assembles three agent bundles per platform.
+2. In GitHub **Actions → Prepare draft release → Run workflow**, select the reviewed release commit and enter `v0.5.3` as the tag. The workflow checks the version, builds macOS arm64, macOS x64, and Windows x64, then assembles three agent bundles per platform.
 3. After all jobs succeed, open **Releases** and inspect the draft. It should contain twelve ZIP files (three unified platform downloads and nine agent-specific downloads), `checksums.txt`, `install.sh`, and `install.ps1`.
 4. Download the draft assets while signed in as a maintainer. Test installation from the unpacked bundles on the actual target platforms and agents, including first-use model selection, HTML with images, repeated conversion, and preservation of edited Markdown. The public download scripts cannot fetch an unpublished draft anonymously.
 5. Edit the release notes to state the verified platforms and remaining limitations. Keep **Set as a pre-release** enabled for the first preview, then click **Publish release** when ready.
-6. Add links to the actual versioned assets and installer commands near the top of each README. A prerelease need not be selected by GitHub's `/releases/latest` URLs; use `/releases/download/v0.5.2/…` only after the assets are public.
+6. Add links to the actual versioned assets and installer commands near the top of each README. A prerelease need not be selected by GitHub's `/releases/latest` URLs; use `/releases/download/v0.5.3/…` only after the assets are public.
 
 These commands describe release preparation; reading this guide does not create a tag, start builds, or publish a release. A GitHub release also does not submit the plugin to any official marketplace. Linux currently has source installation only; no Linux native archive is built.
 
@@ -52,38 +51,36 @@ On macOS arm64, Codex CLI registered the corrected plugin and its ten tools; Cla
 
 ## Release installer templates
 
-In builds from the updated source, run the terminal installer with the
-repository and release version to download and verify the unified ZIP, then open
-the same multi-select plugin menu. Use `--agent` on macOS or `-Agent` on Windows
-to select a single agent directly. The v0.5.2 download scripts still require the
-agent option.
+Run the terminal installer with the repository and release version. It downloads
+and verifies the unified bundle, then opens the same multi-select plugin menu.
+To select just one agent directly, add the optional agent flag.
 
 The package build targets are macOS Apple Silicon, macOS Intel and Windows x64.
-The v0.5.2 preview was exercised on macOS Apple Silicon; Windows and Intel
-Mac real-host installations have not been verified for this v0.5.2 preview. Linux has source tests only and no
+The v0.5.3 preview was exercised on macOS Apple Silicon; Windows and Intel
+Mac real-host installations have not been verified for this v0.5.3 preview. Linux has source tests only and no
 release installer in this preview.
 
 ### macOS
 
 ```sh
 repo='winter0123/tokensaver-docs'
-version='v0.5.2'
+version='v0.5.3'
 curl -fL --proto '=https' "https://github.com/$repo/releases/download/$version/install.sh" -o tokensaver-docs-install.sh
-sh tokensaver-docs-install.sh --repo "$repo" --version "$version" --agent claude
+sh tokensaver-docs-install.sh --repo "$repo" --version "$version"
 ```
 
-Use `--agent codex` or `--agent opencode` for the other agents.
+For a single agent, add `--agent claude`, `--agent codex` or `--agent opencode`.
 
 ### Windows PowerShell
 
 ```powershell
 $Repo = 'winter0123/tokensaver-docs'
-$Version = 'v0.5.2'
+$Version = 'v0.5.3'
 Invoke-WebRequest "https://github.com/$Repo/releases/download/$Version/install.ps1" -OutFile tokensaver-docs-install.ps1
-& .\tokensaver-docs-install.ps1 -Repo $Repo -Version $Version -Agent claude
+& .\tokensaver-docs-install.ps1 -Repo $Repo -Version $Version
 ```
 
-Use `-Agent codex` or `-Agent opencode`. If local execution policy blocks the
+For a single agent, add `-Agent claude`, `-Agent codex` or `-Agent opencode`. If local execution policy blocks the
 script, review it and your machine's policy; do not change system-wide policy
 just to install the plugin. These preview binaries are not signed/notarized;
 OS trust checks may require additional review.
@@ -195,13 +192,13 @@ bundle may also be unpacked manually and installed with its `bin/tokensaver-docs
 Ordinary pushes run the source test workflow. Heavy native builds are manual or
 called by the draft-release workflow. No workflow publishes to PyPI/npm. Running
 remote CI can consume the repository's Actions allowance; review account limits
-before triggering it. The v0.5.2 release runs source and native build checks before publication.
+before triggering it. The v0.5.3 release runs source and native build checks before publication.
 
 To build one platform manually, follow [plugin build instructions](plugin-preview.md).
 To validate archives downloaded from all three build jobs locally:
 
 ```sh
-python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.5.2
+python scripts/prepare_release.py --artifacts downloaded-artifacts --output dist/complete-release --tag v0.5.3
 ```
 
 Build on each actual target OS/CPU; renaming a Mac binary never makes a Windows
