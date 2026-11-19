@@ -113,6 +113,9 @@ def parser() -> argparse.ArgumentParser:
     catalog = sub.add_parser('list-image-models', help='구성된 제공자의 모델 목록 확인')
     catalog.add_argument('--provider', choices=('openrouter', 'ollama', 'lmstudio', 'openai_compatible'), required=True)
     catalog.add_argument('--endpoint')
+    catalog.add_argument('--query')
+    catalog.add_argument('--limit', type=int, default=20)
+    catalog.add_argument('--offset', type=int, default=0)
     catalog.add_argument('--network-policy', choices=('local_only', 'internal_only'), default='local_only')
     setup = sub.add_parser('setup-audio',help='선택한 다국어 Whisper 모델 준비')
     setup.add_argument('--model',choices=('tiny','base','small'),required=True)
@@ -318,7 +321,8 @@ def main(argv=None) -> int:
         elif args.command == 'list-image-models':
             from .providers import catalog_image_models
             result = catalog_image_models(args.provider, endpoint=args.endpoint,
-                                          network_policy=args.network_policy)
+                                          network_policy=args.network_policy,
+                                          query=args.query, limit=args.limit, offset=args.offset)
             print(json.dumps(result, ensure_ascii=False))
         elif args.command == 'setup-audio':
             from .audio_setup import setup_audio
