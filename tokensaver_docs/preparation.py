@@ -103,18 +103,21 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
             from .providers import inspect_image_model
             report = inspect_image_model(selected)
             metadata = {'model': selected, 'model_support': report}
-            if report['capability'] == 'unsupported':
+            # Persistent preferences are not an invitation to ask the user to
+            # reselect every time. Let the same provider handle the request;
+            # unsupported/failed calls report an error without automatic
+            # fallback or silently changing the saved preference.
+            saved_selection = bool(stored is not None and selected == stored)
+            if report['capability'] == 'unsupported' and not saved_selection:
                 return _model_choice('model_incompatible', '선택한 모델은 이미지를 읽을 수 없어요. 이미지 속 글자와 내용을 MD에 담으려면 이미지 지원 모델이 필요해요. 모델을 바꿀까요?', **metadata)
-            if report.get('reason') == 'lookup_failed':
+            if report.get('reason') == 'lookup_failed' and not saved_selection:
                 return _model_choice('model_lookup_failed', '모델 정보를 조회하지 못했어요. 이미지 지원 여부를 확인한 뒤 모델을 선택하거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
             # The model was explicitly selected in saved user preferences.
             # Generic local catalogs often cannot attest vision support; let
             # the chosen local model run and report any model-side failure.
-            selected_local = bool(stored and stored.get('provider') == 'local'
-                                  and stored == selected)
-            if report['capability'] == 'unknown' and not (allow_unverified_model or selected_local):
+            if report['capability'] == 'unknown' and not (allow_unverified_model or saved_selection):
                 return _model_choice('model_support_unknown', '선택한 모델의 이미지 지원 여부를 확인할 수 없어요. 확인 가능한 모델로 바꾸거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
-            if selected['provider'] == 'openrouter' and report['price'] != 'free':
+            if selected['provider'] == 'openrouter' and report['price'] != 'free' and not saved_selection:
                 return _model_choice('model_price_unverified', '선택한 모델의 무료 이용 조건이 확인되지 않아 이미지 전송을 중단했어요. 무료 이미지 모델로 바꾸거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
         if mode is None:
             if has_images:
