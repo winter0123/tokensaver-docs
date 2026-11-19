@@ -78,6 +78,46 @@ When an enabled agent saves research materials, TokenSaver keeps **versioned ori
 
 Public web snapshots from approved sites, local audio transcription, and automatic image analysis are optional per project. [Setup and advanced usage](docs/advanced-usage.md#project-research-archive) · [Verification results](docs/current-status.md#v051-public-preview)
 
+## First-run image preferences (development source; not in v0.5.6 binaries)
+
+The forthcoming native CLI can save conversion preferences once in a shared user
+configuration file (`conversion-preferences.json` next to the existing TokenSaver
+configuration). Subsequent `prepare FILE` requests reuse the selected image mode
+and model automatically, regardless of project or whether the host is Codex,
+Claude Code, or OpenCode. The user changes these preferences only when requested.
+A text-only document never requires a model call.
+
+```sh
+tokensaver-docs preferences
+tokensaver-docs preferences --set-mode preserve
+tokensaver-docs preferences --set-mode placeholder
+tokensaver-docs list-image-models --provider ollama
+tokensaver-docs preferences --set-mode analyze --runtime local --provider ollama --model YOUR_MODEL --network-policy local_only
+tokensaver-docs prepare /path/to/document.html
+```
+
+The local model must already be installed and expose an OpenAI-compatible
+`/v1/models` and `/v1/chat/completions` interface. For LM Studio use
+`--provider lmstudio`. Use `--provider openai_compatible --endpoint
+http://10.0.0.5:8000/v1 --network-policy internal_only` for approved private-IP
+servers; the default `local_only` permits only loopback. No proxy, redirect,
+unapproved DNS endpoint or external-model fallback is allowed. Network-policy
+validation does not independently certify the entire local server's behavior.
+
+For OpenRouter API, first select its exact model and explicitly authorize
+**persistent future image transmissions to that provider/model** before saving
+`--set-mode analyze --runtime api --provider openrouter --model MODEL
+--network-policy external_allowed --allow-external-images`. Codex/Claude CLIs
+remain separately supported. OpenCode's configured chat model cannot yet be
+used directly for native image conversion; this route remains unsupported until
+a host-side adapter is implemented. A model catalog can report unknown vision
+support and must not be treated as proof.
+
+**Release limitation:** the marketplace launcher and native ZIP downloads
+currently pin v0.5.6. These development-source commands will not become
+available to plugin installs until new native binaries are released and the
+launchers are updated. Updating only the OpenCode Git plugin is insufficient.
+
 ## Choose or change a model
 
 To switch image models, ask your agent “Change the image conversion model.”
