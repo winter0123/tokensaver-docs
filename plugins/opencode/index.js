@@ -507,11 +507,17 @@ export const TokenSaverDocsPlugin = async (ctx = {}) => {
       description: 'List image model IDs on a selected local/OpenRouter provider. A catalog entry does not guarantee vision capability; do not invent support.',
       args: {provider:tool.schema.enum(['openrouter','ollama','lmstudio','openai_compatible']),
         endpoint:tool.schema.string().optional(),
+        query:tool.schema.string().optional(),
+        limit:tool.schema.number().int().min(1).max(40).optional(),
+        offset:tool.schema.number().int().min(0).optional(),
         network_policy:tool.schema.enum(['local_only','internal_only']).optional()},
-      execute: ({provider,endpoint,network_policy}) => run([
+      execute: ({provider,endpoint,network_policy,query,limit,offset}) => run([
         'list-image-models','--provider',provider,
         ...(endpoint?['--endpoint',endpoint]:[]),
-        ...(network_policy?['--network-policy',network_policy]:[])]),
+        ...(network_policy?['--network-policy',network_policy]:[]),
+        ...(query?['--query',query]:[]),
+        ...(limit!==undefined?['--limit',String(limit)]:[]),
+        ...(offset!==undefined?['--offset',String(offset)]:[])]),
     }),
     tokensaver_docs_setup_model: tool({
       description: 'Inspect first-use setup or a user-selected conversion model. Defer only when the user chooses later. If a question fails or is cancelled, stop and ask the user; never infer defer, model or confirmation arguments. A one-time selection does not save defaults; save_as_default requires explicit confirmation. Never request API keys in chat or assume the host chat model is the conversion model.',
@@ -761,7 +767,9 @@ export default {
       }, [], legacy.tool.tokensaver_docs_preferences.execute);
       add('tokensaver_docs_list_image_models', {
         provider:{type:'string',enum:['openrouter','ollama','lmstudio','openai_compatible']},
-        endpoint:string,network_policy:{type:'string',enum:['local_only','internal_only']}
+        endpoint:string,query:string,limit:{type:'integer',minimum:1,maximum:40},
+        offset:{type:'integer',minimum:0},
+        network_policy:{type:'string',enum:['local_only','internal_only']}
       }, ['provider'], legacy.tool.tokensaver_docs_list_image_models.execute);
       add('tokensaver_docs_setup_audio', {model:{type:'string',enum:['tiny','base','small']},confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_audio.execute);
       add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
