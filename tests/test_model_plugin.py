@@ -238,7 +238,9 @@ for(const text of ['"이미지·글자·설명 넣기"','이미지·글자·설�
  await userPrompt('s','reply',text);
  for(const mode of ['analyze','preserve','placeholder']) {
   const result=JSON.parse((await prepare.execute({source:'photo.png',image_mode:mode},{sessionID:'s'})).content);
-  assert.notEqual(result.status,'ready',text);
+  // Local-only options do not require consent; analyzing image content
+  // still requires genuine explicit provider-specific permission.
+  assert.equal(result.status, mode==='analyze' ? 'choice_required' : 'ready', text);
  }
 }
 await userPrompt('s','request2','Convert photo.png to Markdown.');await prepare.execute({source:'photo.png'},{sessionID:'s'});
