@@ -701,7 +701,8 @@ class ManagedProcessTests(unittest.TestCase):
             function='async function run(args, env = process.env)'+body
             script=(
                 'import assert from "node:assert/strict"; import {spawn} from "node:child_process";\n'
-                'const original=setTimeout; globalThis.setTimeout=(fn,delay,...args)=>original(fn,delay===300000?600:delay,...args);\n'\n                'const ensureTokenSaverExecutable=async()=>executable; const dirname=()=>""; const fileURLToPath=()=>"";\n'
+                'const original=setTimeout; globalThis.setTimeout=(fn,delay,...args)=>original(fn,delay===300000?600:delay,...args);\n'
+                'const ensureTokenSaverExecutable=async()=>executable; const dirname=()=>""; const fileURLToPath=()=>"";\n'
                 f'const executable={json.dumps(sys.executable)};\n'+function+
                 f'\nconst result=await run(["-c",{json.dumps(parent_code)}]); assert.ok(result.includes("Timed out"));\n'
             )
