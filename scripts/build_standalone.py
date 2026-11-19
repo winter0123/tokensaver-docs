@@ -10,7 +10,7 @@ import tempfile
 import hashlib
 import urllib.request
 from pathlib import Path
-from importlib.metadata import distribution
+from importlib.metadata import PackageNotFoundError, distribution
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -38,7 +38,13 @@ def main():
         notices.mkdir()
         pdfium_dist=distribution('pypdfium2')
         for package in ('pypdfium2','markdownify','beautifulsoup4','soupsieve','six'):
-            installed=distribution(package)
+            try:
+                installed=distribution(package)
+            except PackageNotFoundError:
+                # Older markdownify releases depend on six, but newer releases can omit it.
+                if package == 'six':
+                    continue
+                raise
             license_files=[p for p in installed.files if '.dist-info/licenses/' in p.as_posix() or p.name.lower().startswith(('license','copying'))]
             if not license_files:
                 raise ValueError('Redistribution licenses are missing: '+package)
