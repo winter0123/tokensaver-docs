@@ -1,5 +1,10 @@
 # TokenSaver Docs — preview status
 
+## v0.5.4 public preview
+
+- Interactive macOS and Windows launchers show a keyboard checklist. The macOS checklist was tested in a pseudo-terminal, including navigation, checkmarks and saving only selected agents.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.4) · [Build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44457059260)
+
 ## v0.5.3 public preview
 
 - The terminal downloader and unified ZIP open the same multi-select menu for

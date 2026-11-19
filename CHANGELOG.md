@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4 — preview
+
+- Select agents with an interactive keyboard checklist before installing them together.
+- Hide transfer statistics and show concise preparation and installation messages.
+
 ## 0.5.3 — preview
 
 - Show detected agents in the unified installer and allow one, several, or all to be selected.
