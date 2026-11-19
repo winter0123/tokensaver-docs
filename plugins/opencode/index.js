@@ -14,7 +14,7 @@ let executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.pl
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
 const requestBySession = new Map();
 
-const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. Follow the tool’s setup and image-choice questions: without an actual user choice, stop and ask; never infer a model, defer, image mode, or provider consent. For conversion-only, report the returned Markdown paths and status without rereading the result.';
+const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
 const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
 const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current real user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze and this model. Otherwise use OpenCode question UI for the explicit approval: the actual UI answer is remembered by the plugin. NEVER ask the user to copy it into chat. The question must identify the exact provider and model, clearly say that document images will be transmitted externally, and offer consent and decline options. Once the user selects consent, immediately retry tokensaver_docs_prepare for the same source and model. Neither model selection nor agent-written prose nor tool arguments grants consent.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
@@ -626,6 +626,21 @@ export default {
                 ? documentSearchExhausted : 'Use the evidence already returned for this document or read its Markdown continuation.');
             }
             request.documentSearches += 1;
+          }
+          if (name === 'tokensaver_docs_preferences' && input.allow_external_images === true) {
+            // Persistence is stronger than consent for a one-off operation.
+            // A model-generated argument alone must never silently authorize
+            // ongoing image uploads across future projects/sessions.
+            const prompt = String(request.text || '');
+            const explicitlyPersistent = /(?:앞으로|향후|매번|계속|항상|저장|기본값|future|always|persist|remember|default)/i.test(prompt);
+            const explicitlyExternal = /(?:이미지.{0,25}(?:외부|전송|제공자)|(?:외부|전송).{0,25}이미지|send images|upload images|image transmission)/i.test(prompt);
+            const named = typeof input.provider === 'string' &&
+              typeof input.model === 'string' && prompt.toLowerCase().includes(input.provider.toLowerCase()) &&
+              prompt.toLowerCase().includes(input.model.toLowerCase());
+            const actualQuestion = request.uiConsent &&
+              request.uiConsent.provider === input.provider && request.uiConsent.model === input.model;
+            if ((!explicitlyPersistent || !explicitlyExternal || !named) && !actualQuestion)
+              return { content: choiceError('Persistent external image transfer must be explicitly authorized by the user with the exact provider/model; a model choice alone is not consent.') };
           }
           if (name === 'tokensaver_docs_setup_audio') {
             if (request.audioDeclined || request.completed)
