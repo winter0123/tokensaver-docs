@@ -50,6 +50,16 @@ class PluginPackagingTests(unittest.TestCase):
             self.assertEqual(claude['mcpServers']['tokensaver-docs']['args'], ['mcp'])
             self.assertEqual(codex['mcpServers']['tokensaver-docs']['type'], 'stdio')
             self.assertEqual(codex['mcpServers']['tokensaver-docs']['command'], './bin/' + binary.name)
+            codex_root = output / 'codex'
+            manifest = json.loads((codex_root / 'plugin.json').read_text())
+            interface = manifest['extensions']['com.openai']['interface']
+            self.assertEqual(manifest['name'], 'tokensaver-docs')
+            self.assertEqual(interface['displayName'], 'TokenSaver Docs')
+            self.assertEqual(interface['shortDescription'], 'Convert and reuse documents')
+            icon = interface['logo'].removeprefix('./')
+            self.assertEqual(interface['composerIcon'], interface['logo'])
+            self.assertEqual((codex_root / icon).read_bytes(), (ROOT / 'assets/plugin/tokensaver-docs.svg').read_bytes())
+            self.assertIn(icon, json.loads((codex_root / 'checksums.json').read_text()))
             self.assertEqual(npm['name'], 'tokensaver-docs-opencode')
             for agent, catalog_path in [('claude', '.claude-plugin/marketplace.json'), ('codex', '.agents/plugins/marketplace.json')]:
                 catalog = json.loads((output/agent/catalog_path).read_text())
