@@ -138,6 +138,51 @@ function matchesModelChoice(text, provider, model) {
   return [pair, `i choose ${pair}`, `i select ${pair}`, `${pair} and save this model as default`].includes(choice);
 }
 
+// OpenCode question UI replies are tool results, not new chat messages. Only
+// trust answers from an actually completed question tool call; model-supplied
+// prepare arguments and quoted conversation text are never consent evidence.
+function recordQuestionAnswers(event, request) {
+  if (event.tool !== 'question' || event.status !== 'completed' || !request?.conversion) return;
+  const questions = event.input?.questions;
+  const answers = event.result?.output?.answers ?? event.result?.metadata?.answers;
+  if (!Array.isArray(questions) || !Array.isArray(answers)) return;
+  for (let i = 0; i < questions.length && i < answers.length; i++) {
+    const question = questions[i];
+    const answer = answers[i];
+    if (!question || !Array.isArray(answer) || answer.length !== 1 || typeof answer[0] !== 'string') continue;
+    const selected = answer[0].trim();
+    // Only choices that were actually presented in the structured form.
+    if (!Array.isArray(question.options) || !question.options.some(opt => opt?.label === selected)) continue;
+    const prompt = String(question.question ?? '') + ' ' + String(question.header ?? '');
+    const choice = exactChoice(selected);
+    if (/(?:이미지|사진|image|photo)/i.test(prompt) &&
+        ['analyze','preserve','placeholder'].includes(choice)) {
+      request.uiMode = choice;
+      request.uiConsent = null;
+      continue;
+    }
+    // User-selected model only, scoped to OpenRouter in the question itself.
+    if (/(?:모델|model)/i.test(prompt) && /openrouter/i.test(prompt)) {
+      const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
+      if (match) {
+        request.uiModel = {provider:'openrouter', model:match[1]};
+        request.uiConsent = null;
+        continue;
+      }
+    }
+    // Image transmission requires an additional explicit, provider+model-
+    // specific user approval. General image-mode/model selections do not grant it.
+    const selectedModel = request.uiModel;
+    if (request.uiMode === 'analyze' && selectedModel &&
+        /(?:외부|전송|upload|send|external|share)/i.test(prompt) &&
+        prompt.toLowerCase().includes(selectedModel.provider) &&
+        prompt.toLowerCase().includes(selectedModel.model.toLowerCase()) &&
+        choice === 'confirm') {
+      request.uiConsent = {...selectedModel};
+    }
+  }
+}
+
 function choiceError(choice) {
   return JSON.stringify({status:'choice_required',question:choice,
     next:'Ask the user in chat and stop this turn. Do not retry with inferred arguments.'});
@@ -163,7 +208,8 @@ function explicitChoiceError(name, input, request) {
       if (confirmingDefault && (input.provider !== confirmingDefault.provider || input.model !== confirmingDefault.model))
         return choiceError('Use the model awaiting default-save confirmation.');
       if (!confirmingDefault && (!input.provider || !input.model ||
-          !matchesModelChoice(text,input.provider,input.model)))
+          !matchesModelChoice(text,input.provider,input.model) &&
+          !(request?.uiModel?.provider === input.provider && request?.uiModel?.model === input.model)))
         return choiceError('Ask the user to name the provider and model they selected.');
     }
     if (request?.defaultConfirmation && input.save_as_default &&
@@ -181,20 +227,23 @@ function explicitChoiceError(name, input, request) {
     const denied = /\b(?:no|do not|don't|dont|never|refuse(?:d)? to|decline(?:d)? to|cancel)\b.{0,100}\b(?:approve|authorize|consent|allow|permit|analy[sz]e|image|photo)\b|\b(?:approve|authorize|consent|allow|permit)\b.{0,100}\b(?:not|never|without|unless)\b|(?:동의|승인|허용|분석)하지\s*않|(?:이미지|사진).{0,50}(?:보내지\s*않|분석하지\s*않)|^(?:아니요|아니|취소)/i.test(text.trim());
     if (denied)
       return JSON.stringify({status:'consent_declined',next:'The user declined image analysis. Stop this conversion; do not retry or send the image.'});
-    const approved = choice === 'analyze';
-    const selected = request?.profile;
+    const consent = request?.uiConsent;
+    const approvedByQuestion = request?.uiMode === 'analyze' &&
+      consent?.provider === input.model_provider && consent?.model === input.model;
+    const approved = choice === 'analyze' || approvedByQuestion;
+    const selected = request?.profile ?? request?.uiModel;
     const hasModelChoice = Boolean(input.model && input.model_provider &&
       text.toLowerCase().includes(input.model.toLowerCase()) && text.toLowerCase().includes(input.model_provider.toLowerCase()));
     const mismatch = selected && ((input.model && input.model !== selected.model) ||
       (input.model_provider && input.model_provider !== selected.provider));
-    if (!approved || mismatch || (!selected && !hasModelChoice))
+    if (!approved || mismatch || (!selected && !hasModelChoice && !approvedByQuestion))
       return choiceError(selected && !mismatch
         ? 'The image model is already selected. Ask only for explicit image-analysis approval; use this same model after the user approves.'
         : 'Ask the user to choose an image model and explicitly approve image analysis for this request.');
   }
-  if (mode === 'placeholder' && choice !== 'placeholder')
+  if (mode === 'placeholder' && choice !== 'placeholder' && request?.uiMode !== 'placeholder')
     return choiceError('Ask whether the user wants placeholder images with no extracted text or description.');
-  if (mode === 'preserve' && choice !== 'preserve')
+  if (mode === 'preserve' && choice !== 'preserve' && request?.uiMode !== 'preserve')
     return choiceError('Ask whether the user wants image links only, without extracted text or descriptions.');
   return null;
 }
@@ -558,7 +607,7 @@ export default {
           if (name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true)) {
             if (!sessionID || !request.messageID)
               return { content: choiceError('A real user request is required before image analysis.') };
-            selected ??= await configuredImageProfile();
+            selected ??= request.uiModel ?? await configuredImageProfile();
             if (selected && ((input.model && input.model !== selected.model) ||
                 (input.model_provider && input.model_provider !== selected.provider))) {
               request.profile = selected;
@@ -717,10 +766,21 @@ export default {
         audioRequestedSource:audio ? await requestedAudioSource(event.prompt) : continuing ? previous?.audioRequestedSource : undefined,
         files:event.prompt?.files ?? [],
         profile:continuing ? previous?.profile : undefined,
+        uiMode:continuing ? previous?.uiMode : undefined,
+        uiModel:continuing ? previous?.uiModel : undefined,
+        uiConsent:continuing ? previous?.uiConsent : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
       else requestBySession.delete(sessionID);
+    });
+    // Persist *actual* user selections from OpenCode's question form.
+    // A cancelled/failed question never grants an image mode, model or consent.
+    await ctx.tool.hook('execute.after', event => {
+      const request = requestBySession.get(event.sessionID);
+      if (!request?.conversion) return;
+      recordQuestionAnswers(event, request);
+      requestBySession.set(event.sessionID, request);
     });
     // Register the optional internal MCP bridge only when its binary is ready.
     // Native V2 document tools work without it and can bootstrap on first use.
