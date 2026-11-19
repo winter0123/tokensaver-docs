@@ -762,7 +762,7 @@ export default {
       });
       add('tokensaver_docs_prepare', {source:string,output:string,transcribe_images:boolean,
         image_mode:{type:'string',enum:['analyze','preserve','placeholder']},
-        model_provider:{type:'string',enum:['openrouter','codex','claude','local']},model:string,
+        model_provider:{type:'string',enum:['openrouter','codex','claude']},model:string,
         allow_unverified_model:boolean}, ['source'], legacy.tool.tokensaver_docs_prepare.execute);
       add('tokensaver_docs_setup_model', {provider:{type:'string',enum:['openrouter','codex','claude']},
         model:string,defer:boolean,save_as_default:boolean,confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_model.execute);
