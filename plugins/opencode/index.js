@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 import { tool } from '@opencode-ai/plugin';
+import { ensureTokenSaverExecutable } from './runtime.js';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
 import { readFile, stat, lstat, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import researchRouting from '../../tokensaver_docs/data/research-routing.json' with { type: 'json' };
+import researchRouting from './research-routing.json' with { type: 'json' };
 
-const executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
+let executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
 const requestBySession = new Map();
 
@@ -198,7 +199,9 @@ function explicitChoiceError(name, input, request) {
   return null;
 }
 
-function run(args, env = process.env) {
+async function run(args, env = process.env) {
+  try { executable = await ensureTokenSaverExecutable(dirname(fileURLToPath(import.meta.url))); }
+  catch (error) { return 'Unable to start bundled tokensaver-docs: ' + error.message; }
   return new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env, detached: process.platform !== 'win32' });
     const isContext = args[0] === 'context' || (args[0] === 'knowledge' && args[1] === 'search');
@@ -492,6 +495,7 @@ export default {
   id: 'tokensaver-docs',
   async setup(ctx) {
     const legacy = await TokenSaverDocsPlugin();
+    executable = await ensureTokenSaverExecutable(dirname(fileURLToPath(import.meta.url)));
     const researchSessions = new Map();
     const researchEvents = new AbortController();
     if (ctx.event?.subscribe) {

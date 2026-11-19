@@ -1,0 +1,9 @@
+{
+  "name": "tokensaver-docs",
+  "version": "0.5.6",
+  "description": "Prepare documents and search bounded evidence through a checksummed native CLI.",
+  "author": {
+    "name": "winter0123",
+    "url": "https://github.com/winter0123"
+  }
+}

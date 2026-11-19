@@ -73,20 +73,17 @@ def main():
             write_json(root / 'mcp.json', {'$schema': 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', 'mcpServers': {'tokensaver-docs': {'type': 'stdio', 'command': './bin/' + name, 'args': ['mcp']}}})
             write_json(root / '.agents/plugins/marketplace.json', {'name': 'tokensaver-docs-marketplace', 'plugins': [{'name': 'tokensaver-docs', 'source': {'source': 'local', 'path': './'}, 'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
         else:
-            for item in ('index.js', 'package.json', 'README.md'):
+            for item in ('index.js', 'package.json', 'README.md', 'runtime.js', 'research-routing.json'):
                 shutil.copy2(ROOT / 'plugins/opencode' / item, root / item)
+            (root / 'scripts').mkdir(exist_ok=True)
+            for script in ('run.sh', 'run.ps1'):
+                shutil.copy2(ROOT / 'plugins/opencode/scripts' / script, root / 'scripts' / script)
             package_path = root / 'package.json'
             package = json.loads(package_path.read_text(encoding='utf-8'))
             package.update(os=[os_name], cpu=[cpu])
             if args.bundle_opencode:
                 subprocess.run(['bun','build',str(ROOT/'plugins/opencode/index.js'),'--target=node','--format=esm','--outfile',str(root/'index.js')],check=True)
                 package.pop('dependencies',None)
-            else:
-                routing = 'research-routing.json'
-                shutil.copy2(ROOT / 'tokensaver_docs/data' / routing, root / routing)
-                script = root / 'index.js'
-                script.write_text(script.read_text(encoding='utf-8').replace(
-                    '../../tokensaver_docs/data/' + routing, './' + routing), encoding='utf-8')
             write_json(package_path, package)
         write_json(root/'platform.json',{'os':os_name,'cpu':cpu,'agent':platform,'version':__version__})
         for notice in ('LICENSE', 'NOTICE', 'AUTHORS.md'):
