@@ -181,11 +181,20 @@ def _local_request(url, payload=None):
         raise ConversionError('로컬 모델 서버가 유효한 JSON을 반환하지 않았습니다.') from None
 
 
-def catalog_image_models(provider, *, endpoint=None, network_policy='local_only'):
+def catalog_image_models(provider, *, endpoint=None, network_policy='local_only', query=None, limit=20, offset=0):
+    if not isinstance(limit, int) or not 1 <= limit <= 40 or not isinstance(offset, int) or offset < 0:
+        raise ConversionError('모델 목록은 최대 40개씩 조회할 수 있습니다.')
+    if query is not None and (not isinstance(query, str) or len(query) > 100):
+        raise ConversionError('모델 검색어가 너무 깁니다.')
     if provider == 'openrouter':
-        return {'provider': provider, 'models': [
-            {'id': m['id'], 'vision': _model_capability(m, 'image'), 'price': _model_price(m)}
-            for m in list_models() if isinstance(m.get('id'), str)]}
+        models = [{'id': m['id'], 'vision': _model_capability(m, 'image'), 'price': _model_price(m)}
+                  for m in list_models() if isinstance(m.get('id'), str)
+                  and _model_capability(m, 'image') == 'supported']
+        if query:
+            models = [m for m in models if query.casefold() in m['id'].casefold()]
+        models.sort(key=lambda m: m['id'])
+        return {'provider': provider, 'total': len(models), 'offset': offset,
+                'has_more': offset + limit < len(models), 'models': models[offset:offset + limit]}
     if provider not in ('ollama', 'lmstudio', 'openai_compatible'):
         raise ConversionError('지원하지 않는 모델 제공자입니다.')
     from .workflow import _trusted_endpoint, ENDPOINTS
@@ -198,9 +207,14 @@ def catalog_image_models(provider, *, endpoint=None, network_policy='local_only'
         raise ConversionError('모델 목록 형식이 올바르지 않습니다.')
     # Generic OpenAI-compatible /v1/models does not guarantee a vision flag.
     # Never invent image support from a model name.
-    return {'provider': provider, 'endpoint': base,
-            'models': [{'id': m['id'], 'vision': 'unknown', 'price': 'local'}
-                       for m in models if isinstance(m, dict) and isinstance(m.get('id'), str)]}
+    entries = [{'id': m['id'], 'vision': 'unknown', 'price': 'local'}
+               for m in models if isinstance(m, dict) and isinstance(m.get('id'), str)]
+    if query:
+        entries = [m for m in entries if query.casefold() in m['id'].casefold()]
+    entries.sort(key=lambda m: m['id'])
+    return {'provider': provider, 'endpoint': base, 'total': len(entries),
+            'offset': offset, 'has_more': offset + limit < len(entries),
+            'models': entries[offset:offset + limit]}
 
 
 def _generate_local(path: Path, model: str, profile: dict) -> dict:
