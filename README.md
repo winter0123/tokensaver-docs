@@ -1,4 +1,4 @@
-> **Tokensaver marketplace:** [winter0123/Tokensaver](https://github.com/winter0123/Tokensaver) manages the new shared Codex and Claude Code catalogs. This Git-sourced integration requires a separately available native `tokensaver-docs` command on `PATH`; see [marketplace installation notes](docs/marketplace.md). The standalone download buttons below remain the supported self-contained release route.
+> **Tokensaver marketplace:** [winter0123/Tokensaver](https://github.com/winter0123/Tokensaver) provides installable Codex and Claude Code SKILL packages without manual MCP setup. OpenCode uses its own Git plugin command. See [installation details](docs/marketplace.md). Existing native ZIP downloads below remain supported.
 
 <p align="center"><img src="assets/readme/hero-en.svg" width="960" alt="TokenSaver Docs — Convert PDF, Word, Excel, HTML, images and audio into reusable Markdown for Codex, Claude Code and OpenCode." /></p>
 
