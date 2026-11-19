@@ -243,10 +243,9 @@ function explicitChoiceError(name, input, request) {
         ? 'The image model is already selected. Ask only for explicit image-analysis approval; use this same model after the user approves.'
         : 'Ask the user to choose an image model and explicitly approve image analysis for this request.');
   }
-  if (mode === 'placeholder' && choice !== 'placeholder' && request?.uiMode !== 'placeholder')
-    return choiceError('Ask whether the user wants placeholder images with no extracted text or description.');
-  if (mode === 'preserve' && choice !== 'preserve' && request?.uiMode !== 'preserve')
-    return choiceError('Ask whether the user wants image links only, without extracted text or descriptions.');
+  // preserve and placeholder are entirely local and send no images to any AI
+  // provider. A real tool call with these explicit modes can proceed without
+  // additional approval gates. Consent is required only for external analysis.
   return null;
 }
 
