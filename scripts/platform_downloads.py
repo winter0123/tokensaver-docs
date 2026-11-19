@@ -114,10 +114,11 @@ activation=agent
 case "$agents " in *' codex claude '*) activation=codex-claude;; esac
 task_tmp=$(mktemp -d)
 trap 'rm -rf "$task_tmp"' EXIT HUP INT TERM
-echo 'Installing selected plugins...'
 while [ "$#" -gt 0 ]; do
     agent=$1
     shift
+    case "$agent" in claude) label='Claude Code';; codex) label=Codex;; opencode) label=OpenCode;; esac
+    printf 'Installing %s plugin...\\n' "$label"
     agent_bundle="$task_tmp/$agent"
     mkdir "$agent_bundle"
     cp -R "$root/common/." "$agent_bundle/"
@@ -190,9 +191,10 @@ $Activation = if ($Agents -contains 'codex' -and $Agents -contains 'claude') { '
 $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
 try {
-    Write-Host 'Installing selected plugins...'
     for ($Index = 0; $Index -lt $Agents.Count; $Index++) {
         $Agent = $Agents[$Index]
+        $Label = switch ($Agent) { 'claude' { 'Claude Code' } 'codex' { 'Codex' } 'opencode' { 'OpenCode' } }
+        Write-Host "Installing $Label plugin..."
         $Mode = if ($Index -eq $Agents.Count - 1) { $Activation } else { 'none' }
         $Bundle = Join-Path $TaskTemp $Agent
         New-Item -ItemType Directory -Path $Bundle | Out-Null

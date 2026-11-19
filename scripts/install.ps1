@@ -14,10 +14,11 @@ $TaskTemp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToStr
 New-Item -ItemType Directory -Path $TaskTemp | Out-Null
 try {
   $ProgressPreference = 'SilentlyContinue'
-  Write-Host 'Preparing installation...'
+  Write-Host 'Downloading installer...'
   Invoke-WebRequest -UseBasicParsing "$BaseUrl/checksums.txt" -OutFile (Join-Path $TaskTemp 'checksums.txt') -TimeoutSec 300
   $Archive = Join-Path $TaskTemp 'bundle.zip'
   Invoke-WebRequest -UseBasicParsing "$BaseUrl/$Asset" -OutFile $Archive -TimeoutSec 300
+  Write-Host 'Verifying and preparing installer...'
   $Rows = @(Get-Content (Join-Path $TaskTemp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1] -eq $Asset })
   if ($Rows.Count -ne 1) { throw 'Missing or duplicate checksum' }
   $Expected = ($Rows[0] -split '\s+')[0]
@@ -28,6 +29,7 @@ try {
     & (Join-Path $Bundle 'install.ps1')
     return
   }
+  Write-Host "Installing the $Agent plugin..."
   & (Join-Path $Bundle 'bin/tokensaver-docs.exe') install-plugin $Bundle --agent $Agent --expected-version ($Version -replace '^v','')
   if ($LASTEXITCODE -ne 0) { throw 'Plugin registration failed' }
   Write-Host "Installed $Version for $Agent. Restart your agent to load the plugin."

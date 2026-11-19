@@ -127,6 +127,9 @@ class ReleaseTests(unittest.TestCase):
             result = subprocess.run(['sh', str(launcher)], input='2, 1 2\n', text=True, capture_output=True, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(log.read_text().splitlines(), ['codex none', 'claude codex-claude'])
+            self.assertIn('Installing Codex plugin...', result.stdout)
+            self.assertIn('Installing Claude Code plugin...', result.stdout)
+            self.assertNotIn('Installing OpenCode plugin...', result.stdout)
 
             log.unlink()
             (commands / 'claude').unlink()

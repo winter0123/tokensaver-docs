@@ -30,11 +30,15 @@ class MacReleaseInstallerTests(unittest.TestCase):
             result=subprocess.run(command, env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertIn('--expected-version\n0.3.0',log.read_text())
+            self.assertLess(result.stdout.index('Downloading installer...'),
+                            result.stdout.index('Verifying and preparing installer...'))
+            self.assertIn('Installing the opencode plugin...', result.stdout)
             log.unlink()
             checks.write_text('0'*64+'  '+archive.name+'\n')
             result=subprocess.run(command, env=env, capture_output=True, text=True)
             self.assertNotEqual(result.returncode,0)
             self.assertFalse(log.exists())
+            self.assertNotIn('Installing the opencode plugin...', result.stdout)
 
             archive = root/'tokensaver-docs-darwin-arm64.zip'
             with zipfile.ZipFile(archive, 'w') as bundle:
