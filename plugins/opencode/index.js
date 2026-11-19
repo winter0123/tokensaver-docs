@@ -7,6 +7,7 @@ import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 
 import { readFile, stat, lstat, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
+import researchRouting from '../../tokensaver_docs/data/research-routing.json' with { type: 'json' };
 
 const executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
@@ -23,6 +24,24 @@ const documentSearchExhausted = 'The search limit for this document question has
 function documentQuestionGuidance(request) {
   if (request.documentSearchStatus !== 'no_match') return documentQuestionInstruction;
   return request.documentSearches >= 2 ? documentSearchExhausted : retryDocumentSearchInstruction;
+}
+
+const researchTurn = new RegExp(researchRouting.new, 'i');
+const researchFollowUp = new RegExp(researchRouting.follow_up, 'i');
+
+async function researchProject(directory) {
+  for (let root = directory; root; root = dirname(root)) {
+    const config = join(root, 'docs','tokensaver-docs','config.json');
+    try {
+      if (await realpath(config) !== config) return null;
+      const settings = JSON.parse(await readFile(config, 'utf8'));
+      return settings.version === 1 && settings.project === root && settings.enabled !== false ? root : null;
+    } catch (error) {
+      if (error.code !== 'ENOENT') return null;
+    }
+    if (await lstat(join(root, '.git')).catch(() => null) || dirname(root) === root) return null;
+  }
+  return null;
 }
 
 function isMarkdownConversionRequest(prompt) {
@@ -182,7 +201,7 @@ function explicitChoiceError(name, input, request) {
 function run(args, env = process.env) {
   return new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env, detached: process.platform !== 'win32' });
-    const isContext = args[0] === 'context';
+    const isContext = args[0] === 'context' || (args[0] === 'knowledge' && args[1] === 'search');
     // Python's 6000 character cap can occupy twice as many UTF-16 code units.
     const limit = isContext ? 12002 : 6500;
     let output = '';
@@ -319,7 +338,54 @@ async function convertAudio(request, input) {
   return result;
 }
 
-export const TokenSaverDocsPlugin = async () => ({
+function insideResearchInbox(root, cwd, path) {
+  return relative(root, resolve(cwd, path)).split(/[\\/]/).join('/').startsWith('docs/research/inbox/');
+}
+
+function researchGuidance(root, text) {
+  if (researchFollowUp.test(text)) {
+    return `${researchRouting.search_guidance.replace('search_research','tokensaver_docs_search_research')} Project: ${root}`;
+  }
+  return researchTurn.test(text) ? researchRouting.guidance.replace('search_research','tokensaver_docs_search_research') : '';
+}
+
+export const TokenSaverDocsPlugin = async (ctx = {}) => {
+  const sessions = new Map();
+  return {
+    'chat.message': async ({sessionID}, {message, parts}) => {
+      sessions.delete(sessionID);
+      if (message.role !== 'user' || !ctx.directory) return;
+      const cwd = await realpath(ctx.directory).catch(() => null);
+      const root = cwd && await researchProject(cwd);
+      if (root) {
+        const text = parts.filter(part => part.type === 'text' && !part.synthetic).map(part => part.text).join(' ');
+        sessions.set(sessionID, {cwd, root, guidance:researchGuidance(root, text)});
+      }
+    },
+    'experimental.chat.system.transform': async ({sessionID}, {system}) => {
+      const research = sessions.get(sessionID);
+      if (research?.guidance && !research.guided) {
+        system.push(research.guidance);
+        research.guided = true;
+      }
+    },
+    'tool.execute.after': async ({sessionID,tool,args}) => {
+      const research = sessions.get(sessionID);
+      if (!research) return;
+      if (['bash','shell'].includes(tool)) research.synced = false;
+      const path = args?.filePath ?? args?.path;
+      if (['write','edit'].includes(tool) && typeof path === 'string' &&
+          insideResearchInbox(research.root, research.cwd, path)) {
+        research.synced = parseResult(await run(['knowledge','sync',research.root]))?.status === 'ready';
+      }
+    },
+    event: async ({event}) => {
+      const id = event.properties?.sessionID;
+      const research = sessions.get(id);
+      if (event.type !== 'session.idle' || !research) return;
+      sessions.delete(id);
+      if (!research.synced) await run(['knowledge','sync',research.root]);
+    },
   'tool.execute.before': async (input, output) => {
     // Embedded-image HTML is expensive raw context. Prepare it locally before a native read.
     if (input.tool !== 'read') return;
@@ -372,6 +438,16 @@ export const TokenSaverDocsPlugin = async () => ({
       args: { source: tool.schema.string(), query: tool.schema.string(), output: tool.schema.string().optional(), max_tokens: tool.schema.number().int().min(1).max(10000).optional() },
       execute: ({source,query,output,max_tokens}) => run(['context',source,query,'--output',output ?? 'converted','--max-tokens',String(max_tokens ?? 1200)]),
     }),
+    tokensaver_docs_search_research: tool({
+      description: 'Search prior research already archived in this project. Pass the absolute project path and focused keywords. Each source_index points to a Markdown path in sources.',
+      args: {project:tool.schema.string(),query:tool.schema.string(),max_tokens:tool.schema.number().int().min(1).max(10000).optional(),
+        version_id:tool.schema.string().optional(), conversion_id:tool.schema.string().optional()},
+      execute: ({project,query,max_tokens,version_id,conversion_id}) => run([
+        'knowledge','search',project,query,'--max-tokens',String(max_tokens ?? 500),
+        ...(version_id ? ['--version-id',version_id] : []),
+        ...(conversion_id ? ['--conversion-id',conversion_id] : []),
+      ]),
+    }),
     tokensaver_docs_convert: tool({
       description: 'Convert local documents without using configured external providers. Returns status and output paths.',
       args: { source: tool.schema.string(), output: tool.schema.string(), refresh: tool.schema.boolean().optional() },
@@ -408,13 +484,33 @@ export const TokenSaverDocsPlugin = async () => ({
       execute: ({file, start_line}) => run(['read', file, '--start-line', String(start_line ?? 1), '--lines', '40', '--max-chars', '6000']),
     }),
   },
-});
+  };
+};
 
 // V2 uses a default plugin definition; V1 keeps the named function above.
 export default {
   id: 'tokensaver-docs',
   async setup(ctx) {
     const legacy = await TokenSaverDocsPlugin();
+    const researchSessions = new Map();
+    const researchEvents = new AbortController();
+    if (ctx.event?.subscribe) {
+      void (async () => {
+        try {
+          for await (const event of ctx.event.subscribe({types:['session.idle','session.execution.succeeded'],signal:researchEvents.signal})) {
+            if (!['session.idle','session.execution.succeeded'].includes(event.type)) continue;
+            const id = event.data?.sessionID ?? event.properties?.sessionID ?? event.sessionID;
+            const research = researchSessions.get(id);
+            if (research) {
+              researchSessions.delete(id);
+              if (!research.synced) await run(['knowledge','sync',research.directory]);
+            }
+          }
+        } catch (error) {
+          if (!researchEvents.signal.aborted) console.error('TokenSaver research event subscription failed:', error.message);
+        }
+      })();
+    }
     const pluginDirectory = dirname(fileURLToPath(import.meta.url));
     let skillDirectory = join(pluginDirectory,'skills','tokensaver-docs');
     try { await stat(skillDirectory); }
@@ -491,6 +587,9 @@ export default {
             return { content: blocked };
           }
           const result = await execute(callInput);
+          const research = researchSessions.get(sessionID);
+          if (name === 'tokensaver_docs_search_research' && research &&
+              resolve(input.project) === resolve(research.directory)) research.searched = true;
           const parsed = parseResult(result);
           if (searchingDocument) {
             request.documentSearchStatus = parsed?.status;
@@ -539,6 +638,7 @@ export default {
       add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
       add('tokensaver_docs_context', {source:string,query:{type:'string',description:'Search keywords as they appear in the document. For a Korean question and unknown document language, include English equivalents, e.g. "환불 기한 refund deadline".'},output:string,max_tokens:{type:'integer',minimum:1,maximum:10000}}, ['source','query'], legacy.tool.tokensaver_docs_context.execute);
+      add('tokensaver_docs_search_research', {project:string,query:string,version_id:string,conversion_id:string,max_tokens:{type:'integer',minimum:1,maximum:10000}}, ['project','query'], legacy.tool.tokensaver_docs_search_research.execute);
     });
     const skillPath = join(skillDirectory,'SKILL.md');
     const skillContent = await readFile(skillPath,'utf8');
@@ -549,6 +649,11 @@ export default {
     }));
     await ctx.session.hook('context', event => {
       const request = requestBySession.get(event.sessionID);
+      const research = researchSessions.get(event.sessionID);
+      if (research?.guidance && !research.guided) {
+        event.system.push({type:'text',text:research.guidance});
+        research.guided = true;
+      }
       if (request?.documentQuestion && (!request.documentSearches || request.documentSearchStatus === 'no_match')) {
         event.system.push({type:'text',text:documentQuestionGuidance(request)});
       }
@@ -575,6 +680,20 @@ export default {
       }
       const previous = requestBySession.get(sessionID);
       const text = event.prompt?.text ?? '';
+      const directory = ctx.location?.directory;
+      researchSessions.delete(sessionID);
+      if (ctx.event?.subscribe && directory) {
+        const canonical = await realpath(directory).catch(() => null);
+        const root = canonical && await researchProject(canonical);
+        if (root) {
+          const session = await ctx.session.get({sessionID}).catch(() => null);
+          const location = session?.location?.directory ?? session?.directory;
+          if (typeof location === 'string' && await realpath(location).catch(() => null) === canonical) {
+            const followUp = researchFollowUp.test(text);
+            researchSessions.set(sessionID,{directory:root,cwd:canonical,followUp,guidance:researchGuidance(root, text)});
+          }
+        }
+      }
       const audio = isAudioMarkdownRequest(event.prompt);
       const conversion = audio || isMarkdownConversionRequest(event.prompt);
       const continuing = previous?.pending && !conversion && choiceReply(text,previous);
@@ -599,9 +718,22 @@ export default {
     await ctx.mcp.transform(editor => {
       editor.set('tokensaver-docs', { type: 'local', command: [executable, 'mcp'], codemode: false });
     });
+    if (ctx.event?.subscribe) {
+      // Save before short-lived CLI clients tear down the server's idle event stream.
+      await ctx.tool.hook('execute.after', async event => {
+        const research = researchSessions.get(event.sessionID);
+        const path = event.input?.path ?? event.input?.filePath;
+        if (!research) return;
+        if (['bash','shell'].includes(event.tool)) research.synced = false;
+        if (event.status !== 'completed' || !['write','edit'].includes(event.tool) || typeof path !== 'string') return;
+        if (insideResearchInbox(research.directory, research.cwd, path)) {
+          research.synced = parseResult(await run(['knowledge','sync',research.directory]))?.status === 'ready';
+        }
+      });
+    }
     await ctx.tool.hook('execute.before', async event => {
       // MCP read-only names come from mcp_server.py; conversion/settings use guarded native tools only.
-      const safeMcp = new Set(['list_free_models','outline_document','search_documents','read_document']);
+      const safeMcp = new Set(['list_free_models','outline_document','search_documents','read_document','search_research']);
       const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
       const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
       if ((mcpName !== null && !safeMcp.has(mcpName)) ||
@@ -613,6 +745,14 @@ export default {
         throw new Error(documentQuestionGuidance(request));
       }
       const readPath = event.input?.path ?? event.input?.filePath ?? event.input?.file;
+      const research = researchSessions.get(event.sessionID);
+      if (research?.guidance && research.followUp && !research.searched &&
+          ['read','grep','tokensaver_docs_read'].includes(event.tool) && typeof readPath === 'string') {
+        const local = relative(research.directory, resolve(research.cwd, readPath)).split(/[\\/]/).join('/');
+        if (['docs/research/inbox','docs/tokensaver-docs'].some(prefix => local === prefix || local.startsWith(prefix + '/'))) {
+          throw new Error('Use tokensaver_docs_search_research first for this project research question.');
+        }
+      }
       if (request?.documentQuestion && (!request.documentSearches || request.documentSearchStatus === 'no_match')) {
         const namedRead = ['read','grep','tokensaver_docs_read'].includes(event.tool) && typeof readPath === 'string' &&
           resolve(readPath) === resolve(request.documentQuestion);
@@ -628,5 +768,6 @@ export default {
       }
       await legacy['tool.execute.before']({ tool: event.tool }, { args: event.input });
     });
+    return () => researchEvents.abort();
   },
 };

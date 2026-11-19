@@ -11,7 +11,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-**PDF·Word·Excel·HTML·이미지·음성을 Markdown으로 바꿔 Codex·Claude Code·OpenCode에서 재사용하세요.**
+**Codex·Claude Code·OpenCode에서 문서·이미지·음성을 Markdown으로 변환하고 재사용하세요. 업데이트된 소스에서는 프로젝트 조사 자료를 원본과 함께 보관하고 필요한 근거만 검색할 수 있습니다.**
 
 운영체제 버튼을 누르면 바로 다운로드되고, 설치 프로그램에서 사용할 에이전트를 선택합니다.
 
@@ -39,6 +39,16 @@ macOS arm64 통합 설치는 로컬에서 확인했습니다. Windows·Intel Mac
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## 프로젝트 조사 자료 보관 (미배포)
+
+위 다운로드 버튼은 공개 v0.4.2 프리뷰를 설치합니다. 프로젝트 조사 자료 보관은 업데이트된 소스로 설치하거나 빌드한 패키지에서 사용할 수 있습니다.
+
+프로젝트에서 업데이트된 설치기가 출력한 활성화 명령을 한 번 실행합니다. 소스 CLI를 설치했다면 `tokensaver-docs knowledge enable .`을 실행합니다. 이후 “반품 정책 찾아보고 프로젝트에 정리해줘”라고 요청하면, 수집 훅이 활성화된 호스트에서 `docs/research/inbox/`에 저장한 자료를 `docs/tokensaver-docs/`에 보관합니다. 원본을 버전별로 남기고 근거 링크가 있는 요약을 만듭니다. 새 세션에서 이전 조사에 대해 물으면 기본 500토큰 예산으로 필요한 근거를 검색합니다.
+
+보관소는 Markdown과 일반 텍스트(`.txt`) 원본을 보존합니다. 에이전트가 작성한 자료에 추가한 내용도 그대로 저장되므로, 중요한 결론은 인용한 출처를 열어 확인하세요. [실제 호스트 검증 결과](docs/current-status.md#local-macos-verification-of-the-unreleased-archive)
+
+[설정·지원 호스트·검색 사용법](docs/advanced-usage.ko.md#프로젝트-조사-자료-자동-보관)
 
 ## 말로 요청해서 사용하기
 

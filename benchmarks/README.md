@@ -40,3 +40,19 @@ mock provider calls and that retrieved evidence retains the designated exception
 The token counts compare full generated Markdown with serialized context JSON
 using cl100k_base. This is not a paid model usage comparison, an image accuracy
 test or a real-world savings percentage.
+
+## Project research archive
+
+```sh
+python benchmarks/research_demo.py
+```
+
+이 실험은 임시 프로젝트에 합성 HTML을 보관하고 같은 질문으로
+전체 변환 Markdown, 기존 제한 검색 JSON, 보관 검색 JSON의
+`cl100k_base` 토큰 수를 비교합니다. 두 검색 모두 환불 기한과 예외를
+포함하는지 확인하며, 같은 자료를 다시 동기화했을 때 새 처리가 발생하지
+않는지도 검증합니다.
+
+한 실행에서 전체 Markdown 약 17,082토큰, 기존 검색 162토큰, 보관 검색
+129토큰이 나왔습니다. 결과는 출력 경로와 메타데이터에 따라 달라질 수 있습니다.
+이 수치는 응답 크기 추정치이며 모델의 전체 사용량이나 청구액은 측정하지 않았습니다.

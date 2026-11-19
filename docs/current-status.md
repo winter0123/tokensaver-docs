@@ -1,5 +1,34 @@
 # TokenSaver Docs — preview status
 
+## Local macOS verification of the unreleased archive
+
+- The three Apple Silicon bundles built and passed manifest checksum checks.
+  The source suite passed 253 tests with 7 environment-dependent skips.
+- Codex archived a synthetic research task and retrieved the saved evidence in
+  a fresh session. This run exposed an inbox `.txt` omission. After the fix,
+  the report linked both the original text file and the converted Markdown.
+- OpenCode v2 archived a Markdown file and retrieved its evidence in a fresh
+  session. The agent added details to the synthetic source. Archive integrity
+  preserves the submitted file's bytes and does not verify the claims in them.
+- Claude Code passed manifest validation and a bundled project-hook replay.
+  An authorized public HTTPS snapshot was also archived locally.
+
+## Research automation follow-up — local development
+
+- Added OpenCode v1 capture hooks and project-scoped Codex and Claude Code hooks.
+- Added opt-in public HTML snapshots, local Whisper transcription and approved
+  standalone image analysis. Tests use mocked responses, local fixtures and
+  host event replay.
+- Live host verification and publication for these changes are deferred.
+
+## Earlier unreleased research archive checks — 2026-11-19
+
+- Built local Apple Silicon macOS bundles for Codex, Claude Code and OpenCode. A clean-shell activation test used the command printed by the installer.
+- In Codex 0.169.1, the project hook archived a natural-language research task and generated a report. A later session retrieved the archived line evidence through the bounded CLI search after MCP approval was unavailable.
+- OpenCode v2 coverage includes packaged plugin tests and replay of capture and follow-up hooks. The latest live retest hit the provider's daily free-model limit. OpenCode v1 supports archived search and manual sync.
+- Claude Code manifest and bundled hook input/output passed local checks. Authenticated Claude Code and real Windows or Intel Mac installation are outside this verification.
+- Final source suite passed 243 tests and skipped 7. The [synthetic research benchmark](../benchmarks/README.md#project-research-archive) measures response tokens using cl100k_base. Billing and real-world savings were outside its scope.
+
 ## v0.4.2 preview — 2026-11-11
 
 - [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.4.2). Fixes Codex portable MCP executable paths and OpenCode approval continuation when the assistant asks before using preparation.
@@ -8,7 +37,7 @@
 - OpenCode can still attempt blocked follow-up reads and may use its default output directory if the model omits a requested one. Stop a stalled turn after output creation and use the generated file.
 - Windows/Intel Mac real-host behavior, complete Codex image flows, live local audio conversations and universal automatic routing remain unverified. This is a preview, and official directory listings remain separate.
 
-Earlier sections are historical validation records; their paths and limitations apply to the versions named there.
+The remaining sections record earlier validation for the versions named there.
 
 ## Natural-language conversion check — 2026-11-09
 

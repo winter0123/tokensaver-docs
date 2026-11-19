@@ -53,7 +53,11 @@ class PreparationChoiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             plugin = root/'index.mjs'
-            plugin.write_text((Path(__file__).resolve().parents[1]/'plugins/opencode/index.js').read_text())
+            repo = Path(__file__).resolve().parents[1]
+            routing = 'research-routing.json'
+            (root / routing).write_bytes((repo / 'tokensaver_docs/data' / routing).read_bytes())
+            plugin.write_text((repo/'plugins/opencode/index.js').read_text().replace(
+                '../../tokensaver_docs/data/' + routing, './' + routing))
             package = root/'node_modules/@opencode-ai/plugin'
             package.mkdir(parents=True)
             (package/'package.json').write_text('{"type":"module","exports":"./index.js"}')

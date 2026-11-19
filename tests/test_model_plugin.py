@@ -16,7 +16,10 @@ class ModelPluginTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         plugin = Path(__file__).resolve().parents[1] / 'plugins/opencode/index.js'
-        (self.root/'index.mjs').write_text(plugin.read_text())
+        routing = 'research-routing.json'
+        shutil.copy2(plugin.parents[2] / 'tokensaver_docs/data' / routing, self.root / routing)
+        (self.root/'index.mjs').write_text(plugin.read_text().replace(
+            '../../tokensaver_docs/data/' + routing, './' + routing))
         package = self.root/'node_modules/@opencode-ai/plugin'
         package.mkdir(parents=True)
         (package/'package.json').write_text('{"type":"module","exports":"./index.js"}')
@@ -46,6 +49,9 @@ elif args and args[0]=='prepare' and '--image-mode' in args:
     result={"status":"ready","args":args}
 elif args and args[0]=='context':
     result={"status":"no_match" if args[2]=='unmatched' else "ready","args":args}
+elif args and args[0]=='knowledge':
+    with open('knowledge-calls.log','a') as stream: stream.write(json.dumps(args)+'\\n')
+    result={"status":"ready"}
 elif args and args[0]=='setup-audio':
     model=args[args.index('--model')+1]
     xdg=os.environ['XDG_CONFIG_HOME']
@@ -75,11 +81,15 @@ print(json.dumps(result))
     def run_v2_plugin(self, body, profile=None):
         prefix='''
 const {default:definition}=await import(pathToFileURL(process.argv[1]));
-const tools=new Map();let contextHook,promptHook,executeHook;
+const fixtureFs=await import('node:fs/promises');
+const directory=await fixtureFs.realpath(process.cwd());
+const tools=new Map();let contextHook,promptHook,executeHook,afterHook,emitEvent;
 await definition.setup({
-  tool:{transform:async fn=>fn({add:t=>tools.set(t.name,t)}),hook:async(name,fn)=>{if(name==='execute.before')executeHook=fn}},
+  location:{directory},
+  event:{async *subscribe(){while (true) yield await new Promise(resolve=>{emitEvent=resolve;});}},
+  tool:{transform:async fn=>fn({add:t=>tools.set(t.name,t)}),hook:async(name,fn)=>{if(name==='execute.before')executeHook=fn;else if(name==='execute.after')afterHook=fn}},
   skill:{transform:async fn=>fn({add(){}})},
-  session:{hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else if(name==='context')contextHook=fn}},
+  session:{get:async()=>({location:{directory}}),hook:async(name,fn)=>{if(name==='prompt')promptHook=fn;else if(name==='context')contextHook=fn}},
   mcp:{transform:async fn=>fn({set(){}})},
 });
 const prepare=tools.get('tokensaver_docs_prepare');
@@ -94,6 +104,55 @@ const userPrompt=(sessionID,messageID,text,files=[])=>promptHook({sessionID,mess
         self.run_plugin('''
 const result=JSON.parse(await p.tool.tokensaver_docs_prepare.execute({source:'a.html', image_mode:'analyze', model_provider:'openrouter', model:'chosen:free', allow_unverified_model:true}));
 assert.deepEqual(result.args,['prepare','a.html','--output','converted','--image-mode','analyze','--model-provider','openrouter','--model','chosen:free','--allow-unverified-model']);
+''')
+
+    def test_v2_research_routes_natural_prompts_and_skips_unnecessary_sync(self):
+        self.run_v2_plugin('''
+const context = async () => {
+  const event={sessionID:'research',system:[]};
+  await contextHook(event);
+  return event.system.map(message=>message.text).join(' ');
+};
+const idle = async () => {
+  emitEvent({type:'session.idle',data:{sessionID:'research'}});
+  await new Promise(resolve=>setImmediate(resolve));
+};
+const calls=()=>fixtureFs.readFile('knowledge-calls.log','utf8');
+await userPrompt('research','disabled','상품 반품 기한 찾아보고 프로젝트에 정리해줘');
+assert.equal(await context(),'');
+await idle();
+await assert.rejects(calls(),{code:'ENOENT'});
+await fixtureFs.mkdir('docs/tokensaver-docs',{recursive:true});
+await fixtureFs.writeFile('docs/tokensaver-docs/config.json',JSON.stringify({version:1,project:directory}));
+await userPrompt('research','enabled','상품 반품 기한 찾아보고 프로젝트에 정리해줘');
+assert.match(await context(), /research.json/);
+await afterHook({sessionID:'research',tool:'write',status:'completed',input:{path:'docs/research/inbox/policy.md'}});
+await idle();
+assert.deepEqual(JSON.parse((await calls()).trim()),['knowledge','sync',directory]);
+await userPrompt('research','follow-up','저번에 찾아둔 반품 정책의 예외가 뭐였지?');
+assert.match(await context(), /First use tokensaver_docs_search_research/);
+''')
+
+    def test_v1_research_uses_live_project_hooks_without_duplicate_sync(self):
+        self.run_plugin('''
+const fs=await import('node:fs/promises');
+const directory=await fs.realpath(process.cwd());
+const plugin=await TokenSaverDocsPlugin({directory});
+const input={sessionID:'research'};
+const chat=text=>plugin['chat.message'](input,{message:{role:'user'},parts:[{type:'text',text}]});
+const idle=()=>plugin.event({event:{type:'session.idle',properties:input}});
+await chat('상품 반품 기한 찾아보고 프로젝트에 정리해줘');
+await idle();
+await assert.rejects(fs.readFile('knowledge-calls.log'),{code:'ENOENT'});
+await fs.mkdir('docs/tokensaver-docs',{recursive:true});
+await fs.writeFile('docs/tokensaver-docs/config.json',JSON.stringify({version:1,project:directory}));
+await chat('상품 반품 기한 찾아보고 프로젝트에 정리해줘');
+const system=[];
+await plugin['experimental.chat.system.transform'](input,{system});
+assert.match(system[0], /research.json/);
+await plugin['tool.execute.after']({...input,tool:'write',args:{filePath:'docs/research/inbox/policy.md'}});
+await idle();
+assert.deepEqual(JSON.parse(await fs.readFile('knowledge-calls.log','utf8')),['knowledge','sync',directory]);
 ''')
 
     def test_v2_document_questions_prefer_search_for_the_named_source(self):
@@ -291,7 +350,7 @@ assert.equal(done.status,'converted');
         names = [tool.name for tool in asyncio.run(server.list_tools())]
         self.run_v2_plugin('''
 const names=NAMES;
-const safe=new Set(['list_free_models','outline_document','search_documents','read_document']);
+const safe=new Set(['list_free_models','outline_document','search_documents','read_document','search_research']);
 for (const name of names) {
   const event={tool:`tokensaver-docs_${name}`,input:{confirmed:true,use_configured_providers:true,image_mode:'analyze'}};
   if(safe.has(name)) await executeHook(event);

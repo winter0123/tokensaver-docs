@@ -61,6 +61,31 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--version', action='version', version=__version__)
     sub = p.add_subparsers(dest='command', required=True)
     sub.add_parser('mcp', help='로컬 MCP 서버 실행')
+    knowledge = sub.add_parser('knowledge', help='프로젝트 조사 자료 보관 및 검색')
+    commands = knowledge.add_subparsers(dest='knowledge_command', required=True)
+    enable = commands.add_parser('enable')
+    enable.add_argument('project', type=Path)
+    enable.add_argument('--codex-project-hooks', action='store_true')
+    enable.add_argument('--claude-project-hooks', action='store_true')
+    enable.add_argument('--snapshot-domain', action='append', metavar='HOST')
+    enable.add_argument('--auto-audio', action='store_true', help='Transcribe inbox audio using the configured local Whisper profile')
+    enable.add_argument('--auto-image-analysis', action='store_true', help='Authorize sending standalone inbox images to the currently selected provider and model')
+    enable.add_argument('--clear-automation', action='store_true')
+    guide = commands.add_parser('guide')
+    guide.add_argument('project', type=Path)
+    guide.add_argument('--follow-up', action='store_true')
+    for action in ('disable', 'sync'):
+        commands.add_parser(action).add_argument('project', type=Path)
+    commands.add_parser('hook', help=argparse.SUPPRESS)
+    attach = commands.add_parser('attach')
+    for item in ('project', 'source', 'output'):
+        attach.add_argument(item, type=Path)
+    archived_search = commands.add_parser('search')
+    archived_search.add_argument('project', type=Path)
+    archived_search.add_argument('query')
+    archived_search.add_argument('--version-id')
+    archived_search.add_argument('--conversion-id')
+    archived_search.add_argument('--max-tokens', type=positive, default=500)
     prepare = sub.add_parser('prepare', help='원본을 모델에 읽히지 않고 문서와 이미지를 준비; JSON 상태만 반환')
     prepare.add_argument('input', type=Path)
     prepare.add_argument('--output', type=Path, default=Path('converted'))
@@ -230,7 +255,31 @@ def main(argv=None) -> int:
                 stream.reconfigure(encoding='utf-8')
     args = parser().parse_args(argv)
     try:
-        if args.command == 'prepare':
+        if args.command == 'knowledge':
+            from .knowledge import GUIDANCE, SEARCH_GUIDANCE, activate, adopt, deactivate, hook, project_for, search, sync
+            action = args.knowledge_command
+            if action == 'search':
+                print(search(args.project, args.query, version=args.version_id,
+                             conversion=args.conversion_id, max_tokens=args.max_tokens))
+            elif action == 'attach':
+                print(json.dumps(adopt(args.project, args.source, args.output), ensure_ascii=False))
+            elif action == 'disable':
+                print(json.dumps(deactivate(args.project), ensure_ascii=False))
+            elif action == 'hook':
+                try:
+                    print(json.dumps(hook(json.loads(sys.stdin.read(1024 * 1024))), ensure_ascii=False))
+                except (ValueError, OSError, KeyError, TypeError):
+                    print(json.dumps({'systemMessage': 'TokenSaver research hook could not finish. Retry with knowledge sync.'}))
+            elif action == 'guide':
+                root = project_for(args.project)
+                print((f'{SEARCH_GUIDANCE} Project: {root}' if args.follow_up else GUIDANCE) if root else '')
+            else:
+                print(json.dumps(activate(args.project, codex_project_hooks=args.codex_project_hooks,
+                                          claude_project_hooks=args.claude_project_hooks,
+                                          snapshot_domains=args.snapshot_domain, auto_audio=args.auto_audio,
+                                          auto_images=args.auto_image_analysis, clear_automation=args.clear_automation)
+                                 if action == 'enable' else sync(args.project), ensure_ascii=False))
+        elif args.command == 'prepare':
             from .preparation import prepare_documents
             result = prepare_documents(args.input, args.output, transcribe_images=args.transcribe_images, image_mode=args.image_mode, model_provider=args.model_provider, model=args.model, allow_unverified_model=args.allow_unverified_model, onboarding=True)
             print(json.dumps(result, ensure_ascii=False))
@@ -244,8 +293,14 @@ def main(argv=None) -> int:
             from .audio_setup import setup_audio
             print(json.dumps(setup_audio(args.model,confirmed=args.download),ensure_ascii=False))
         elif args.command == 'install-plugin':
+            import shlex
             from .installer import install_bundle
-            print(install_bundle(args.bundle,args.agent,destination=args.destination,config_dir=args.config_dir,expected_version=args.expected_version))
+            target = install_bundle(args.bundle,args.agent,destination=args.destination,config_dir=args.config_dir,expected_version=args.expected_version)
+            binary = str(target.resolve() / 'bin' / ('tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'))
+            launcher = "& '" + binary.replace("'", "''") + "'" if os.name == 'nt' else shlex.quote(binary)
+            project_hook = {'codex': ' --codex-project-hooks', 'claude': ' --claude-project-hooks'}.get(args.agent, '')
+            print(target)
+            print(f'From the project directory, enable research storage:\n  {launcher} knowledge enable .{project_hook}')
         elif args.command == 'context':
             from .context import document_context, serialize_context
             print(serialize_context(document_context(args.input,args.query,args.output,max_tokens=args.max_tokens,max_chars=args.max_chars,use_configured_providers=args.use_configured_providers)))

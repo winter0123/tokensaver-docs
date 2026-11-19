@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Archive plain-text (`.txt`) originals and link report citations to searchable Markdown copies.
+- Add opt-in project research archiving with versioned originals, searchable Markdown evidence and human-readable summaries. Automatic registration uses project-scoped Codex and Claude Code hooks and OpenCode v1/v2 events.
+- Add `knowledge enable|disable|sync|search|attach` and the read-only `search_research` tool. The installer prints the project activation command with the installed executable path.
+- Prioritize matching evidence within the default 500-token response budget. Return bounded snippets from long lines and include continuation information when it fits.
+- Add opt-in snapshots of approved public HTTPS hosts, local Whisper transcription, and standalone image analysis with the selected provider.
+- Preserve edited summaries and recheck unresolved citations as materials arrive. Allow exact retrieval of earlier attached transcriptions by original version and conversion ID.
+
 ## 0.4.2 — preview
 
 - Register the bundled TokenSaver Docs skill in OpenCode v2 and guard native conversion/model-choice flows against inferred user consent.

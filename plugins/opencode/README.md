@@ -15,6 +15,8 @@ It registers these native tools before connecting MCP:
 - `tokensaver_docs_setup_audio`
 - `tokensaver_docs_convert_audio`
 - `tokensaver_docs_read`
+- `tokensaver_docs_context`
+- `tokensaver_docs_search_research`
 
 Use `tokensaver_docs_setup_model` for model inspection/selection or deferral; the
 native v2 tool is not named `setup_conversion_model`. The installer selects the
@@ -23,8 +25,26 @@ The v2 path has been exercised with OpenCode 2.1.3 on macOS arm64.
 
 The v2 tool guard permits only these read-only MCP tools
 `tokensaver-docs_list_free_models`, `tokensaver-docs_outline_document`,
-`tokensaver-docs_search_documents`, and `tokensaver-docs_read_document`. Other
+`tokensaver-docs_search_documents`, `tokensaver-docs_read_document`, and
+`tokensaver-docs_search_research`. Other
 MCP conversion and settings methods are not available through the v2 plugin.
+
+## Project research archive (unreleased)
+
+With the updated bundle, run the activation command printed by the installer
+from the project directory. OpenCode v1 and v2 register research files saved to
+`docs/research/inbox/` during file-write or session events. Use
+`docs/tokensaver-docs/index.md` to find the Markdown reports. Run
+`knowledge sync .` with the installed executable for a manual sync.
+
+
+The archive preserves Markdown and plain-text (`.txt`) originals, including any details an agent added while writing a file. Check important claims against the underlying source.
+
+For follow-up questions, use `tokensaver_docs_search_research` with the absolute
+project path and focused keywords. It returns bounded excerpts with line numbers
+and project-relative Markdown paths. The default response budget is 500 tokens.
+Use `version_id` and `conversion_id` together to retrieve evidence from a
+specific attached conversion.
 
 ## Model and image choices
 

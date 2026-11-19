@@ -151,3 +151,85 @@ MCP 변환 도구는 기본적으로 설정된 외부 제공자를 사용하지 
 
 QMD BM25와 같은 합성 문서·질문으로 비교하는 재현 스크립트도 제공한다. 결과 및 한계: [benchmarks/README.md](../benchmarks/README.md). 세 질문의 작은 예제이므로 실전 전반의 우열이나 정확도를 뜻하지 않는다.
 
+
+## 프로젝트 조사 자료 자동 보관
+
+아래 기능은 업데이트된 소스와 해당 소스로 빌드한 플러그인에서 사용할 수 있습니다.
+공개 v0.4.2 프리뷰는 프로젝트 조사 자료 보관 기능이 추가되기 전의 배포본입니다.
+
+플러그인 ZIP으로 설치했다면 설치기가 출력한 전체 활성화 명령을 프로젝트에서 한 번
+실행합니다. 소스 CLI를 설치했다면 `tokensaver-docs knowledge enable .`을 사용합니다. 이 명령은
+`docs/research/inbox/`와 `docs/tokensaver-docs/`를 만들고 두 경로를 Git 무시 목록에
+추가합니다. 이미 Git이 추적하는 파일은 무시 규칙의 적용을 받지 않습니다.
+`tokensaver-docs knowledge disable .`은 자동 처리만 끕니다.
+
+Codex·Claude Code 자동 수집은 설치기가 안내하는 프로젝트별 훅을 사용합니다.
+소스 CLI에서는 각각 `--codex-project-hooks`, `--claude-project-hooks`를 활성화
+명령에 추가합니다. Codex에서는 등록된 훅을 검토하고 신뢰를 선택합니다. OpenCode v1과
+v2는 프로젝트가 켜진 경우 파일 저장과 작업 종료 이벤트로 수집합니다. 수동 처리는
+`tokensaver-docs knowledge sync .`을 사용합니다. 프로젝트를 다른 경로로 옮기면
+다시 활성화합니다. 비활성화하면 TokenSaver가 등록한 프로젝트 훅과 자동화 승인만
+제거하고 자료는 보존합니다.
+
+예를 들어 “반품 정책 찾아보고 프로젝트에 정리해줘”라고 요청합니다. 수집 대상은
+조사 과정에서 `docs/research/inbox/`에 실제로 저장된 파일입니다. 원본과 연결된 로컬 이미지는
+버전별로 보관합니다. 연구 초안은 `<topic>.research.json`에 저장하며, 파일명과
+`topic`은 같은 ASCII 소문자 슬러그를 사용합니다. 예시는 아래와 같습니다.
+
+```json
+{
+  "topic": "refunds",
+  "title": "환불 규정",
+  "conclusion": "배송 후 7일 이내 반품할 수 있다.",
+  "impact": "환불 가능 기간을 구현한다.",
+  "unknowns": "예외의 적용 범위를 확인해야 한다.",
+  "evidence": [
+    {"source": "docs/research/inbox/policy.md", "quote": "Returns within seven days."}
+  ],
+  "references": ["https://example.org/policy"]
+}
+```
+
+`docs/tokensaver-docs/index.md`에서 보관 상태와 보고서 목록을 확인합니다.
+개별 보고서는 `docs/tokensaver-docs/reports/<topic>/summary.md`에서 읽습니다. 출처 파일을
+확보한 인용은 변환본의 줄 범위와 보관 원본에 연결합니다. URL만 있는 항목은
+`REFERENCE_ONLY`이고, 인용을 확인하지 못한 항목과 결론은 검토가 필요합니다.
+일반 텍스트(`.txt`)는 원본 그대로 보관하고 검색용 Markdown을 별도로 만듭니다. 인용 링크는 보관된 파일에 해당 문구가 있음을 보여줍니다. 에이전트가 추가한 조건은 중요한 결론에 쓰기 전에 원출처와 대조하세요.
+자료가 뒤늦게 등록되면 미해결 인용을 다시 확인합니다. 이미 연결한 인용은 당시
+원본과 변환본을 계속 가리킵니다.
+초안이 없다면 `reports/inbox/summary.md`에 최근 파일의 미검토 발췌를 제공합니다.
+사람이 편집한 보고서는 보존하고 새 자동 요약은 `summary.pending-*.md`에 저장합니다.
+
+후속 세션에서는 MCP의 `search_research`, OpenCode의
+`tokensaver_docs_search_research` 또는
+`tokensaver-docs knowledge search . "환불 예외" --max-tokens 500`으로 등록 자료의
+근거만 읽습니다. 도구에 절대 프로젝트 경로와 핵심 검색어를 전달합니다.
+`source_index`는 응답의 `sources`에 담긴 프로젝트 기준 Markdown 경로를 가리킵니다.
+긴 줄의 일부를 반환해도 원래 줄 번호를 함께 표시합니다. 검색은 원본·변환 결과의
+무결성을 확인하며 로컬에서 실행합니다. 승인받아 이미지 분석이나 전사를 이미 완료했다면
+`tokensaver-docs knowledge attach . docs/research/inbox/audio.wav converted`로
+원본 해시와 결과 해시가 일치하는 기존 변환본을 붙일 수 있습니다.
+특정 시점의 전사를 다시 검색하려면 보고서에 나온 원본 버전과 변환본 ID를
+`--version-id`와 `--conversion-id`로 함께 지정합니다. MCP에서는 `version_id`와
+`conversion_id`를 전달합니다.
+
+
+### 웹 원문과 미디어 자동 처리 선택
+
+다음 옵션은 각각 기본값이 꺼져 있고, 현재 컴퓨터의 사용자 설정에 프로젝트별로
+저장합니다. 같은 경로에 새 프로젝트를 만들거나 이전 형식의 승인을 사용했다면
+옵션을 다시 지정해야 합니다. 플러그인 ZIP을 설치했다면 설치기가 출력한 전체 활성화 명령에 필요한
+옵션을 덧붙입니다.
+
+| 옵션 | 처리 범위 |
+| --- | --- |
+| `--snapshot-domain docs.example.org` | 연구 초안의 `references`에 포함된 해당 호스트의 공개 HTTPS HTML을 원문으로 보관합니다. 호스트는 정확히 일치해야 합니다. 여러 호스트를 허용하려면 옵션을 반복합니다. 주소에 쿼리나 자격 증명이 있거나 응답이 리디렉션이면 기존 링크만 남깁니다. HTML 응답 상한은 2 MiB이며 이미 보관한 URL은 다시 받지 않습니다. |
+| `--auto-audio` | 공통 CLI에 설정한 로컬 `whisper.cpp` 모델로 받은 음성을 전사합니다. OpenCode 전용 설정에서 받은 모델 파일도 공통 CLI의 `configure --kind audio --provider whisper.cpp --model 경로`로 지정할 수 있습니다. |
+| `--auto-image-analysis` | 현재 선택한 이미지 제공자와 모델로 수집 폴더의 독립 이미지 파일을 분석합니다. 이 옵션은 해당 제공자로 이미지를 자동 전송하고 요금이 발생할 수 있다는 동의를 뜻합니다. 문서 안에 삽입된 이미지는 기존 보존 방식으로 처리합니다. |
+| `--clear-automation` | 웹과 미디어 자동 처리 승인을 모두 해제합니다. 원본 보관과 기존 분석 결과 검색은 계속 가능합니다. |
+
+동기화 한 번에 미디어 한 파일을 분석합니다. 중단된 로컬 전사는 다음 동기화에서
+한 번 재시도합니다. 중단된 외부 이미지 분석은 재전송하지 않으며, 확인할 작업은
+`index.md`에 표시합니다. 실패한 자료는 기존 변환 명령으로 처리한 뒤
+`knowledge attach`로 연결할 수 있습니다. 처리 시간 때문에 미룬 웹 자료가 있으면
+동기화 결과에 `pending`을 표시합니다.

@@ -51,6 +51,14 @@ def context_documents(source: str, query: str, output: str = 'converted', max_to
                                               use_configured_providers=use_configured_providers))
 
 
+@server.tool()
+def search_research(project: str, query: str, max_tokens: int = 500, version_id: str | None = None,
+                    conversion_id: str | None = None):
+    """Find small, versioned, read-only evidence excerpts from a project's research archive. Pass the absolute project path. Each zero-based source_index points to a Markdown file in sources."""
+    from .knowledge import search
+    return search(project, query, max_tokens=max_tokens, version=version_id, conversion=conversion_id)
+
+
 def _run(args: list[str]) -> str:
     command = [sys.executable, *args] if getattr(sys, 'frozen', False) else [sys.executable, '-m', 'tokensaver_docs', *args]
     # The child CLI never reads input; do not inherit the MCP protocol pipe on Windows.

@@ -90,6 +90,22 @@ extraction or cached evidence retrieval.
 
 ## After installing
 
+### Project research archive (unreleased)
+
+Install a bundle built from the updated source to try project research archiving.
+The installer prints an activation command with the absolute executable path.
+Run it once from the project directory. Codex and Claude Code register their
+prompt and stop hooks for that project. Review the Codex hooks in `/hooks`.
+OpenCode v1 and v2 use their respective session and file-write hooks.
+See the [research guide](advanced-usage.md#project-research-archive-unreleased)
+for capture locations and retrieval commands.
+
+Use the activation command from the new installer to refresh a Codex project
+hook that points at an older binary. To pause capture while keeping the archive,
+run `knowledge disable .` with the installed executable.
+
+### Document conversion and search
+
 Restart the agent. Ask it to use tokensaver-docs on a **local file or folder path**,
 for example: "Use tokensaver-docs to find the refund deadline and exceptions in
 ./documents. Reuse existing conversions."
@@ -154,7 +170,7 @@ bundle may also be unpacked manually and installed with its `bin/tokensaver-docs
 2. Keep Python, OpenCode package and CLI versions consistent. Choose a version
    tag matching `v` plus `tokensaver_docs.__version__`; do not reuse a published tag.
 3. After the candidate is approved and tagged, run **Prepare draft release** in
-   GitHub Actions with the existing `v0.4.2` tag. Host validation and full source CI must pass first. The workflow builds Windows x64 and both
+   GitHub Actions for the new version tag. Host validation and full source CI must pass first. The workflow builds Windows x64 and both
    Mac CPU targets, runs tests against each executable, and collects nine plugin
    archives. It refuses missing/duplicate archives, wrong versions and damaged
    archive contents. The combined checksum list covers all nine archives.

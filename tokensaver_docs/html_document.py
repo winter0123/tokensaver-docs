@@ -130,7 +130,7 @@ def parse_html(data, blobs, *, preserve_images=True):
     return {'text': text, 'resources': resources, 'base': base_href, 'warnings': warnings}
 
 
-def local_image(source, ref, base):
+def local_image_path(source, ref, base):
     parts = urlsplit(ref)
     if base or parts.scheme or parts.netloc or not parts.path or '\\' in parts.path:
         raise ValueError('외부·절대 주소 또는 base 경로의 이미지는 자동으로 읽지 않습니다.')
@@ -144,7 +144,11 @@ def local_image(source, ref, base):
         raise ValueError('연결된 로컬 이미지가 없습니다.')
     if candidate.stat().st_size > LIMIT:
         raise ValueError('이미지가 100MiB를 초과합니다.')
-    return candidate.read_bytes()
+    return candidate
+
+
+def local_image(source, ref, base):
+    return local_image_path(source, ref, base).read_bytes()
 
 
 def convert_html(source, output, *, cache_dir, source_root, profiles=None, transcribe_images=False, refresh=False, failed_units=None, refreshed_units=None, image_mode=None, image_model_key=None):

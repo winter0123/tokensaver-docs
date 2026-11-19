@@ -56,6 +56,7 @@ class PluginPackagingTests(unittest.TestCase):
                 self.assertEqual(catalog['name'], 'tokensaver-docs-marketplace')
                 self.assertEqual(catalog['plugins'][0]['name'], 'tokensaver-docs')
                 self.assertTrue((output/agent/'skills/tokensaver-docs/SKILL.md').is_file())
+                self.assertFalse((output/agent/'hooks/hooks.json').exists())
             self.assertEqual(len(npm['os']), 1)
             self.assertEqual(len(npm['cpu']), 1)
             sentinel = output / 'sentinel'

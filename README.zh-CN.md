@@ -11,7 +11,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-**将 PDF、Word、Excel、HTML、图片和音频转换为可重复使用的 Markdown，供 Codex、Claude Code 和 OpenCode 使用。**
+**将 PDF、Word、Excel、HTML、图片和音频转换为可重复使用的 Markdown，供 Codex、Claude Code 和 OpenCode 使用。更新后的源码也支持在项目中归档调研资料，并按需检索相关证据。**
 
 点击操作系统按钮即可下载，然后在安装程序中选择助手。
 
@@ -39,6 +39,14 @@ macOS arm64 统一安装已在本地验证。Windows／Intel Mac 二进制包已
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## 项目调研归档（尚未发布）
+
+上方下载的是已公开的 v0.4.2 预览版。调研归档可通过安装更新后的源码或使用该源码构建的插件包体验。
+
+在项目目录中执行更新后的插件安装程序输出的启用命令。使用源码 CLI 时，运行 `tokensaver-docs knowledge enable .`。之后可以说“Look up the return policy and summarize it in this project”。在已启用采集钩子的宿主中，保存到 `docs/research/inbox/` 的资料会归档到 `docs/tokensaver-docs/`，保留原件版本并生成带证据链接的摘要。在后续会话中询问已保存的调研内容，默认可在 500 词元的预算内检索相关证据。
+
+[设置、支持的宿主与检索](docs/advanced-usage.md#project-research-archive-unreleased)
 
 ## 直接用自然语言提出请求
 

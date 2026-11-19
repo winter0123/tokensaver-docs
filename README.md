@@ -11,7 +11,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-**Convert PDF, Word, Excel, HTML, images and audio into reusable Markdown for Codex, Claude Code and OpenCode.**
+**Convert documents, images and audio into reusable Markdown for Codex, Claude Code and OpenCode. The updated source also archives project research and retrieves short, cited excerpts.**
 
 Click your OS button to download, then choose your agent in the installer.
 
@@ -39,6 +39,16 @@ macOS arm64 installer was exercised locally. Windows/Intel Mac passed binary bun
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## Project research archive (unreleased)
+
+The download buttons above install the published v0.4.2 preview. Project research archiving is available when building or installing the updated source.
+
+Enable the archive once per project with the command printed by the updated plugin installer. For an updated source CLI, run `tokensaver-docs knowledge enable .`. Then ask “Look up the refund policy and summarize it in this project.” On a host with the capture hooks active, research files saved to `docs/research/inbox/` are archived under `docs/tokensaver-docs/` with versioned originals, a Markdown index and summaries with evidence links. In a new session, ask about the saved policy to retrieve relevant passages within the default 500-token response budget.
+
+The archive preserves Markdown and plain-text (`.txt`) source files. It also preserves details an agent adds to a submitted file, so check the cited source before relying on a claim. [Local host verification](docs/current-status.md#local-macos-verification-of-the-unreleased-archive)
+
+[Setup, supported hosts and retrieval](docs/advanced-usage.md#project-research-archive-unreleased)
 
 ## Use it by asking your agent
 

@@ -120,3 +120,90 @@ Caches contain document text: treat them as private and review any outputs befor
 [Contributing](../CONTRIBUTING.md) · [Changelog](../CHANGELOG.md) · [MIT License](../LICENSE)
 
 CLI diagnostic and status messages currently include Korean; plugin tool names and schemas are in English.
+
+## Project research archive (unreleased)
+
+The updated source and plugin builds support a local research archive. The
+published v0.4.2 download predates this feature. From your project directory,
+run the activation command printed by the updated plugin installer. With a
+source CLI installed with the `tokens` extra, run:
+
+```sh
+tokensaver-docs knowledge enable .
+```
+
+Activation creates `docs/research/inbox/` and `docs/tokensaver-docs/` and adds
+both paths to the project's Git ignore rules. Git continues to track files
+already committed. Project activation is bound to the project's absolute path.
+Run activation again after moving the project. `knowledge disable .` turns off
+capture, removes managed project hooks and clears optional automation approvals. The archive remains available for search.
+
+| Host | How to capture |
+| --- | --- |
+| Codex | Run the printed activation command and review the project hooks in `/hooks`. With the source CLI, add `--codex-project-hooks`. |
+| Claude Code | Run the printed activation command. With the source CLI, add `--claude-project-hooks` to register local project settings. |
+| OpenCode v1/v2 | The plugin uses session and file-write hooks when the project is enabled. |
+| Manual | Run `tokensaver-docs knowledge sync .` with the installed executable path if needed. |
+
+For example, ask “Look up the refund policy and summarize it in this project.”
+The archive preserves plain-text (`.txt`) originals and creates separate Markdown copies for search. A citation links to the submitted file. For agent-authored material, check important claims against the underlying source.
+
+The capture workflow processes supported files the agent saves in the inbox.
+It preserves original bytes and versions, prepares searchable Markdown and links
+summaries to the evidence. Links without a saved source are marked
+`REFERENCE_ONLY`. For a topic report, the agent can also save a
+[`<topic>.research.json` draft](advanced-usage.ko.md#프로젝트-조사-자료-자동-보관)
+with source paths and exact quotes.
+
+Open `docs/tokensaver-docs/index.md` to find reports, then
+`docs/tokensaver-docs/reports/<topic>/summary.md` for a topic summary.
+Without a draft, the inbox report shows recent excerpts. If new evidence
+arrives, sync rechecks unresolved citations. Already linked evidence stays
+pinned, and summary edits stay intact. Generated updates to an edited summary
+appear in a separate `summary.pending-*.md` file.
+
+For a later question, use `search_research` over MCP or
+`tokensaver_docs_search_research` in OpenCode. Pass the absolute project path
+and focused keywords. Each `source_index` refers to the corresponding
+project-relative Markdown path in `sources`. When a line is clipped, the
+response still identifies its original line. CLI equivalents:
+
+```sh
+tokensaver-docs knowledge search . "refund exceptions" --max-tokens 500
+tokensaver-docs knowledge search . "refund exceptions" --version-id VERSION_ID --conversion-id CONVERSION_ID
+```
+
+Archiving uses local conversion. To reuse an approved, already completed image
+analysis or transcription of a self-contained source, first sync the source,
+then attach that conversion. The third argument is the earlier conversion's
+output folder, relative to the project. The attachment checks the source and
+conversion hashes.
+
+```sh
+tokensaver-docs knowledge attach . docs/research/inbox/interview.wav converted
+```
+
+
+### Optional website and media processing
+
+Add these flags to the activation command to authorize processing for this
+project on this machine. The approvals are stored in user settings. Re-enable
+the options when replacing a project at the same path or migrating old approvals.
+
+- `--snapshot-domain docs.example.org` captures exact-host public HTTPS HTML
+  referenced in a research draft. Repeat it for multiple hosts. Each response
+  is limited to 2 MiB. URLs with queries or credentials, redirects and blocked
+  responses remain references.
+- `--auto-audio` transcribes inbox audio through the configured local Whisper
+  profile.
+- `--auto-image-analysis` authorizes sending standalone inbox images to the
+  currently selected provider and model. Provider charges may apply.
+  Images embedded in other documents are preserved in ordinary conversion.
+- `--clear-automation` clears these optional approvals.
+
+Sync processes one approved media file at a time and keeps earlier conversions
+available. An interrupted local transcription gets one retry. An interrupted
+external image analysis requires review before resending. The archive index
+shows items that need attention. You can run the ordinary conversion commands
+and attach their result to the source. Web work deferred by the time budget
+reports `pending`.

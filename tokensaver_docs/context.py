@@ -2,6 +2,7 @@
 # Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 """Prepare documents once and return bounded original evidence, never a generated summary."""
 import json
+import re
 from pathlib import Path
 from .engine import convert, discover
 from .shared_cache import cache_root
@@ -14,22 +15,13 @@ def serialize_context(result):
 
 def document_context(source, query, output, *, max_tokens=None, max_chars=6000, use_configured_providers=False):
     source, output = Path(source), Path(output)
-    if not query.strip():
-        raise ValueError('검색어가 비어 있습니다.')
-    if max_chars < 1 or (max_tokens is not None and max_tokens < 1):
-        raise ValueError('출력 예산은 1 이상이어야 합니다.')
     if source.is_symlink():
         raise ValueError('입력 심볼릭 링크는 따라가지 않습니다.')
-    encoder = None
-    if max_tokens is not None:
-        from .cli import token_encoder
-        encoder = token_encoder('cl100k_base')
-    def fits(value):
-        text = serialize_context(value)
-        return len(text) <= max_chars and (encoder is None or len(encoder.encode(text, disallowed_special=())) <= max_tokens)
-    result = {'status':'ready', 'sources':[], 'excerpts':[], 'pending':[], 'truncated':False, 'next':None}
-    if not fits(result):
-        raise ValueError('상태 정보도 담을 수 없는 예산입니다. 예산을 늘려 주세요.')
+    records = document_records(source, output, use_configured_providers)
+    return context_records(records, query, max_tokens=max_tokens, max_chars=max_chars)
+
+
+def document_records(source, output, use_configured_providers):
     if source.suffix.lower() == '.md' and source.is_file():
         records = [{'file':str(source), 'output':str(source), 'status':'완료'}]
     else:
@@ -69,19 +61,37 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
             records += [{'file': str(path), 'output': str(path), 'status': '완료'}
                         for path in discover(source, output, include_markdown=True)
                         if path.suffix.lower() == '.md']
+    yield from records
+
+
+def context_records(records, query, *, max_tokens=None, max_chars=6000, serializer=serialize_context, clip_long_lines=False):
+    if not query.strip():
+        raise ValueError('검색어가 비어 있습니다.')
+    if max_chars < 1 or (max_tokens is not None and max_tokens < 1):
+        raise ValueError('출력 예산은 1 이상이어야 합니다.')
+    encoder = None
+    if max_tokens is not None:
+        from .cli import token_encoder
+        encoder = token_encoder('cl100k_base')
+    def fits(value):
+        text = serializer(value)
+        return len(text) <= max_chars and (encoder is None or len(encoder.encode(text, disallowed_special=())) <= max_tokens)
+    result = {'status':'ready', 'sources':[], 'excerpts':[], 'pending':[], 'truncated':False, 'next':None}
+    if not fits(result):
+        raise ValueError('상태 정보도 담을 수 없는 예산입니다. 예산을 늘려 주세요.')
     candidates=[]
-    pending_truncated=False
+    pending_records=[]
     words=query.casefold().split()
     for record in records:
         path=record.get('output')
+        source_terms = set(re.findall(r'[^\W_]+', record.get('label', '').casefold()))
+        title_score = len(set(words) & source_terms)
         if record['status'] not in ('완료','확인필요') or record.get('untranscribed_images', 0):
             result['status']='partial'
             pending={'source':record['file'], 'status':record['status']}
             if record.get('detail'):
                 pending['detail'] = record['detail']
-            result['pending'].append(pending)
-            if not fits(result):
-                result['pending'].pop();result['truncated']=True;pending_truncated=True
+            pending_records.append(pending)
         if not path or record['status'] not in ('완료', '확인필요', '부분완료'):
             continue
         lines=Path(path).read_text(encoding='utf-8').splitlines()
@@ -93,10 +103,12 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
             folded=text.casefold()
             score=sum(word in folded for word in words)
             if score:
+                if title_score >= 2:
+                    score += 2 * title_score
                 if lines[begin].startswith('## 본문'):
                     end=starts[min(section+3,len(starts)-1)]
                 anchor=max(range(begin,end), key=lambda i:sum(word in lines[i].casefold() for word in words))
-                candidates.append((score,str(path),begin,end,anchor,lines,record['status']))
+                candidates.append((score,record.get('display_path', str(path)),begin,end,anchor,lines,record['status']))
     continuation = None
     for score,path,begin,end,anchor,lines,status in sorted(candidates,key=lambda item:-item[0]):
         previous_continuation = continuation
@@ -132,11 +144,35 @@ def document_context(source, query, output, *, max_tokens=None, max_chars=6000, 
                 break
             accepted.append(lines[i])
         if begin + len(accepted) <= anchor:
+            line = lines[anchor]
+            if clip_long_lines and anchor == begin + len(accepted):
+                match = next((m for m in (re.search(re.escape(word), line, re.I) for word in words) if m), None)
+                if match:
+                    for radius in (180, 96, 48, 24):
+                        left = max(0, match.start() - radius)
+                        right = min(len(line), match.end() + radius)
+                        if left == 0 and right == len(line):
+                            continue
+                        excerpt.update(start_line=anchor+1, end_line=anchor+1, text=line[left:right], clipped=True)
+                        if fits(result):
+                            break
+                    else:
+                        match = None
+                    if match:
+                        continue
             result['excerpts'].pop()
             if not any(e['file']==path for e in result['excerpts']):result['sources'].remove(path)
             continuation = previous_continuation or {'file':path,'start_line':original_begin+1}
-    result['truncated'] = bool(result['pending']) or pending_truncated or continuation is not None
+    result['truncated'] = bool(pending_records) or continuation is not None
     result['next'] = continuation
+    for pending in pending_records:
+        result['pending'].append(pending)
+        if not fits(result):
+            result['pending'].pop()
+            break
+    with_count = {**result, 'pending_count': len(pending_records)}
+    if len(result['pending']) < len(pending_records) and fits(with_count):
+        result = with_count
     if not result['excerpts'] and result['status']=='ready':
         result['status']='budget_exceeded' if candidates else 'no_match'
     if result['status'] == 'no_match':

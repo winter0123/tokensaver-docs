@@ -11,7 +11,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
-**PDF・Word・Excel・HTML・画像・音声を Markdown に変換し、Codex・Claude Code・OpenCode で再利用できます。**
+**PDF・Word・Excel・HTML・画像・音声を Markdown に変換し、Codex・Claude Code・OpenCode で再利用できます。更新されたソースでは、調査資料をプロジェクト内に保存し、必要な根拠だけを検索できます。**
 
 OS ボタンを押すと直接ダウンロードされ、インストーラでエージェントを選択できます。
 
@@ -39,6 +39,14 @@ macOS arm64 の統合インストールはローカルで確認済みです。Wi
 | Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.4.2/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
+
+## プロジェクトの調査資料アーカイブ（未リリース）
+
+上記のダウンロードは公開済みの v0.4.2 プレビューです。調査資料アーカイブは更新されたソースからのインストールやビルドで利用できます。
+
+更新後のプラグインのインストーラーに表示されるコマンドを、プロジェクトで一度実行します。ソース CLI では `tokensaver-docs knowledge enable .` を実行します。その後「Look up the return policy and summarize it in this project」と依頼できます。収集フックが有効なホストでは、`docs/research/inbox/` に保存された資料が `docs/tokensaver-docs/` にアーカイブされます。原本のバージョンと根拠へのリンクを含む要約が残ります。別のセッションでは、以前の調査について尋ねると既定の 500 トークン予算内で根拠を検索できます。
+
+[設定・対応ホスト・検索手順](docs/advanced-usage.md#project-research-archive-unreleased)
 
 ## 自然な言葉で依頼する
 

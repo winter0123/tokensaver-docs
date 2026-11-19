@@ -65,6 +65,12 @@ def main():
             if args.bundle_opencode:
                 subprocess.run(['bun','build',str(ROOT/'plugins/opencode/index.js'),'--target=node','--format=esm','--outfile',str(root/'index.js')],check=True)
                 package.pop('dependencies',None)
+            else:
+                routing = 'research-routing.json'
+                shutil.copy2(ROOT / 'tokensaver_docs/data' / routing, root / routing)
+                script = root / 'index.js'
+                script.write_text(script.read_text(encoding='utf-8').replace(
+                    '../../tokensaver_docs/data/' + routing, './' + routing), encoding='utf-8')
             write_json(package_path, package)
         write_json(root/'platform.json',{'os':os_name,'cpu':cpu,'agent':platform,'version':__version__})
         for notice in ('LICENSE', 'NOTICE', 'AUTHORS.md'):
