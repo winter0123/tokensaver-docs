@@ -91,11 +91,16 @@ assert.equal(request.uiConsent,null);
 answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
   ['분석 동의','동의 안 함'],'분석 동의');
 assert.deepEqual(request.uiConsent,request.uiModel);
+assert.equal(request.uiPersistentConsent,null);
+answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 앞으로 모든 변환 이미지를 외부 전송하는 데 계속 동의하나요?',
+  ['분석 동의','동의 안 함'],'분석 동의');
+assert.deepEqual(request.uiPersistentConsent,request.uiModel);
 answer('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
   ['이미지 링크만 넣기 (Recommended)','이미지·글자·설명 넣기'],
   '이미지 링크만 넣기 (Recommended)');
 assert.equal(request.uiMode,'preserve');
 assert.equal(request.uiConsent,null);
+assert.equal(request.uiPersistentConsent,null);
 answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
   ['분석 동의','동의 안 함'],'분석 동의','error');
 assert.equal(request.uiConsent,null);
