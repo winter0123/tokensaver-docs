@@ -9,6 +9,55 @@ from PIL import Image
 
 @unittest.skipUnless(os.environ.get('TOKENSAVER_DOCS_PLUGIN'), 'built OpenCode plugin not supplied')
 class OpenCodePluginTests(unittest.TestCase):
+    def test_v2_question_form_answers_drive_choices_without_chat_reentry(self):
+        # One completed OpenCode question tool result must be sufficient to
+        # authorize a selected local mode. Image transfer needs an additional
+        # explicit provider/model-specific answer, not the model selection alone.
+        script = """
+import { pathToFileURL } from 'node:url';
+import assert from 'node:assert/strict';
+const {recordQuestionAnswers} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const request = {conversion:true, text:'Convert test.html to Markdown'};
+const send = (question, option, answers, status='completed') => recordQuestionAnswers({
+  tool:'question',status,
+  input:{questions:[{question,options:option.map(label=>({label}))}]},
+  result:{output:{answers:[[answers]]}}
+},request);
+send('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지·글자·설명 넣기','이미지 링크만 넣기'], '이미지·글자·설명 넣기');
+assert.equal(request.uiMode,'analyze');
+assert.equal(request.uiConsent,null);
+send('OpenRouter 이미지 분석 모델을 선택하세요 (외부 전송됩니다).',
+  ['nvidia/nemotron-3.5-super-vl:free (Recommended)'],
+  'nvidia/nemotron-3.5-super-vl:free (Recommended)');
+assert.deepEqual(request.uiModel,{provider:'openrouter',model:'nvidia/nemotron-3.5-super-vl:free'});
+assert.equal(request.uiConsent,null);
+send('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
+  ['분석 동의','동의 안 함'],'분석 동의');
+assert.deepEqual(request.uiConsent,request.uiModel);
+send('OpenRouter nvidia/another:free 모델로 이미지를 외부 전송해도 될까요?',
+  ['분석 동의','동의 안 함'],'분석 동의');
+assert.deepEqual(request.uiConsent,request.uiModel);
+send('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지 링크만 넣기','이미지·글자·설명 넣기'],'이미지 링크만 넣기');
+assert.equal(request.uiMode,'preserve');
+assert.equal(request.uiConsent,null);
+send('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송해도 될까요?',
+  ['분석 동의','동의 안 함'],'분석 동의','error');
+assert.equal(request.uiConsent,null);
+// A model-claimed answer not present in real form options cannot grant consent.
+send('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송해도 될까요?',
+  ['동의 안 함'],'분석 동의');
+assert.equal(request.uiConsent,null);
+console.log('PASS: UI selection, explicit scoped consent, and deny-by-default');
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                ['node', '--input-type=module', '-e', script],
+                env=dict(os.environ, XDG_CONFIG_HOME=tmp),
+                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_v2_registers_mcp_and_read_hook(self):
         script = '''
 import { pathToFileURL } from 'node:url';
