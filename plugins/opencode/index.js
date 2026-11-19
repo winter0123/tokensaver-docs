@@ -639,6 +639,15 @@ export default {
             }
             request.documentSearches += 1;
           }
+          if ((name === 'tokensaver_docs_list_image_models' ||
+               name === 'tokensaver_docs_preferences') && typeof input.endpoint === 'string') {
+            // A private-network address is not permission to probe arbitrary
+            // internal services. Accept only the real user's supplied endpoint
+            // or an already saved one, not an agent-invented address.
+            const known = parseResult(await run(['preferences']))?.preferences?.endpoint;
+            if (known !== input.endpoint && !String(request.text || '').includes(input.endpoint))
+              return { content: choiceError('Ask the user to provide the exact local/internal model endpoint before querying or storing it.') };
+          }
           if (name === 'tokensaver_docs_preferences' && input.allow_external_images === true) {
             // Persistence is stronger than consent for a one-off operation.
             // A model-generated argument alone must never silently authorize
