@@ -97,7 +97,7 @@ def parser() -> argparse.ArgumentParser:
     prepare.add_argument('--model', help='이번 변환에만 사용할 모델')
     prepare.add_argument('--allow-unverified-model', action='store_true', help='지원 여부가 확인되지 않은 모델 사용에 명시적 동의')
     model_setup = sub.add_parser('setup-model', help='최초 변환 모델 선택·확인·나중에 설정')
-    model_setup.add_argument('--provider', choices=('openrouter', 'codex', 'claude', 'local'))
+    model_setup.add_argument('--provider', choices=('openrouter', 'codex', 'claude'))
     model_setup.add_argument('--model')
     model_setup.add_argument('--defer', action='store_true')
     model_setup.add_argument('--save-as-default', action='store_true')
