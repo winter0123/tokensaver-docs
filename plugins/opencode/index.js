@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 winter0123 and tokensaver-docs contributors
 import { tool } from '@opencode-ai/plugin';
-import { ensureTokenSaverExecutable } from './runtime.js';
+import { ensureTokenSaverExecutable, findTokenSaverExecutable } from './runtime.js';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
@@ -495,7 +495,10 @@ export default {
   id: 'tokensaver-docs',
   async setup(ctx) {
     const legacy = await TokenSaverDocsPlugin();
-    executable = await ensureTokenSaverExecutable(dirname(fileURLToPath(import.meta.url)));
+    // Do not download the native runtime while OpenCode activates plugins.
+    // Built-in V2 tools bootstrap it only when they are first executed.
+    const installedExecutable = await findTokenSaverExecutable(dirname(fileURLToPath(import.meta.url)));
+    if (installedExecutable) executable = installedExecutable;
     const researchSessions = new Map();
     const researchEvents = new AbortController();
     if (ctx.event?.subscribe) {
@@ -719,9 +722,13 @@ export default {
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
       else requestBySession.delete(sessionID);
     });
-    await ctx.mcp.transform(editor => {
-      editor.set('tokensaver-docs', { type: 'local', command: [executable, 'mcp'], codemode: false });
-    });
+    // Register the optional internal MCP bridge only when its binary is ready.
+    // Native V2 document tools work without it and can bootstrap on first use.
+    if (installedExecutable) {
+      await ctx.mcp.transform(editor => {
+        editor.set('tokensaver-docs', { type: 'local', command: [installedExecutable, 'mcp'], codemode: false });
+      });
+    }
     if (ctx.event?.subscribe) {
       // Save before short-lived CLI clients tear down the server's idle event stream.
       await ctx.tool.hook('execute.after', async event => {
