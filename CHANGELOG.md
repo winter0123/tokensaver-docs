@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.6 — preview
+
+- Show TokenSaver Docs with a document icon and a shorter description in the Codex plugin list.
+
 ## 0.5.5 — preview
 
 - Show separate download, verification and per-agent installation status lines while keeping transfer statistics hidden.

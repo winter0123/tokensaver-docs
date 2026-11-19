@@ -1,5 +1,10 @@
 # TokenSaver Docs — preview status
 
+## v0.5.6 public preview
+
+- The Codex package includes the TokenSaver Docs display name, document icon and shorter description.
+- [Release and downloads](https://github.com/winter0123/tokensaver-docs/releases/tag/v0.5.6) · [Build results](https://github.com/winter0123/tokensaver-docs/actions/runs/44465201694)
+
 ## v0.5.5 public preview
 
 - The installer shows download and verification stages and identifies each selected plugin before registration.
