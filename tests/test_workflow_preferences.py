@@ -92,6 +92,49 @@ class WorkflowPreferencesTests(unittest.TestCase):
         configure_preferences('preserve')
         self.assertNotIn('allow_external_images', load_preferences())
 
+    def test_local_catalog_never_claims_vision_from_model_name(self):
+        from tokensaver_docs import providers
+        response = {'data': [{'id':'vision-local'}, {'id':'text-local'}, {'not_id':'invalid'}]}
+        with patch.object(providers, '_local_request', return_value=response) as request:
+            result = providers.catalog_image_models('ollama')
+        self.assertEqual([x['id'] for x in result['models']], ['vision-local','text-local'])
+        self.assertTrue(all(x['vision']=='unknown' for x in result['models']))
+        request.assert_called_once_with('http://127.0.0.1:11434/v1/models')
+
+    def test_local_inference_uses_selected_endpoint_and_never_external_provider(self):
+        from tokensaver_docs import providers
+        with tempfile.TemporaryDirectory() as work:
+            sample = Path(work) / 'image.png'
+            sample.write_bytes(b'fake-png-data')
+            profile = validate_image_profile({
+                'provider':'local','model':'selected-local',
+                'endpoint':'http://127.0.0.1:11434/v1',
+                'network_policy':'local_only'})
+            response={'choices':[{'finish_reason':'stop',
+                      'message':{'content':'{"image_text":"sample","image_description":"diagram"}'}}]}
+            with patch.object(providers, '_local_request', return_value=response) as request:
+                result = providers.generate(sample, 'image', profile)
+        self.assertIn('diagram', result['text'])
+        self.assertEqual(request.call_args.args[0],
+                         'http://127.0.0.1:11434/v1/chat/completions')
+        payload=request.call_args.args[1]
+        self.assertEqual(payload['model'], 'selected-local')
+        self.assertTrue(payload['messages'][0]['content'][1]['image_url']['url'].startswith(
+            'data:image/png;base64,'))
+
+    def test_configured_model_does_not_trigger_repeated_selection_on_unverified_metadata(self):
+        configure_preferences('analyze', runtime='api', provider='openrouter',
+                              model='vision-test:free', network_policy='external_allowed',
+                              allow_external_images=True)
+        with patch.object(preparation, '_needs_image_choice', return_value=True), \
+             patch('tokensaver_docs.providers.inspect_image_model',
+                   return_value={'capability':'unknown','price':'unknown','reason':'lookup_failed'}), \
+             patch.object(preparation, 'convert', return_value=[
+                 {'status':'완료','file':'source.html','output':'converted/source.md'}]) as convert:
+            result = preparation.prepare_documents('source.html', onboarding=True)
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(convert.call_args.kwargs['image_mode'], 'analyze')
+
     def test_symlinked_settings_are_rejected(self):
         destination = Path(self.temp.name) / 'target.json'
         destination.write_text('{"version":1,"image_mode":"preserve"}')
