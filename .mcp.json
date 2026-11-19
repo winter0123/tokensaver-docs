@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "tokensaver-docs": {
+      "command": "tokensaver-docs",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}
