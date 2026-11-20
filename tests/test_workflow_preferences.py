@@ -43,7 +43,8 @@ class WorkflowPreferencesTests(unittest.TestCase):
         source.write_text('<html><body><h1>배포 지침</h1><p>이미지 포함</p>'
                           '<img alt="도표" src="figure.png"></body></html>',
                           encoding='utf-8')
-        (folder/'figure.png').write_bytes(b'png fixture')
+        from PIL import Image
+        Image.new('RGB',(2,2)).save(folder/'figure.png')
         output=root/'converted'
         with patch.object(preparation, 'cache_root',return_value=root/'cache'):
             result=preparation.prepare_documents(source,output,onboarding=True)
