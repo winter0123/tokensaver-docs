@@ -154,7 +154,8 @@ class WorkflowPreferencesTests(unittest.TestCase):
         from tokensaver_docs import providers
         with tempfile.TemporaryDirectory() as work:
             sample = Path(work) / 'image.png'
-            sample.write_bytes(b'fake-png-data')
+            from PIL import Image
+            Image.new('RGB', (2, 2)).save(sample)
             profile = validate_image_profile({
                 'provider':'local','model':'selected-local',
                 'endpoint':'http://127.0.0.1:11434/v1',
