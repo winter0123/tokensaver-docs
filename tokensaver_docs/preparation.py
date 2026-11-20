@@ -90,8 +90,12 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
         stored = None
         if saved_preferences and saved_preferences['image_mode'] == 'analyze':
             stored = {
-                'provider': 'local' if saved_preferences['runtime'] == 'local' else saved_preferences['provider'],
-                'model': saved_preferences['model']}
+                'provider': ('local' if saved_preferences['runtime'] == 'local'
+                             else 'opencode' if saved_preferences['runtime'] == 'opencode'
+                             else saved_preferences['provider']),
+                'model': (saved_preferences['provider'] + '/' + saved_preferences['model']
+                          if saved_preferences['runtime'] == 'opencode'
+                          else saved_preferences['model'])}
             if stored['provider'] == 'local':
                 stored.update(endpoint=saved_preferences['endpoint'],
                               network_policy=saved_preferences['network_policy'])
