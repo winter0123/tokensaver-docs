@@ -264,9 +264,9 @@ def _generate_local(path: Path, model: str, profile: dict) -> dict:
     if path.stat().st_size > 15 * 1024 * 1024:
         raise ConversionError('로컬 이미지 입력이 15 MiB를 초과합니다.')
     data = path.read_bytes()
-    if data.startswith(b'\\x89PNG\\r\\n\\x1a\\n'):
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
         mime = 'image/png'
-    elif data.startswith(b'\\xff\\xd8\\xff'):
+    elif data.startswith(b'\xff\xd8\xff'):
         mime = 'image/jpeg'
     elif len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
         mime = 'image/webp'
