@@ -191,6 +191,36 @@ export function recordQuestionAnswers(event, request) {
   }
 }
 
+// OpenCode's own catalog, including models configured by user and local
+// OpenCode providers. This is the host's live model inventory (not the
+// conversion engine's model catalog). Do not assume all entries can accept
+// image files or can be invoked by TokenSaver's Python subprocess.
+export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {}) {
+  const models = Array.isArray(response?.data) ? response.data : [];
+  const safeQuery = typeof query === 'string' ? query.slice(0,100).toLowerCase() : '';
+  const size = Number.isInteger(limit) ? Math.min(40,Math.max(1,limit)) : 20;
+  const start = Number.isInteger(offset) ? Math.max(0,offset) : 0;
+  const entries = models.filter(m =>
+    m && m.enabled !== false && (!m.type || m.type === 'chat') &&
+    typeof m.providerID === 'string' && typeof m.id === 'string' &&
+    Array.isArray(m.capabilities?.input) && m.capabilities.input.includes('image'))
+    .map(m => ({
+      provider: m.providerID,
+      id: m.id,
+      name: typeof m.name === 'string' ? m.name : m.id,
+      vision: 'supported',
+      runtime: 'opencode',
+      // Actual model output cost/provider privacy depends on the host settings.
+      // The model list alone is NOT a grant to send images.
+      network_policy: 'unknown',
+      conversion_available: false,
+    }))
+    .filter(m => !safeQuery || (m.provider + '/' + m.id + ' ' + m.name).toLowerCase().includes(safeQuery))
+    .sort((a,b)=>(a.provider+'/'+a.id).localeCompare(b.provider+'/'+b.id));
+  return {status:'ready', provider:'opencode', total:entries.length,
+    offset:start, has_more:start+size<entries.length, models:entries.slice(start,start+size)};
+}
+
 function choiceError(choice) {
   return JSON.stringify({status:'choice_required',question:choice,
     next:'Ask using OpenCode question UI, then continue in the same turn after its actual completed answer. If the question UI fails or is cancelled, stop. Do not invent a user choice.'});
@@ -780,6 +810,25 @@ export default {
         offset:{type:'integer',minimum:0},
         network_policy:{type:'string',enum:['local_only','internal_only']}
       }, ['provider'], legacy.tool.tokensaver_docs_list_image_models.execute);
+      // The host catalog is accessible even when the pinned native runtime
+      // hasn't been downloaded. It does not activate image analysis by itself.
+      editor.add({
+        name:'tokensaver_docs_opencode_models',
+        description:'Show actual image-input models currently configured in OpenCode, with provider IDs. Model discovery does not imply native image-conversion availability or external data-transfer approval.',
+        input:{type:'object',additionalProperties:false,properties:{
+          query:{type:'string'},limit:{type:'integer',minimum:1,maximum:40},
+          offset:{type:'integer',minimum:0}},required:[]},
+        options:{codemode:false},
+        execute:async (input) => {
+          if (!ctx.model?.list) return {content:JSON.stringify({status:'unavailable',reason:'OpenCode model catalog API unavailable'})};
+          try {
+            const response=await ctx.model.list();
+            return {content:JSON.stringify(pagedOpenCodeModels(response,input))};
+          } catch (error) {
+            return {content:JSON.stringify({status:'unavailable',reason:'Model catalog lookup failed; no network fallback was used'})};
+          }
+        }
+      });
       add('tokensaver_docs_setup_audio', {model:{type:'string',enum:['tiny','base','small']},confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_audio.execute);
       add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
@@ -899,7 +948,7 @@ export default {
       const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
       const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
       if ((mcpName !== null && !safeMcp.has(mcpName)) ||
-          (nativeName !== null && !['prepare','preferences','list_image_models','setup_model','setup_audio','convert_audio','read','context',...safeMcp].includes(nativeName)))
+          (nativeName !== null && !['prepare','preferences','list_image_models','opencode_models','setup_model','setup_audio','convert_audio','read','context',...safeMcp].includes(nativeName)))
         throw new Error('Use guarded native tokensaver_docs_prepare, tokensaver_docs_setup_audio, or tokensaver_docs_convert_audio; duplicate MCP conversion/settings routes are disabled.');
       const request = requestBySession.get(event.sessionID);
       if (event.tool === 'tokensaver_docs_prepare' && request?.documentQuestion &&
