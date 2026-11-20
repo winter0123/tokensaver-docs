@@ -408,6 +408,28 @@ export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {})
     offset:start, has_more:start+size<entries.length, models:entries.slice(start,start+size)};
 }
 
+// A model catalog is also a ready-to-display question-form payload. The
+// assistant should copy these options into OpenCode's question tool rather than
+// asking the user to type an opaque model ID into the chat.
+export function selectableModelPage(page) {
+  if (!page || !Array.isArray(page.models)) return page;
+  const models = page.models;
+  const options = models.map(m => ({
+    label: page.provider === 'opencode' ? m.provider + '/' + m.id : m.id,
+    description: [m.name && m.name !== m.id ? m.name : null,
+      m.vision === 'supported' ? '이미지 입력 지원 표시' : '이미지 지원 확인 필요',
+      m.price === 'free' ? '무료 표시' : null].filter(Boolean).join(' · ')
+  }));
+  if (page.offset > 0) options.push({label:'이전 모델 보기',description:'이전 페이지'});
+  if (page.has_more) options.push({label:'다음 모델 보기',description:'다음 페이지'});
+  return {...page, selection_ui:{
+    header:'이미지 모델 선택',
+    question:'이미지 분석 모델을 선택하세요. 선택한 모델은 이후 변환에도 기본값으로 저장됩니다. 외부 서비스를 선택하면 해당 서비스로 이미지가 전송됩니다.',
+    options,
+    next:'Display selection_ui in the native question UI. A selected model ID is enough; do not ask the user to retype it or give a second approval. For next/previous fetch the corresponding catalog offset, for search use the catalog query parameter.'
+  }};
+}
+
 function choiceError(choice) {
   return JSON.stringify({status:'choice_required',question:choice,
     next:'Ask using OpenCode question UI, then continue in the same turn after its actual completed answer. If the question UI fails or is cancelled, stop. Do not invent a user choice.'});
@@ -959,7 +981,11 @@ export default {
             // missing-file error (and compatibility with virtual/mock CLI
             // inputs). Never substitute a similarly named file outside scope.
           }
-          const result = await execute(callInput);
+          let result = await execute(callInput);
+          if (name === 'tokensaver_docs_list_image_models') {
+            const list = parseResult(result);
+            if (Array.isArray(list?.models)) result=JSON.stringify(selectableModelPage(list));
+          }
           const research = researchSessions.get(sessionID);
           if (name === 'tokensaver_docs_search_research' && research &&
               resolve(input.project) === resolve(research.directory)) research.searched = true;
@@ -1047,7 +1073,7 @@ export default {
               request.uiRuntime={runtime:'opencode'};
               requestBySession.set(context.sessionID,request);
             }
-            return {content:JSON.stringify(page)};
+            return {content:JSON.stringify(selectableModelPage(page))};
           } catch (error) {
             return {content:JSON.stringify({status:'unavailable',reason:'Model catalog lookup failed; no network fallback was used'})};
           }
