@@ -722,7 +722,9 @@ export default {
               return { content: choiceError('Use the selected image model or ask the user to select another model first.') };
             }
             request.profile = selected;
-            if (selected) callInput = selected.provider === 'local'
+            if (selected) callInput = ['local', 'opencode'].includes(selected.provider)
+              // These runtime profiles include a persistent trusted transport
+              // policy and cannot be represented by legacy bare model flags.
               ? { ...input, model_provider: undefined, model: undefined }
               : { ...input, model_provider: selected.provider, model: selected.model };
           }
