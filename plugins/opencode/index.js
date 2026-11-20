@@ -284,6 +284,7 @@ export function recordQuestionAnswers(event, request) {
     const prompt = String(question.question ?? '') + ' ' + String(question.header ?? '');
     const choice = exactChoice(selected);
     if (/(?:이미지|사진|image|photo)/i.test(prompt) &&
+        /(?:어떻게|처리 방식|포함|mode|how.*(?:handle|include)|which.*(?:mode|format))/i.test(prompt) &&
         ['analyze','preserve','placeholder'].includes(choice)) {
       request.uiMode = choice;
       request.uiModel = null;
@@ -361,7 +362,8 @@ export function recordQuestionAnswers(event, request) {
     if (request.uiMode === 'analyze' && chosen &&
         /(?:외부|전송|upload|send|external|share|허용|동의)/i.test(prompt) &&
         (prompt.toLowerCase().includes(chosen.provider) ||
-         prompt.toLowerCase().includes(chosen.model.toLowerCase())) &&
+         prompt.toLowerCase().includes(chosen.model.toLowerCase()) ||
+         /(?:이미지|사진|image|photo)/i.test(prompt)) &&
         choice === 'confirm') {
       request.uiConsent = {...chosen};
       if (/^(?:항상 허용|계속 허용)$/.test(selected) ||
@@ -458,9 +460,11 @@ function explicitChoiceError(name, input, request) {
     if (denied)
       return JSON.stringify({status:'consent_declined',next:'The user declined image analysis. Stop this conversion; do not retry or send the image.'});
     const consent = request?.uiConsent;
-    const approvedByQuestion = request?.uiMode === 'analyze' &&
-      consent?.provider === input.model_provider && consent?.model === input.model;
     const selected = request?.profile ?? request?.uiModel;
+    const approvedByQuestion = request?.uiMode === 'analyze' && selected &&
+      consent?.provider === selected.provider && consent?.model === selected.model &&
+      (!input.model_provider || input.model_provider === consent.provider) &&
+      (!input.model || input.model === consent.model);
     const local = selected?.provider === 'local' &&
       ['local_only','internal_only'].includes(selected.network_policy);
     const approved = choice === 'analyze' || approvedByQuestion ||
