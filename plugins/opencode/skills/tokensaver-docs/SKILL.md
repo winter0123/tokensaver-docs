@@ -42,9 +42,10 @@ that specific provider/model; save with `allow_external_images=true`,
 Only show a model configuration UI when (a) preferences are absent and
 analysis is chosen, or (b) the user explicitly asks to change settings.
 The user's explicit request for a one-off alternative must not overwrite
-persisted defaults. Models exposed by OpenCode itself are **not yet directly
-invocable for image analysis via the native engine**; never present that route
-as working until the necessary host adapter exists. Preserve original files.
+persisted defaults. Models exposed by OpenCode may be invoked for image analysis through the
+installed OpenCode CLI using a separate archived run. Require explicit
+persistent external-image transmission approval for the exact selected
+provider/model because the host catalog does not guarantee that it is local. Preserve original files.
 
 ## OpenCode V2 interactive choices
 
