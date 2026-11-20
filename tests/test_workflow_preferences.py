@@ -92,6 +92,30 @@ class WorkflowPreferencesTests(unittest.TestCase):
         configure_preferences('preserve')
         self.assertNotIn('allow_external_images', load_preferences())
 
+    def test_codex_catalog_sanitizes_raw_templates(self):
+        from tokensaver_docs import providers
+        from unittest.mock import Mock
+        raw = {'models': [
+            {'slug':'gpt-a', 'display_name':'Test Model',
+             'base_instructions':'SECRET-INTERNAL-TEMPLATE', 'visibility':'list'},
+            {'slug':'gpt-b', 'display_name':'Second', 'instructions':'SECRET-INTERNAL-TEMPLATE'}]}
+        result=Mock(returncode=0,stdout=json.dumps(raw),stderr='')
+        with patch.object(providers.subprocess, 'run', return_value=result) as runner:
+            catalog=providers.catalog_image_models('codex',query='gpt-',limit=1)
+        self.assertEqual(catalog['total'],2)
+        self.assertTrue(catalog['has_more'])
+        self.assertFalse(catalog['account_verified'])
+        self.assertNotIn('SECRET-INTERNAL-TEMPLATE',json.dumps(catalog))
+        self.assertEqual(runner.call_args.args[0], ['codex','debug','models','--bundled'])
+
+    def test_claude_aliases_not_marked_as_account_verified(self):
+        from tokensaver_docs import providers
+        catalog=providers.catalog_image_models('claude')
+        self.assertEqual({m['id'] for m in catalog['models']},
+                         {'opus','sonnet','haiku'})
+        self.assertFalse(catalog['account_verified'])
+        self.assertTrue(all(m['vision']=='unknown' for m in catalog['models']))
+
     def test_local_catalog_never_claims_vision_from_model_name(self):
         from tokensaver_docs import providers
         response = {'data': [{'id':'vision-local'}, {'id':'text-local'}, {'not_id':'invalid'}]}
