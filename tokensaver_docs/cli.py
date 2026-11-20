@@ -105,7 +105,7 @@ def parser() -> argparse.ArgumentParser:
     preferences = sub.add_parser('preferences', help='전역 이미지 처리 설정 조회/변경 (최초 1회)')
     preferences.add_argument('--set-mode', choices=('analyze', 'preserve', 'placeholder'))
     preferences.add_argument('--runtime', choices=('opencode', 'codex', 'claude', 'api', 'local'))
-    preferences.add_argument('--provider', choices=('openrouter', 'codex', 'claude', 'ollama', 'lmstudio', 'openai_compatible'))
+    preferences.add_argument('--provider', help='실행 플랫폼에서 조회한 실제 제공자 ID')
     preferences.add_argument('--model')
     preferences.add_argument('--endpoint')
     preferences.add_argument('--network-policy', choices=('local_only', 'internal_only', 'external_allowed'))
