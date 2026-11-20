@@ -321,8 +321,8 @@ export function recordQuestionAnswers(event, request) {
     }
     if (/(?:모델|model)/i.test(prompt) && request.uiMode === 'analyze') {
       const hit = actualCatalogSelection(selected,request);
-      if (hit) {
-        const runtime = request.uiRuntime?.runtime ??
+      if (hit && request.uiRuntime?.runtime) {
+        const runtime = request.uiRuntime.runtime ??
           (['openrouter'].includes(hit.provider) ? 'api'
             : ['ollama','lmstudio','openai_compatible'].includes(hit.provider) ? 'local'
             : ['codex','claude'].includes(hit.provider) ? hit.provider : 'opencode');
@@ -381,6 +381,51 @@ export function recordQuestionAnswers(event, request) {
   }
 }
 
+
+const IMAGE_SERVICE_OPTIONS = [
+  {label:'GPT / Codex',description:'Codex CLI에서 사용할 이미지 모델'},
+  {label:'Claude Code',description:'Claude Code CLI에서 사용할 이미지 모델'},
+  {label:'OpenCode',description:'OpenCode에 등록된 공급자와 이미지 모델'},
+  {label:'로컬 LLM',description:'Ollama·LM Studio·내부망 OpenAI 호환 API'},
+  {label:'API / OpenRouter',description:'OpenRouter 이미지 모델 API'}
+];
+const LOCAL_SERVICE_OPTIONS = [
+  {label:'Ollama',description:'기본 로컬 서버 http://127.0.0.1:11434'},
+  {label:'LM Studio',description:'기본 로컬 서버 http://127.0.0.1:1234'},
+  {label:'OpenAI 호환 서버',description:'사용자가 명시한 로컬·사설망 주소'}
+];
+
+// A native tool cannot enumerate image models until the user has actually
+// picked a runtime from the question UI. Model suggestions are not consent.
+export function requireSelectedImageService(request, provider) {
+  if (!request?.conversion || request.uiMode !== 'analyze') return null;
+  const choice = request.uiRuntime;
+  if (!choice?.runtime)
+    return {status:'choice_required',stage:'service',
+      selection_ui:{header:'TokenSaver 서비스',
+        question:'이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.',
+        options:IMAGE_SERVICE_OPTIONS},
+      next:'Show selection_ui with the native question tool. After its completed answer, list models ONLY for the chosen service. Do not open a model picker first.'};
+  if (choice.runtime === 'local' && !choice.provider)
+    return {status:'choice_required',stage:'local_provider',
+      selection_ui:{header:'TokenSaver 로컬 제공자',
+        question:'로컬 LLM 서버를 선택하세요.',
+        options:LOCAL_SERVICE_OPTIONS},
+      next:'Show selection_ui and then list models for the selected local server. Never guess a LAN endpoint.'};
+  const allowed = {
+    codex:['codex'],
+    claude:['claude'],
+    opencode:['opencode'],
+    api:['openrouter'],
+    local:[choice.provider]
+  };
+  if (provider && !allowed[choice.runtime]?.includes(provider))
+    return {status:'choice_required',stage:'service_mismatch',
+      runtime:choice.runtime,provider,
+      next:'The model catalog belongs to a different service. Call the catalog for the already selected service instead, or explicitly ask to change service.'};
+  return null;
+}
+
 // OpenCode's own catalog, including models configured by user and local
 // OpenCode providers. This is the host's live model inventory (not the
 // conversion engine's model catalog). Do not assume all entries can accept
@@ -428,7 +473,7 @@ export function selectableModelPage(page) {
   if (page.offset > 0) options.push({label:'이전 모델 보기',description:'이전 페이지'});
   if (page.has_more) options.push({label:'다음 모델 보기',description:'다음 페이지'});
   return {...page, selection_ui:{
-    header:'이미지 모델 선택',
+    header:'TokenSaver 모델',
     question:'이미지 분석 모델을 선택하세요. 선택한 모델은 이후 변환에도 기본값으로 저장됩니다. 외부 서비스를 선택하면 해당 서비스로 이미지가 전송됩니다.',
     options,
     next:'Display selection_ui in the native question UI. A selected model ID is enough; do not ask the user to retype it or give a second approval. For next/previous fetch the corresponding catalog offset, for search use the catalog query parameter.'
@@ -885,6 +930,20 @@ export default {
             }
             request.documentSearches += 1;
           }
+          // Prevent an agent from skipping the user's chosen service.
+          // No image-model catalog network request is performed before this
+          // check, including requests to private local endpoints.
+          const serviceGate = requireSelectedImageService(request,
+            name === 'tokensaver_docs_list_image_models' ? input.provider :
+            name === 'tokensaver_docs_setup_model' ? input.provider :
+            name === 'tokensaver_docs_preferences' && input.set_mode === 'analyze' ? input.provider :
+            name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true) ? null : null);
+          if (serviceGate && (name === 'tokensaver_docs_list_image_models' ||
+              name === 'tokensaver_docs_setup_model' ||
+              name === 'tokensaver_docs_preferences' && input.set_mode === 'analyze' ||
+              name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true))) {
+            return {content:JSON.stringify(serviceGate)};
+          }
           if ((name === 'tokensaver_docs_list_image_models' ||
                name === 'tokensaver_docs_preferences') && typeof input.endpoint === 'string') {
             // A private-network address is not permission to probe arbitrary
@@ -1072,10 +1131,11 @@ export default {
             const response=await ctx.model.list();
             const page=pagedOpenCodeModels(response,input);
             const request=context?.sessionID && requestBySession.get(context.sessionID);
+            const gate = requireSelectedImageService(request,'opencode');
+            if (gate) return {content:JSON.stringify(gate)};
             if (request?.conversion && page.status === 'ready') {
               request.catalogModels=page.models;
               request.catalogEndpoint=null;
-              request.uiRuntime={runtime:'opencode'};
               requestBySession.set(context.sessionID,request);
             }
             return {content:JSON.stringify(selectableModelPage(page))};
