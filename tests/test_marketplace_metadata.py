@@ -114,6 +114,52 @@ assert.equal(request.uiConsent,null);
                 capture_output=True, text=True, timeout=20)
             self.assertEqual(run.returncode, 0, run.stderr)
 
+    def test_opencode_catalog_lists_configured_vision_models_without_inventing_support(self):
+        """The host catalog is distinct from the external/local Python engines."""
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            from pathlib import Path
+            root = Path(temp)
+            for name in ("index.js", "runtime.js", "research-routing.json"):
+                shutil.copy2(OPENCODE / name, root / name)
+            (root / "package.json").write_text('{"type":"module"}')
+            stub = root / "node_modules" / "@opencode-ai" / "plugin"
+            stub.mkdir(parents=True)
+            (stub / "package.json").write_text('{"type":"module","exports":"./index.js"}')
+            (stub / "index.js").write_text("export const tool = () => ({});")
+            script = """
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {pagedOpenCodeModels}=await import(pathToFileURL(process.argv[1]));
+const example={data:[
+  {id:'vl-2',providerID:'intranet',name:'Internal VL',enabled:true,
+   capabilities:{input:['image','text']}},
+  {id:'vision-free',providerID:'openrouter',name:'Vision Free',enabled:true,
+   capabilities:{input:['image','text']}},
+  {id:'text-only',providerID:'openrouter',name:'No images',enabled:true,
+   capabilities:{input:['text']}},
+  {id:'disabled-vl',providerID:'intranet',enabled:false,
+   capabilities:{input:['image']}}
+]};
+const all=pagedOpenCodeModels(example);
+assert.equal(all.total,2);
+assert.deepEqual(all.models.map(x=>x.provider),['intranet','openrouter']);
+assert.equal(all.models[0].conversion_available,false);
+assert.equal(all.models[0].network_policy,'unknown');
+const page=pagedOpenCodeModels(example,{query:'vision',limit:1});
+assert.equal(page.total,1);
+assert.equal(page.models[0].id,'vision-free');
+console.log('PASS: host vision catalog');
+"""
+            run = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(root / "index.js")],
+                cwd=root, env=dict(os.environ, XDG_CONFIG_HOME=temp),
+                capture_output=True, text=True, timeout=20)
+            self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_opencode_activation_does_not_bootstrap_runtime(self):
         """Plugin setup must be fast/offline even for a new Git installation."""
         source = (OPENCODE / "index.js").read_text(encoding="utf-8")
