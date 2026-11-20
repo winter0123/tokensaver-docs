@@ -345,9 +345,10 @@ export function recordQuestionAnswers(event, request) {
         continue;
       }
       // Older OpenRouter UI (prior to catalog paging) remains compatible.
-      if (/(?:openrouter)/i.test(prompt)) {
+      if (/(?:openrouter|외부 전송|external transfer)/i.test(prompt)) {
         const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
-        if (match) {
+        if (match && (/(?:openrouter)/i.test(prompt) ||
+                      /:free$/.test(match[1]) || match[1] === 'openrouter/free')) {
           request.uiRuntime = {runtime:'api',provider:'openrouter'};
           request.uiModel = {provider:'openrouter',model:match[1]};
           request.uiConsent = null;
