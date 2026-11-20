@@ -88,7 +88,11 @@ def validate_preferences(value):
     if runtime in ('codex', 'claude') and provider != runtime:
         raise ValueError('실행 플랫폼과 제공자가 일치하지 않습니다.')
     if runtime == 'opencode':
-        raise ValueError('OpenCode 모델 실행은 아직 네이티브 이미지 분석 연결을 지원하지 않습니다.')
+        import re
+        # OpenCode model names are provider-scoped; never pass an untrusted
+        # endpoint or a malformed provider identifier to the host CLI.
+        if not isinstance(provider, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,100}', provider):
+            raise ValueError('OpenCode의 실제 모델 제공자 ID를 지정하세요.')
     if not value.get('allow_external_images') or value.get('network_policy') != 'external_allowed':
         raise ValueError('외부 분석은 전송 대상에 대한 명시적 지속 사용 동의가 필요합니다.')
     if 'endpoint' in value:
