@@ -111,7 +111,7 @@ def parser() -> argparse.ArgumentParser:
     preferences.add_argument('--network-policy', choices=('local_only', 'internal_only', 'external_allowed'))
     preferences.add_argument('--allow-external-images', action='store_true')
     catalog = sub.add_parser('list-image-models', help='구성된 제공자의 모델 목록 확인')
-    catalog.add_argument('--provider', choices=('openrouter', 'ollama', 'lmstudio', 'openai_compatible'), required=True)
+    catalog.add_argument('--provider', choices=('openrouter', 'codex', 'claude', 'ollama', 'lmstudio', 'openai_compatible'), required=True)
     catalog.add_argument('--endpoint')
     catalog.add_argument('--query')
     catalog.add_argument('--limit', type=int, default=20)
