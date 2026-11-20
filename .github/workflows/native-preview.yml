@@ -16,6 +16,10 @@ on:
       - '.github/workflows/native-preview.yml'
   workflow_dispatch:
 
+concurrency:
+  group: native-preview-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
