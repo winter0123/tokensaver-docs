@@ -363,8 +363,10 @@ def _generate_opencode(path: Path, model: str) -> dict:
         raise ConversionError('OpenCode CLI가 설치되어 있지 않습니다. 외부 모델로 변경하지 않았습니다.')
     prompt = IMAGE_PROMPT + ' 이미지를 설명하되 다른 도구를 호출하지 마세요.'
     with tempfile.TemporaryDirectory(prefix='tokensaver-opencode-vision-') as directory:
+        # The built-in plan agent does not edit normal project files. Run
+        # from a blank temporary workspace, with no project AGENTS instructions.
         args = [binary, 'run', '--standalone', '--archived', '--format', 'json',
-                '--model', model, '--file', str(path.resolve()), prompt]
+                '--agent', 'plan', '--model', model, '--file', str(path.resolve()), prompt]
         try:
             result = subprocess.run(
                 args, cwd=directory, capture_output=True, text=True,
