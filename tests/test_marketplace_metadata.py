@@ -43,13 +43,71 @@ class MarketplaceMetadataTests(unittest.TestCase):
     def test_opencode_git_subdirectory_has_all_assets(self):
         pkg = json.loads((OPENCODE / "package.json").read_text(encoding="utf-8"))
         self.assertEqual(pkg["name"], "tokensaver-docs-opencode")
-        for item in ("index.js", "runtime.js", "research-routing.json", "skills/tokensaver-docs/SKILL.md", "scripts/run.sh", "scripts/run.ps1"):
+        self.assertEqual(pkg["exports"]["."], "./index.js")
+        self.assertEqual(pkg["exports"]["./tui"], "./tui.js")
+        self.assertIn("tui.js", pkg["files"])
+        for item in ("index.js", "tui.js", "runtime.js", "research-routing.json", "skills/tokensaver-docs/SKILL.md", "scripts/run.sh", "scripts/run.ps1"):
             self.assertTrue((OPENCODE / item).is_file(), item)
         self.assertEqual((OPENCODE / "research-routing.json").read_bytes(),
                          (ROOT / "tokensaver_docs/data/research-routing.json").read_bytes())
         source = (OPENCODE / "index.js").read_text(encoding="utf-8")
         self.assertIn("ensureTokenSaverExecutable", source)
         self.assertIn("./research-routing.json", source)
+
+    def test_tui_model_search_picker_and_form_submission(self):
+        """The separate TUI part provides native fuzzy-like search and replies to its own forms only."""
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            from pathlib import Path
+            root=Path(temp)
+            shutil.copy2(OPENCODE / "tui.js", root / "tui.js")
+            (root / "package.json").write_text('{"type":"module"}')
+            stub=root / "node_modules" / "@opencode" / "plugin"
+            stub.mkdir(parents=True)
+            (stub / "package.json").write_text(
+                '{"type":"module","exports":{"./tui":"./tui.js"}}')
+            (stub / "tui.js").write_text("export const Plugin={define: value => value};")
+            script=r"""
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {default:plugin,tokensaverModelForm,searchTokensaverModels}=
+  await import(pathToFileURL(process.argv[1]));
+const form={id:'f1',sessionID:'s1',title:'Questions',fields:[{
+  key:'q0',title:'TokenSaver 모델',description:'이미지 분석 모델을 선택하세요.',
+  type:'string',custom:true,options:[
+    {label:'openrouter/vision-large',value:'openrouter/vision-large'},
+    {label:'openrouter/vision-small',value:'openrouter/vision-small'},
+    {label:'ollama/qwen2.5-vl',value:'ollama/qwen2.5-vl'},
+  ]}]};
+assert.equal(tokensaverModelForm({title:'Questions',fields:[{...form.fields[0],title:'Other plugin'}]}),null);
+const specs=tokensaverModelForm(form);
+assert.equal(specs.options.length,3);
+assert.deepEqual(searchTokensaverModels('vision small',specs.options).map(v=>v.value),
+  ['openrouter/vision-small']);
+let handler,reply,dialog;
+const context={location:{directory:'/project'},
+  data:{on(type,cb){assert.equal(type,'form.created');handler=cb;return ()=>{}},
+    session:{form:{
+      async sync(){},
+      list(){return [form]},
+      async reply(value){reply=value;}
+    }}},
+  ui:{dialog:{async select(value){dialog=value;return 'openrouter/vision-small'}}}
+};
+plugin.setup(context);
+handler({type:'form.created',data:{form}});
+await new Promise(resolve=>setTimeout(resolve,10));
+assert.equal(dialog.title,'TokenSaver Docs · 이미지 모델 검색');
+assert.deepEqual(dialog.search('ollama',dialog.options).map(v=>v.value),['ollama/qwen2.5-vl']);
+assert.deepEqual(reply,{sessionID:'s1',formID:'f1',answer:{q0:'openrouter/vision-small'}});
+console.log('PASS TUI model picker search and native form reply');
+"""
+            run=subprocess.run(['node','--input-type=module','-e',script,str(root/'tui.js')],
+                cwd=root,env=dict(os.environ),capture_output=True,text=True,timeout=25)
+            self.assertEqual(run.returncode,0,run.stdout+run.stderr)
 
     def test_opencode_question_ui_result_is_consumed_without_chat_reentry(self):
         """Exercise the actual Git plugin module with a stub-only SDK import."""
