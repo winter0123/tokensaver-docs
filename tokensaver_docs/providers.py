@@ -113,7 +113,7 @@ def validate_image_profile(profile: dict) -> dict:
         return {'provider': provider, 'model': model.strip(),
                 'endpoint': _trusted_endpoint(profile['endpoint'], policy),
                 'network_policy': policy}
-    if set(profile) != {'provider', 'model'} or provider not in ('openrouter', 'codex', 'claude'):
+    if set(profile) != {'provider', 'model'} or provider not in ('openrouter', 'codex', 'claude', 'opencode'):
         raise ValueError('이미지 제공자 및 모델만 지정하세요. API 키는 환경변수로 설정하세요.')
     return {'provider': provider, 'model': model.strip()}
 
@@ -341,10 +341,72 @@ def whisper_generate(path: Path, model: str) -> dict:
         return {'text': checked_text(transcript.read_text(encoding='utf-8')), 'usage': {}}
 
 
+def _generate_opencode(path: Path, model: str) -> dict:
+    """Analyze an image with an explicitly selected OpenCode model.
+
+    This launches an isolated archived CLI run; it does not use the current
+    conversational agent, silently select another provider, or transmit
+    images to a TokenSaver-owned remote endpoint. External transmission
+    authorization is checked by the persistent preference validator.
+    """
+    if not isinstance(model, str) or '/' not in model or len(model) > 260:
+        raise ConversionError('OpenCode 모델은 provider/model 형식으로 지정하세요.')
+    provider_id, model_id = model.split('/', 1)
+    import re
+    if (not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,100}', provider_id)
+            or not model_id or any(c in model_id for c in '\\r\\n\\x00')):
+        raise ConversionError('잘못된 OpenCode 모델 ID입니다.')
+    if not path.is_file() or path.stat().st_size > 15 * 1024 * 1024:
+        raise ConversionError('OpenCode에 보낼 이미지를 찾을 수 없거나 15 MiB를 초과합니다.')
+    binary = shutil.which('opencode')
+    if not binary:
+        raise ConversionError('OpenCode CLI가 설치되어 있지 않습니다. 외부 모델로 변경하지 않았습니다.')
+    prompt = IMAGE_PROMPT + ' 이미지를 설명하되 다른 도구를 호출하지 마세요.'
+    with tempfile.TemporaryDirectory(prefix='tokensaver-opencode-vision-') as directory:
+        args = [binary, 'run', '--standalone', '--archived', '--format', 'json',
+                '--model', model, '--file', str(path.resolve()), prompt]
+        try:
+            result = subprocess.run(
+                args, cwd=directory, capture_output=True, text=True,
+                encoding='utf-8', errors='replace', timeout=240, check=False)
+        except subprocess.TimeoutExpired:
+            raise ConversionError('OpenCode 이미지 분석 시간이 초과됐습니다. 다른 모델로 전환하지 않았습니다.') from None
+        except OSError:
+            raise ConversionError('OpenCode 이미지 분석을 시작할 수 없습니다.') from None
+    if result.returncode:
+        # Do not forward stderr: provider exceptions may include credentials,
+        # image URLs, or user-private context.
+        raise ConversionError('선택한 OpenCode 모델의 이미지 분석이 실패했습니다. 모델 연결과 로그를 확인하세요.')
+    if len(result.stdout) > 8 * 1024 * 1024:
+        raise ConversionError('OpenCode 이미지 분석 출력이 너무 큽니다.')
+    parts = []
+    failed = False
+    for line in result.stdout.splitlines():
+        try:
+            record = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(record, dict):
+            continue
+        if record.get('type') == 'error':
+            failed = True
+        if record.get('type') == 'text':
+            part = record.get('part')
+            if isinstance(part, dict) and isinstance(part.get('text'), str):
+                parts.append(part['text'])
+    if failed or not parts:
+        raise ConversionError('OpenCode가 유효한 이미지 분석 결과를 반환하지 않았습니다.')
+    return {'text': checked_text(''.join(parts)), 'usage': {}}
+
+
 def generate(path: Path, kind: str, profile: dict) -> dict:
     provider, model = profile.get('provider'), profile.get('model')
-    if not isinstance(model, str) or not model.strip() or provider not in ('openrouter', 'codex', 'claude', 'whisper.cpp', 'local'):
+    if not isinstance(model, str) or not model.strip() or provider not in ('openrouter', 'codex', 'claude', 'whisper.cpp', 'local', 'opencode'):
         raise ConversionError('제공자와 모델을 직접 선택해 주세요.')
+    if provider == 'opencode':
+        if kind != 'image':
+            raise ConversionError('OpenCode CLI 이미지 연결은 이미지 입력만 지원합니다.')
+        return _generate_opencode(path, model)
     if provider == 'local':
         if kind != 'image':
             raise ConversionError('로컬 OpenAI 호환 연결은 이미지 입력만 지원합니다.')
