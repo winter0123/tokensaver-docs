@@ -108,9 +108,10 @@ For OpenRouter API, first select its exact model and explicitly authorize
 **persistent future image transmissions to that provider/model** before saving
 `--set-mode analyze --runtime api --provider openrouter --model MODEL
 --network-policy external_allowed --allow-external-images`. Codex/Claude CLIs
-remain separately supported. OpenCode's configured chat model cannot yet be
-used directly for native image conversion; this route remains unsupported until
-a host-side adapter is implemented. A model catalog can report unknown vision
+remain separately supported. OpenCode model catalog entries can be selected for native image analysis through
+`opencode run --standalone --archived --file ... --model ...`; the specific
+provider/model must be authorized for persistent image transfer. Local-only
+mode instead uses a validated loopback/private API endpoint. A model catalog can report unknown vision
 support and must not be treated as proof.
 
 **Release limitation:** the marketplace launcher and native ZIP downloads
