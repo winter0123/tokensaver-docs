@@ -9,7 +9,7 @@ description: 로컬 PDF·DOCX·XLSX·HTML·Markdown에서 질문의 답과 근�
 
 사용자별 공통 설정을 `tokensaver-docs preferences`로 먼저 확인한다. 최초 이미지 포함 문서 변환에서 `setup_required`이면 이미지 처리 방식(analyze/preserve/placeholder)을 한 번만 묻고 `preferences --set-mode preserve` 또는 `--set-mode placeholder`로 저장한다. 이후 다른 프로젝트·새 세션에서도 설정된 방식을 재사용하므로 재질문하지 않는다. 변경은 사용자가 명시적으로 요청했을 때만 한다. 이미지는 외부 전송하지 않는 두 방식은 모델 설정이 필요 없다.
 
-분석을 선택하면 실행 환경(Codex, Claude Code, OpenRouter API, Ollama/LM Studio/로컬 OpenAI 호환)을 먼저 고르고, 가능한 경우 `list-image-models --provider PROVIDER`로 실제 모델 목록을 조회한다. 로컬 모델에는 `preferences --set-mode analyze --runtime local --provider ollama --model MODEL --network-policy local_only`처럼 설정한다. 사내망은 승인된 사설 IP 주소와 `internal_only`를 사용한다. 외부 분석은 정확한 서비스와 모델, 향후 변환 이미지 전송에 대한 별도 동의를 받은 후에만 `--allow-external-images --network-policy external_allowed`로 저장한다. 로컬 모델은 외부로 자동 전환하지 않는다. OpenCode 채팅 모델의 이미지 호출은 아직 연결되지 않았으므로 지원되는 것처럼 안내하지 않는다. `prepare`는 저장한 방식을 자동 적용하며 설정값을 다시 물으면 안 된다. 실패 시 사용자가 변경을 요청하지 않는 한 모델 선택을 다시 시작하지 않는다.
+분석을 선택하면 실행 환경(Codex, Claude Code, OpenRouter API, Ollama/LM Studio/로컬 OpenAI 호환)을 먼저 고르고, 가능한 경우 `list-image-models --provider PROVIDER`로 실제 모델 목록을 조회한다. 로컬 모델에는 `preferences --set-mode analyze --runtime local --provider ollama --model MODEL --network-policy local_only`처럼 설정한다. 사내망은 승인된 사설 IP 주소와 `internal_only`를 사용한다. 외부 분석은 정확한 서비스와 모델, 향후 변환 이미지 전송에 대한 별도 동의를 받은 후에만 `--allow-external-images --network-policy external_allowed`로 저장한다. 로컬 모델은 외부로 자동 전환하지 않는다. OpenCode 연결 모델은 실제 OpenCode 모델 목록에서 선택한 정확한 제공자·모델 ID를 사용하여 별도의 비대화형 분석으로 호출한다. OpenCode의 모델 전송 경로는 자동으로 내부망이라고 가정하지 않고 외부 전송 동의가 필요하다. `prepare`는 저장한 방식을 자동 적용하며 설정값을 다시 물으면 안 된다. 실패 시 사용자가 변경을 요청하지 않는 한 모델 선택을 다시 시작하지 않는다.
 
 # 파일을 직접 읽기 전에 도구 호출
 
