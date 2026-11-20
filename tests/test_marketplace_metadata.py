@@ -133,7 +133,7 @@ assert.equal(request.uiConsent,null);
             script = """
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
-const {pagedOpenCodeModels}=await import(pathToFileURL(process.argv[1]));
+const {pagedOpenCodeModels,selectableModelPage}=await import(pathToFileURL(process.argv[1]));
 const example={data:[
   {id:'vl-2',providerID:'intranet',name:'Internal VL',enabled:true,
    capabilities:{input:['image','text']}},
@@ -153,7 +153,13 @@ assert.equal(all.models[0].network_policy,'unknown');
 const page=pagedOpenCodeModels(example,{query:'vision',limit:1});
 assert.equal(page.total,1);
 assert.equal(page.models[0].id,'vision-free');
-console.log('PASS: host vision catalog');
+const clickable=selectableModelPage(all);
+assert.deepEqual(clickable.selection_ui.options.map(x=>x.label),['intranet/vl-2','openrouter/vision-free']);
+assert.match(clickable.selection_ui.question,/외부 서비스/);
+assert.match(clickable.selection_ui.next,/do not ask the user to retype/);
+const filtered=selectableModelPage(pagedOpenCodeModels(example,{limit:1}));
+assert.equal(filtered.selection_ui.options.at(-1).label,'다음 모델 보기');
+console.log('PASS: host vision catalog and clickable model choices');
 """
             run = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(root / "index.js")],

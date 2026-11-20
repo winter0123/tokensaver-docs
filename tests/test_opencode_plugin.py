@@ -9,6 +9,112 @@ from PIL import Image
 
 @unittest.skipUnless(os.environ.get('TOKENSAVER_DOCS_PLUGIN'), 'built OpenCode plugin not supplied')
 class OpenCodePluginTests(unittest.TestCase):
+    def test_v2_bounded_project_source_resolution(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {mkdtemp, mkdir, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+const {resolveProjectSource} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const root=await mkdtemp(join(tmpdir(),'tokensaver-source-'));
+await mkdir(join(root,'하위 폴더'));
+await writeFile(join(root,'하위 폴더','test.html'),'<p>ok</p>');
+assert.deepEqual(await resolveProjectSource('test.html',root),
+  {status:'ready',source:join(root,'하위 폴더','test.html')});
+assert.equal((await resolveProjectSource(pathToFileURL(join(root,'하위 폴더','test.html')).href,root)).source,
+  join(root,'하위 폴더','test.html'));
+await writeFile(join(root,'하위 폴더','한글.html'.normalize('NFD')),'x');
+const unicode=await resolveProjectSource('한글.html',root);
+assert.equal(unicode.status,'ready');
+assert.equal(unicode.source.normalize('NFC'),join(root,'하위 폴더','한글.html').normalize('NFC'));
+await writeFile(join(root,'test.html'),'<p>direct</p>');
+assert.equal((await resolveProjectSource('test.html',root)).source,join(root,'test.html'));
+await writeFile(join(root,'하위 폴더','ambiguous.html'),'a');
+await writeFile(join(root,'ambiguous.html'),'b');
+await mkdir(join(root,'두번째 폴더'));
+await writeFile(join(root,'두번째 폴더','ambiguous.html'),'c');
+const ambiguous=await resolveProjectSource('ambiguous.html'.replace('ambiguous','same'),root);
+assert.equal(ambiguous.status,'source_not_found');
+await writeFile(join(root,'두번째 폴더','ambiguous.html'),'d');
+const matched=await resolveProjectSource('ambiguous.html',root);
+assert.equal(matched.source,join(root,'ambiguous.html'));
+assert.equal((await resolveProjectSource('../outside.html',root)).status,'source_outside_project');
+assert.equal((await resolveProjectSource('not-here.html',root)).status,'source_not_found');
+console.log('PASS project path and Unicode source resolution');
+"""
+        env = dict(os.environ, TOKENSAVER_DOCS_PLUGIN=str(Path(os.environ['TOKENSAVER_DOCS_PLUGIN']).resolve()))
+        result = subprocess.run(['node', '--input-type=module', '-e', script],
+                                env=env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_v2_service_first_model_selection_and_one_time_approval(self):
+        script = r"""
+import {pathToFileURL} from 'node:url';
+import assert from 'node:assert/strict';
+const {recordQuestionAnswers} = await import(pathToFileURL(process.env.TOKENSAVER_DOCS_PLUGIN));
+const request={conversion:true,text:'Convert test.html to Markdown'};
+const send=(title,options,selected,status='completed')=>recordQuestionAnswers({
+  tool:'question',status,
+  input:{questions:[{question:title,options:options.map(label=>({label}))}]},
+  result:{output:{answers:[[selected]]}}
+},request);
+send('이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지·글자·설명 넣기','이미지만 넣기'],'이미지·글자·설명 넣기');
+assert.equal(request.uiMode,'analyze');
+send('이미지 분석에 사용할 서비스(플랫폼)를 선택하세요.',
+  ['Codex / GPT','Claude Code','OpenCode','API / OpenRouter','로컬 LLM'],'API / OpenRouter');
+assert.deepEqual(request.uiRuntime,{runtime:'api',provider:'openrouter'});
+request.catalogModels=[{provider:'openrouter',id:'anthropic/vision-test'}];
+send('이미지 분석 모델을 선택하세요. 이후 변환에도 기본값으로 저장됩니다. 외부 서비스로 이미지가 전송됩니다.',
+  ['anthropic/vision-test — image'],'anthropic/vision-test — image');
+assert.deepEqual(request.uiModel,{provider:'openrouter',model:'anthropic/vision-test'});
+assert.deepEqual(request.uiConsent,request.uiModel);
+assert.deepEqual(request.uiPersistentConsent,request.uiModel);
+const oneTime={conversion:true,uiMode:'analyze',
+  uiModel:{provider:'openrouter',model:'anthropic/vision-test'}};
+const oldSend=(selected,status='completed')=>recordQuestionAnswers({
+  tool:'question',status,
+  input:{questions:[{question:'OpenRouter anthropic/vision-test로 이미지 외부 전송을 허용할까요?',
+    options:[{label:'이번에만 허용'},{label:'동의 안 함'}]}]},
+  result:{output:{answers:[[selected]]}}
+},oneTime);
+oldSend('이번에만 허용');
+assert.deepEqual(oneTime.uiConsent,oneTime.uiModel);
+assert.equal(oneTime.uiPersistentConsent,undefined);
+oneTime.uiConsent=null;
+oldSend('이번에만 허용','error');
+assert.equal(oneTime.uiConsent,null);
+const alreadyConfigured={conversion:true,profile:{provider:'openrouter',model:'anthropic/vision-test'}};
+recordQuestionAnswers({
+  tool:'question',status:'completed',
+  input:{questions:[{question:'이미지를 OpenRouter anthropic/vision-test 모델로 전송할까요?',
+    options:[{label:'이번에만 허용'},{label:'동의 안 함'}]}]},
+  result:{output:{answers:[['이번에만 허용']]}}
+},alreadyConfigured);
+assert.deepEqual(alreadyConfigured.uiConsent,alreadyConfigured.profile);
+assert.equal(alreadyConfigured.uiPersistentConsent,undefined);
+send('이미지를 Markdown에 어떻게 넣을까요?',
+  ['이미지·글자·설명 넣기','이미지만 넣기'],'이미지·글자·설명 넣기');
+send('이미지 분석에 사용할 서비스(플랫폼)를 선택하세요.',
+  ['Codex / GPT','Claude Code','OpenCode','API / OpenRouter','로컬 LLM'],'로컬 LLM');
+send('로컬 서버 제공자를 선택하세요.',
+  ['Ollama','LM Studio','OpenAI 호환 서버'],'Ollama');
+request.catalogModels=[{provider:'ollama',id:'llava:latest'}];
+send('이미지 분석 모델을 선택하세요. 로컬 분석이므로 외부 전송 없음.',
+  ['llava:latest'],'llava:latest');
+assert.equal(request.uiRuntime.runtime,'local');
+assert.equal(request.uiRuntime.provider,'ollama');
+assert.equal(request.uiModel.provider,'local');
+assert.equal(request.uiModel.model,'llava:latest');
+assert.equal(request.uiPersistentConsent,null);
+console.log('PASS form choices, catalog model and one-time authorization');
+"""
+        env = dict(os.environ, TOKENSAVER_DOCS_PLUGIN=str(Path(os.environ['TOKENSAVER_DOCS_PLUGIN']).resolve()))
+        result = subprocess.run(['node', '--input-type=module', '-e', script],
+                                env=env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_v2_question_form_answers_drive_choices_without_chat_reentry(self):
         # One completed OpenCode question tool result must be sufficient to
         # authorize a selected local mode. Image transfer needs an additional

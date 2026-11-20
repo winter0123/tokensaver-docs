@@ -5,18 +5,114 @@ import { ensureTokenSaverExecutable, findTokenSaverExecutable } from './runtime.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
-import { readFile, stat, lstat, realpath } from 'node:fs/promises';
+import { readFile, stat, lstat, realpath, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import researchRouting from './research-routing.json' with { type: 'json' };
+
+// Resolve document names inside the OpenCode session project, not in the
+// server's process.cwd(). Never scan the user's home or other projects.
+const SOURCE_SEARCH_MAX_ENTRIES = 2000;
+const SOURCE_SEARCH_MAX_DEPTH = 5;
+const SOURCE_SEARCH_EXCLUDED = new Set(['.git', '.venv', '.worker-context',
+  '__pycache__', '.tokensaver-docs', 'node_modules']);
+
+function sourceLookupError(status, project, source, extra = {}) {
+  const messages = {
+    project_required: 'OpenCode did not provide a project directory. Please supply the full path to the document.',
+    source_not_found: 'The document was not found in the current project. Provide its full path or explicitly select another folder; do not search outside this project automatically.',
+    source_ambiguous: 'Several files have this name in the current project. Choose the intended full path.',
+    source_search_limited: 'The project search limit was reached. Give the document path or a narrower subfolder.',
+    source_permission_required: 'OpenCode cannot access part of the requested project. Grant OpenCode access to the folder in macOS privacy settings (or choose a permitted folder), then retry.',
+    source_outside_project: 'A relative path must stay inside the current project. Provide the explicit absolute path if you want to access a file outside it.',
+    source_invalid: 'The document path is not a normal file or directory. Provide the original file rather than a symbolic link.'
+  };
+  return { status, source, project, question: messages[status],
+    next: 'Ask the user to resolve this path issue. Do not use agent glob/read/shell or search outside the project without permission.', ...extra };
+}
+
+// Direct paths win. For a basename, search only bounded non-symlink project
+// directories, preserving Unicode names (macOS often uses decomposed forms).
+export async function resolveProjectSource(source, project) {
+  if (typeof source !== 'string' || !source.trim())
+    return sourceLookupError('source_invalid', project, source);
+  // Finder/browser file:/// links are explicit local paths, not filenames.
+  if (/^file:\/\//i.test(source)) {
+    try { source = fileURLToPath(source); }
+    catch { return sourceLookupError('source_invalid', project, source); }
+  }
+  const projectRoot = typeof project === 'string' && project.trim() ? resolve(project) : null;
+  if (!projectRoot && !isAbsolute(source))
+    return sourceLookupError('project_required', project, source);
+  const candidate = isAbsolute(source) ? resolve(source) : resolve(projectRoot, source);
+  if (!isAbsolute(source) && (relative(projectRoot, candidate) === '..' ||
+      relative(projectRoot, candidate).startsWith('..' + (process.platform === 'win32' ? '\\' : '/'))))
+    return sourceLookupError('source_outside_project', projectRoot, source);
+  const inspect = async path => {
+    try {
+      const info = await lstat(path);
+      return info.isSymbolicLink() ? 'symlink'
+        : info.isFile() || info.isDirectory() ? 'ready' : 'invalid';
+    } catch (error) {
+      if (['EACCES', 'EPERM'].includes(error.code)) return 'permission';
+      if (['ENOENT', 'ENOTDIR'].includes(error.code)) return 'missing';
+      throw error;
+    }
+  };
+  const direct = await inspect(candidate);
+  if (direct === 'ready') return {status:'ready', source:candidate};
+  if (direct === 'permission')
+    return sourceLookupError('source_permission_required', projectRoot, source);
+  if (direct !== 'missing')
+    return sourceLookupError('source_invalid', projectRoot, source);
+  if (isAbsolute(source) || basename(source) !== source || !projectRoot)
+    return sourceLookupError('source_not_found', projectRoot, source);
+
+  const matches = [];
+  let count = 0;
+  let permissionDenied = false;
+  const stack = [{path:projectRoot,depth:0}];
+  const normalized = source.normalize('NFC');
+  while (stack.length > 0) {
+    const next = stack.pop();
+    let entries;
+    try { entries = await readdir(next.path, {withFileTypes:true}); }
+    catch (error) {
+      if (['EACCES','EPERM'].includes(error.code)) { permissionDenied = true; continue; }
+      if (['ENOENT','ENOTDIR'].includes(error.code)) continue;
+      throw error;
+    }
+    // Deterministic ordering for predictable ambiguity reports.
+    entries.sort((a,b) => a.name.localeCompare(b.name,'en'));
+    for (const entry of entries) {
+      if (++count > SOURCE_SEARCH_MAX_ENTRIES)
+        return sourceLookupError('source_search_limited', projectRoot, source);
+      if (entry.isSymbolicLink()) continue;
+      const entryPath = join(next.path, entry.name);
+      if (entry.name.normalize('NFC') === normalized && (entry.isFile() || entry.isDirectory()))
+        matches.push(entryPath);
+      if (entry.isDirectory() && next.depth < SOURCE_SEARCH_MAX_DEPTH &&
+          !entry.name.startsWith('.') && !SOURCE_SEARCH_EXCLUDED.has(entry.name))
+        stack.push({path:entryPath,depth:next.depth+1});
+    }
+  }
+  if (permissionDenied)
+    return sourceLookupError('source_permission_required', projectRoot, source,
+      {candidates:matches.slice(0,10)});
+  if (matches.length > 1)
+    return sourceLookupError('source_ambiguous', projectRoot, source,
+      {candidates:matches.slice(0,10),total:matches.length});
+  if (matches.length === 1) return {status:'ready',source:matches[0]};
+  return sourceLookupError('source_not_found', projectRoot, source);
+}
 
 let executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
 const requestBySession = new Map();
 
-const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. For unanswered choices, never infer a model, defer, image mode, or provider consent. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
+const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. For unanswered choices, never infer a model, defer, image mode, or provider consent. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Pass the named source directly to tokensaver_docs_prepare: its bounded resolver checks the current project and subfolders without agent file-search tools. If it reports a missing, ambiguous or inaccessible path, ask only the reported question; never search outside the project without the user explicitly providing an authorized path. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
 const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
-const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current real user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze and this model. Otherwise use OpenCode question UI for the explicit approval: the actual UI answer is remembered by the plugin. NEVER ask the user to copy it into chat. The question must identify the exact provider and model, clearly say that document images will be transmitted externally, and offer consent and decline options. Once the user selects consent, immediately retry tokensaver_docs_prepare for the same source and model. Neither model selection nor agent-written prose nor tool arguments grants consent.';
+const selectedModelApprovalInstruction = 'An image model is already configured or selected. If the user explicitly approves image analysis, immediately call tokensaver_docs_prepare with image_mode analyze using that exact model. Use the exact already selected image provider and model. The completed UI model picker with an explicit image-transfer/future-use disclosure already counts as permission, and a completed 이번에만 허용 selection approves this conversion. Do not ask the user to type an approval sentence or display a second consent form. If no informed model choice or one-time permission exists, require one UI choice that clearly identifies the service and destination; never infer it from agent-written prose. Local-only processing never requires an external transfer approval.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
 const documentQuestionInstruction = 'Call tokensaver_docs_context first for this local document question. Pass the named path and literal search keywords. For a non-English question on a document of unknown language, include English equivalents in the same query. This tool handles unconverted documents without model setup. Cite the returned Markdown lines and use tokensaver_docs_read for any needed continuation.';
 const retryDocumentSearchInstruction = 'The search found no matching terms. Retry tokensaver_docs_context once with shorter literal keywords from the likely document language. Include English equivalents if the previous query had only non-English words.';
@@ -117,7 +213,7 @@ function exactChoice(text) {
     placeholder: ['placeholder','[이미지]','플레이스홀더(placeholder)','현재 모델로 계속하기'],
     analyze: ['이미지·글자·설명 넣기','이미지 분석에 동의합니다'],
     decline: ['no','no, do not analyze the image','no, do not analyze it','cancel','아니요','취소'],
-    confirm: ['yes','confirm','네','예','확인','승인','분석 동의','외부 전송 및 분석 동의','분석 진행'], 
+    confirm: ['yes','confirm','네','예','확인','승인','분석 동의','외부 전송 및 분석 동의','분석 진행','이번에만 허용','이번 한 번만 허용','이번 작업만 허용','한 번 허용','이번에만 동의','항상 허용','계속 허용','허용'], 
   };
   for (const [choice, values] of Object.entries(labels))
     if (values.includes(value)) return choice;
@@ -141,6 +237,43 @@ function matchesModelChoice(text, provider, model) {
 // OpenCode question UI replies are tool results, not new chat messages. Only
 // trust answers from an actually completed question tool call; model-supplied
 // prepare arguments and quoted conversation text are never consent evidence.
+// The form is the user's answer. No chat retyping, additional model-name
+// entry or repeated per-turn transmission confirmation is required.
+function chosenRuntime(label) {
+  const choice = label.toLowerCase().replace(/\s+/g,' ').trim();
+  if (/^(?:codex|gpt(?:\s*\/\s*codex|\s*\(codex\))?|codex\s*\/\s*gpt)/.test(choice))
+    return {runtime:'codex',provider:'codex'};
+  if (/^(?:claude code|claude\s*\(claude code\)|클로드 코드)/.test(choice))
+    return {runtime:'claude',provider:'claude'};
+  if (/^(?:opencode|오픈코드)/.test(choice))
+    return {runtime:'opencode'};
+  if (/^(?:api|openrouter|직접 api)/.test(choice))
+    return {runtime:'api',provider:'openrouter'};
+  if (/^(?:local llm|local|로컬 llm|로컬 모델|로컬 분석)/.test(choice))
+    return {runtime:'local'};
+  return null;
+}
+
+function chosenLocalProvider(label) {
+  const value = label.trim().toLowerCase();
+  if (/^ollama(?:\s|$)/.test(value)) return 'ollama';
+  if (/^lm studio(?:\s|$)/.test(value)) return 'lmstudio';
+  if (/^(?:openai-compatible|openai 호환|사설망 서버)/.test(value)) return 'openai_compatible';
+  return null;
+}
+
+function actualCatalogSelection(label, request) {
+  const options = Array.isArray(request.catalogModels) ? request.catalogModels : [];
+  const normalized = label.trim().replace(/\s*\(recommended\)$/i,'');
+  const matches = options.filter(item => {
+    const candidates = [item.id, item.provider + '/' + item.id];
+    return candidates.some(id => normalized === id ||
+      normalized.startsWith(id+' ') || normalized.startsWith(id+' —') ||
+      normalized.startsWith(id+' ('));
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function recordQuestionAnswers(event, request) {
   if (event.tool !== 'question' || event.status !== 'completed' || !request?.conversion) return;
   const questions = event.input?.questions;
@@ -151,42 +284,99 @@ export function recordQuestionAnswers(event, request) {
     const answer = answers[i];
     if (!question || !Array.isArray(answer) || answer.length !== 1 || typeof answer[0] !== 'string') continue;
     const selected = answer[0].trim();
-    // Only choices that were actually presented in the structured form.
+    // Reject agent-invented options; only recognize an actual selected UI label.
     if (!Array.isArray(question.options) || !question.options.some(opt => opt?.label === selected)) continue;
     const prompt = String(question.question ?? '') + ' ' + String(question.header ?? '');
     const choice = exactChoice(selected);
     if (/(?:이미지|사진|image|photo)/i.test(prompt) &&
+        /(?:어떻게|처리 방식|포함|mode|how.*(?:handle|include)|which.*(?:mode|format))/i.test(prompt) &&
         ['analyze','preserve','placeholder'].includes(choice)) {
       request.uiMode = choice;
+      request.uiModel = null;
       request.uiConsent = null;
       request.uiPersistentConsent = null;
+      request.uiRuntime = null;
+      request.catalogModels = null;
       continue;
     }
-    // User-selected model only, scoped to OpenRouter in the question itself.
-    if (/(?:모델|model)/i.test(prompt) && /(?:openrouter|외부 전송|external transfer)/i.test(prompt)) {
-      const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
-      if (match && (/(?:openrouter)/i.test(prompt) || /:free$/.test(match[1]) || match[1] === 'openrouter/free')) {
-        // Free model identifiers from the built-in OpenRouter chooser are
-        // tentative until a provider+model-specific transmission approval.
-        request.uiModel = {provider:'openrouter', model:match[1]};
+    // Service first, then its real model catalog. Never force OpenRouter.
+    if (/(?:플랫폼|서비스|실행 환경|provider|runtime|where.*(?:analy[sz]e|run))/i.test(prompt)) {
+      const runtime = chosenRuntime(selected);
+      if (runtime) {
+        request.uiRuntime = runtime;
+        request.uiModel = null;
         request.uiConsent = null;
-        request.uiPersistentConsent = null;
+        request.catalogModels = null;
         continue;
       }
     }
-    // Image transmission requires an additional explicit, provider+model-
-    // specific user approval. General image-mode/model selections do not grant it.
-    const selectedModel = request.uiModel;
-    if (request.uiMode === 'analyze' && selectedModel &&
-        /(?:외부|전송|upload|send|external|share)/i.test(prompt) &&
-        prompt.toLowerCase().includes(selectedModel.provider) &&
-        prompt.toLowerCase().includes(selectedModel.model.toLowerCase()) &&
-        choice === 'confirm') {
-      request.uiConsent = {...selectedModel};
-      if (/(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt)) {
-        // Explicitly scoped to future conversions, not just this one.
-        request.uiPersistentConsent = {...selectedModel};
+    if (request.uiRuntime?.runtime === 'local' &&
+        /(?:제공자|서버|local|로컬|provider)/i.test(prompt)) {
+      const provider = chosenLocalProvider(selected);
+      if (provider) {
+        request.uiRuntime = {runtime:'local',provider};
+        request.catalogModels = null;
+        continue;
       }
+    }
+    if (/(?:모델|model)/i.test(prompt) && request.uiMode === 'analyze') {
+      const hit = actualCatalogSelection(selected,request);
+      if (hit) {
+        const runtime = request.uiRuntime?.runtime ??
+          (['openrouter'].includes(hit.provider) ? 'api'
+            : ['ollama','lmstudio','openai_compatible'].includes(hit.provider) ? 'local'
+            : ['codex','claude'].includes(hit.provider) ? hit.provider : 'opencode');
+        const hostProvider = runtime === 'opencode' ? hit.provider :
+          runtime === 'local' ? request.uiRuntime?.provider || hit.provider :
+          runtime === 'api' ? 'openrouter' : runtime;
+        request.uiRuntime = {runtime,provider:hostProvider};
+        request.uiModel = {provider:runtime === 'local' ? 'local' :
+          runtime === 'opencode' ? 'opencode' : hostProvider,
+          model:runtime === 'opencode' ? hostProvider+'/'+hit.id : hit.id,
+          ...(runtime === 'local' ? {network_policy:request.catalogNetworkPolicy || 'local_only',
+            endpoint:request.catalogEndpoint} : {})};
+        const external = runtime !== 'local';
+        // The model-selection question itself can provide informed consent:
+        // disclose the service/image transfer and future default in that
+        // SAME question, rather than showing a second approval form.
+        const disclosure = /(?:외부|전송|업로드|제공자|send|upload|external)/i.test(prompt) &&
+          /(?:이미지|사진|image|photo)/i.test(prompt);
+        if (external && disclosure) {
+          request.uiConsent = {...request.uiModel};
+          if (/(?:향후|이후|앞으로|매번|항상|기본값|future|default|subsequent|remember)/i.test(prompt))
+            request.uiPersistentConsent = {...request.uiModel};
+        }
+        if (!external) request.uiConsent = {...request.uiModel};
+        continue;
+      }
+      // Older OpenRouter UI (prior to catalog paging) remains compatible.
+      if (/(?:openrouter|외부 전송|external transfer)/i.test(prompt)) {
+        const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
+        if (match && (/(?:openrouter)/i.test(prompt) ||
+                      /:free$/.test(match[1]) || match[1] === 'openrouter/free')) {
+          request.uiRuntime = {runtime:'api',provider:'openrouter'};
+          request.uiModel = {provider:'openrouter',model:match[1]};
+          request.uiConsent = null;
+          request.uiPersistentConsent = null;
+          continue;
+        }
+      }
+    }
+    // Compatibility: "이번에만 허용" in the existing permission question
+    // is a FULL approval for this conversion, not another question.
+    const chosen = request.uiModel ?? request.profile;
+    if ((request.uiMode === 'analyze' || request.profile) && chosen &&
+        /(?:외부|전송|upload|send|external|share|허용|동의)/i.test(prompt) &&
+        (prompt.toLowerCase().includes(chosen.provider) ||
+         prompt.toLowerCase().includes(chosen.model.toLowerCase()) ||
+         /(?:이미지|사진|image|photo)/i.test(prompt)) &&
+        choice === 'confirm') {
+      request.uiConsent = {...chosen};
+      if (/^(?:항상 허용|계속 허용)$/.test(selected) ||
+          /(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt) &&
+           !/(?:이번에만|이번 작업|one.time|only this)/i.test(selected))
+        request.uiPersistentConsent = {...chosen};
+      continue;
     }
   }
 }
@@ -221,6 +411,28 @@ export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {})
     .sort((a,b)=>(a.provider+'/'+a.id).localeCompare(b.provider+'/'+b.id));
   return {status:'ready', provider:'opencode', total:entries.length,
     offset:start, has_more:start+size<entries.length, models:entries.slice(start,start+size)};
+}
+
+// A model catalog is also a ready-to-display question-form payload. The
+// assistant should copy these options into OpenCode's question tool rather than
+// asking the user to type an opaque model ID into the chat.
+export function selectableModelPage(page) {
+  if (!page || !Array.isArray(page.models)) return page;
+  const models = page.models;
+  const options = models.map(m => ({
+    label: page.provider === 'opencode' ? m.provider + '/' + m.id : m.id,
+    description: [m.name && m.name !== m.id ? m.name : null,
+      m.vision === 'supported' ? '이미지 입력 지원 표시' : '이미지 지원 확인 필요',
+      m.price === 'free' ? '무료 표시' : null].filter(Boolean).join(' · ')
+  }));
+  if (page.offset > 0) options.push({label:'이전 모델 보기',description:'이전 페이지'});
+  if (page.has_more) options.push({label:'다음 모델 보기',description:'다음 페이지'});
+  return {...page, selection_ui:{
+    header:'이미지 모델 선택',
+    question:'이미지 분석 모델을 선택하세요. 선택한 모델은 이후 변환에도 기본값으로 저장됩니다. 외부 서비스를 선택하면 해당 서비스로 이미지가 전송됩니다.',
+    options,
+    next:'Display selection_ui in the native question UI. A selected model ID is enough; do not ask the user to retype it or give a second approval. For next/previous fetch the corresponding catalog offset, for search use the catalog query parameter.'
+  }};
 }
 
 function choiceError(choice) {
@@ -276,9 +488,11 @@ function explicitChoiceError(name, input, request) {
     if (denied)
       return JSON.stringify({status:'consent_declined',next:'The user declined image analysis. Stop this conversion; do not retry or send the image.'});
     const consent = request?.uiConsent;
-    const approvedByQuestion = request?.uiMode === 'analyze' &&
-      consent?.provider === input.model_provider && consent?.model === input.model;
     const selected = request?.profile ?? request?.uiModel;
+    const approvedByQuestion = (request?.uiMode === 'analyze' || Boolean(request?.profile)) && selected &&
+      consent?.provider === selected.provider && consent?.model === selected.model &&
+      (!input.model_provider || input.model_provider === consent.provider) &&
+      (!input.model || input.model === consent.model);
     const local = selected?.provider === 'local' &&
       ['local_only','internal_only'].includes(selected.network_policy);
     const approved = choice === 'analyze' || approvedByQuestion ||
@@ -752,11 +966,40 @@ export default {
             if (sessionID) requestBySession.set(sessionID,request);
             return { content: blocked };
           }
-          const result = await execute(callInput);
+          if ((name === 'tokensaver_docs_prepare' || name === 'tokensaver_docs_context') &&
+              typeof callInput.source === 'string') {
+            const session = sessionID && ctx.session?.get
+              ? await ctx.session.get({sessionID}).catch(() => null) : null;
+            const project = context?.directory ?? session?.location?.directory ??
+              session?.directory ?? ctx.location?.directory;
+            const found = await resolveProjectSource(callInput.source, project);
+            if (found.status !== 'ready' && found.status !== 'source_not_found' &&
+                found.status !== 'project_required')
+              return { content: JSON.stringify(found) };
+            if (found.status === 'ready') {
+              // The native binary runs in the service's cwd. Use the exact
+              // project-resolved path; do not move results to another project.
+              callInput = {...callInput, source:found.source,
+                output:resolve(project || dirname(found.source),callInput.output ?? 'converted')};
+            }
+            // For an absent file, preserve the existing native CLI's explicit
+            // missing-file error (and compatibility with virtual/mock CLI
+            // inputs). Never substitute a similarly named file outside scope.
+          }
+          let result = await execute(callInput);
+          if (name === 'tokensaver_docs_list_image_models') {
+            const list = parseResult(result);
+            if (Array.isArray(list?.models)) result=JSON.stringify(selectableModelPage(list));
+          }
           const research = researchSessions.get(sessionID);
           if (name === 'tokensaver_docs_search_research' && research &&
               resolve(input.project) === resolve(research.directory)) research.searched = true;
           const parsed = parseResult(result);
+          if (name === 'tokensaver_docs_list_image_models' && request?.conversion && Array.isArray(parsed?.models)) {
+            request.catalogModels=parsed.models.map(model=>({...model,provider:input.provider}));
+            request.catalogEndpoint=parsed.endpoint || input.endpoint || null;
+            request.catalogNetworkPolicy=input.network_policy || 'local_only';
+          }
           if (searchingDocument) {
             request.documentSearchStatus = parsed?.status;
           }
@@ -823,11 +1066,19 @@ export default {
           query:{type:'string'},limit:{type:'integer',minimum:1,maximum:40},
           offset:{type:'integer',minimum:0}},required:[]},
         options:{codemode:false},
-        execute:async (input) => {
+        execute:async (input,context) => {
           if (!ctx.model?.list) return {content:JSON.stringify({status:'unavailable',reason:'OpenCode model catalog API unavailable'})};
           try {
             const response=await ctx.model.list();
-            return {content:JSON.stringify(pagedOpenCodeModels(response,input))};
+            const page=pagedOpenCodeModels(response,input);
+            const request=context?.sessionID && requestBySession.get(context.sessionID);
+            if (request?.conversion && page.status === 'ready') {
+              request.catalogModels=page.models;
+              request.catalogEndpoint=null;
+              request.uiRuntime={runtime:'opencode'};
+              requestBySession.set(context.sessionID,request);
+            }
+            return {content:JSON.stringify(selectableModelPage(page))};
           } catch (error) {
             return {content:JSON.stringify({status:'unavailable',reason:'Model catalog lookup failed; no network fallback was used'})};
           }
@@ -866,7 +1117,8 @@ export default {
           return;
         }
         event.system.push({type:'text',text:request.audio ? audioConversionInstruction : conversionInstruction});
-        if (request.pending && request.profile)
+        if (request.pending && request.profile && !request.uiConsent &&
+            !request.profile.persistentConsent && request.profile.provider !== 'local')
           event.system.push({type:'text',text:selectedModelApprovalInstruction});
       }
     });
@@ -913,17 +1165,51 @@ export default {
         uiModel:continuing ? previous?.uiModel : undefined,
         uiConsent:continuing ? previous?.uiConsent : undefined,
         uiPersistentConsent:continuing ? previous?.uiPersistentConsent : undefined,
+        uiRuntime:continuing ? previous?.uiRuntime : undefined,
+        catalogModels:continuing ? previous?.catalogModels : undefined,
+        catalogEndpoint:continuing ? previous?.catalogEndpoint : undefined,
+        catalogNetworkPolicy:continuing ? previous?.catalogNetworkPolicy : undefined,
+        preferencesSaved:continuing ? previous?.preferencesSaved : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
       else requestBySession.delete(sessionID);
     });
-    // Persist *actual* user selections from OpenCode's question form.
-    // A cancelled/failed question never grants an image mode, model or consent.
-    await ctx.tool.hook('execute.after', event => {
+    // Completed question UI options are the user's answer, not a request to
+    // type it again. Persist the first-run choice immediately and reuse it.
+    await ctx.tool.hook('execute.after', async event => {
       const request = requestBySession.get(event.sessionID);
       if (!request?.conversion) return;
       recordQuestionAnswers(event, request);
+      if (event.tool === 'question' && event.status === 'completed' && !request.preferencesSaved) {
+        let args=null;
+        if (['preserve','placeholder'].includes(request.uiMode)) {
+          args=['preferences','--set-mode',request.uiMode];
+        } else if (request.uiMode === 'analyze' && request.uiModel && request.uiRuntime) {
+          const {runtime,provider} = request.uiRuntime;
+          const model = runtime === 'opencode'
+            ? request.uiModel.model.slice((provider+'/').length)
+            : request.uiModel.model;
+          const local = runtime === 'local';
+          if (local || (request.uiPersistentConsent?.provider === request.uiModel.provider &&
+                        request.uiPersistentConsent?.model === request.uiModel.model)) {
+            args=['preferences','--set-mode','analyze',
+              '--runtime',runtime,'--provider',provider,'--model',model,
+              '--network-policy',local ? request.catalogNetworkPolicy || 'local_only' : 'external_allowed',
+              ...(local && request.catalogEndpoint ? ['--endpoint',request.catalogEndpoint] : []),
+              ...(!local ? ['--allow-external-images'] : [])];
+          }
+        }
+        if (args) {
+          const saved=parseResult(await run(args));
+          if (saved?.status === 'configured') {
+            request.preferencesSaved=true;
+            request.pending=true;
+          } else if (saved?.status) {
+            request.preferenceError=saved;
+          }
+        }
+      }
       requestBySession.set(event.sessionID, request);
     });
     // Register the optional internal MCP bridge only when its binary is ready.
