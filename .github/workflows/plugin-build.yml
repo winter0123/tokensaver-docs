@@ -43,6 +43,25 @@ jobs:
           exe = 'tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs'
           env = dict(os.environ, TOKENSAVER_DOCS_STANDALONE=os.path.abspath('dist/standalone/' + exe))
           subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], env=env, check=True)
+      - name: Verify new bundled first-run settings and model catalogue
+        shell: python
+        run: |
+          import json, os, subprocess, tempfile
+          from pathlib import Path
+          binary = Path('dist/standalone') / ('tokensaver-docs.exe' if os.name == 'nt' else 'tokensaver-docs')
+          with tempfile.TemporaryDirectory() as folder:
+              env = dict(os.environ, XDG_CONFIG_HOME=folder)
+              def cli(*args):
+                  run = subprocess.run([str(binary.resolve()), *args], env=env,
+                                       text=True, capture_output=True, timeout=40)
+                  assert run.returncode == 0, run.stderr[-1200:] + run.stdout[-1200:]
+                  return json.loads(run.stdout)
+              assert cli('preferences')['status'] == 'setup_required'
+              assert cli('preferences','--set-mode','preserve')['status'] == 'configured'
+              assert cli('preferences')['preferences']['image_mode'] == 'preserve'
+              aliases = cli('list-image-models','--provider','claude')
+              assert {row['id'] for row in aliases['models']} == {'opus','sonnet','haiku'}
+              assert aliases['account_verified'] is False
       - name: Package plugins
         shell: python
         run: |
