@@ -364,8 +364,8 @@ export function recordQuestionAnswers(event, request) {
     }
     // Compatibility: "이번에만 허용" in the existing permission question
     // is a FULL approval for this conversion, not another question.
-    const chosen = request.uiModel;
-    if (request.uiMode === 'analyze' && chosen &&
+    const chosen = request.uiModel ?? request.profile;
+    if ((request.uiMode === 'analyze' || request.profile) && chosen &&
         /(?:외부|전송|upload|send|external|share|허용|동의)/i.test(prompt) &&
         (prompt.toLowerCase().includes(chosen.provider) ||
          prompt.toLowerCase().includes(chosen.model.toLowerCase()) ||
@@ -489,7 +489,7 @@ function explicitChoiceError(name, input, request) {
       return JSON.stringify({status:'consent_declined',next:'The user declined image analysis. Stop this conversion; do not retry or send the image.'});
     const consent = request?.uiConsent;
     const selected = request?.profile ?? request?.uiModel;
-    const approvedByQuestion = request?.uiMode === 'analyze' && selected &&
+    const approvedByQuestion = (request?.uiMode === 'analyze' || Boolean(request?.profile)) && selected &&
       consent?.provider === selected.provider && consent?.model === selected.model &&
       (!input.model_provider || input.model_provider === consent.provider) &&
       (!input.model || input.model === consent.model);
