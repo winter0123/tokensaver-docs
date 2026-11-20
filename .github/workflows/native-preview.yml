@@ -1,6 +1,8 @@
 name: Native bundle preview
 
 on:
+  push:
+    branches: ['feat/first-run-conversion-preferences']
   pull_request:
     paths:
       - 'tokensaver_docs/**'
