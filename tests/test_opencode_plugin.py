@@ -256,7 +256,10 @@ assert.deepEqual(evidenceResult, JSON.parse(await legacy.tool.tokensaver_docs_co
 await hook.fn({tool: 'other', input: {}});
 '''
         with tempfile.TemporaryDirectory() as tmp:
-            result = subprocess.run(['node', '--input-type=module', '-e', script], env=dict(os.environ, XDG_CONFIG_HOME=tmp), capture_output=True, text=True, timeout=30)
+            # The frozen Windows executable may take longer than 30 seconds
+            # to start on a loaded CI runner (antivirus/first-run extraction).
+            # A real tool failure still returns non-zero and fails this test.
+            result = subprocess.run(['node', '--input-type=module', '-e', script], env=dict(os.environ, XDG_CONFIG_HOME=tmp), capture_output=True, text=True, timeout=90 if os.name == 'nt' else 30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_embedded_image_read_waits_for_choice_without_writing_beside_source(self):
