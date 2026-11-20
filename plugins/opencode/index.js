@@ -208,7 +208,7 @@ function exactChoice(text) {
     placeholder: ['placeholder','[이미지]','플레이스홀더(placeholder)','현재 모델로 계속하기'],
     analyze: ['이미지·글자·설명 넣기','이미지 분석에 동의합니다'],
     decline: ['no','no, do not analyze the image','no, do not analyze it','cancel','아니요','취소'],
-    confirm: ['yes','confirm','네','예','확인','승인','분석 동의','외부 전송 및 분석 동의','분석 진행'], 
+    confirm: ['yes','confirm','네','예','확인','승인','분석 동의','외부 전송 및 분석 동의','분석 진행','이번에만 허용','이번 한 번만 허용','이번 작업만 허용','한 번 허용','이번에만 동의','항상 허용','계속 허용','허용'], 
   };
   for (const [choice, values] of Object.entries(labels))
     if (values.includes(value)) return choice;
@@ -232,6 +232,43 @@ function matchesModelChoice(text, provider, model) {
 // OpenCode question UI replies are tool results, not new chat messages. Only
 // trust answers from an actually completed question tool call; model-supplied
 // prepare arguments and quoted conversation text are never consent evidence.
+// The form is the user's answer. No chat retyping, additional model-name
+// entry or repeated per-turn transmission confirmation is required.
+function chosenRuntime(label) {
+  const choice = label.toLowerCase().replace(/\s+/g,' ').trim();
+  if (/^(?:codex|gpt(?:\s*\/\s*codex|\s*\(codex\))?|codex\s*\/\s*gpt)/.test(choice))
+    return {runtime:'codex',provider:'codex'};
+  if (/^(?:claude code|claude\s*\(claude code\)|클로드 코드)/.test(choice))
+    return {runtime:'claude',provider:'claude'};
+  if (/^(?:opencode|오픈코드)/.test(choice))
+    return {runtime:'opencode'};
+  if (/^(?:api|openrouter|직접 api)/.test(choice))
+    return {runtime:'api',provider:'openrouter'};
+  if (/^(?:local llm|local|로컬 llm|로컬 모델|로컬 분석)/.test(choice))
+    return {runtime:'local'};
+  return null;
+}
+
+function chosenLocalProvider(label) {
+  const value = label.trim().toLowerCase();
+  if (/^ollama(?:\s|$)/.test(value)) return 'ollama';
+  if (/^lm studio(?:\s|$)/.test(value)) return 'lmstudio';
+  if (/^(?:openai-compatible|openai 호환|사설망 서버)/.test(value)) return 'openai_compatible';
+  return null;
+}
+
+function actualCatalogSelection(label, request) {
+  const options = Array.isArray(request.catalogModels) ? request.catalogModels : [];
+  const normalized = label.trim().replace(/\s*\(recommended\)$/i,'');
+  const matches = options.filter(item => {
+    const candidates = [item.id, item.provider + '/' + item.id];
+    return candidates.some(id => normalized === id ||
+      normalized.startsWith(id+' ') || normalized.startsWith(id+' —') ||
+      normalized.startsWith(id+' ('));
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function recordQuestionAnswers(event, request) {
   if (event.tool !== 'question' || event.status !== 'completed' || !request?.conversion) return;
   const questions = event.input?.questions;
@@ -242,42 +279,96 @@ export function recordQuestionAnswers(event, request) {
     const answer = answers[i];
     if (!question || !Array.isArray(answer) || answer.length !== 1 || typeof answer[0] !== 'string') continue;
     const selected = answer[0].trim();
-    // Only choices that were actually presented in the structured form.
+    // Reject agent-invented options; only recognize an actual selected UI label.
     if (!Array.isArray(question.options) || !question.options.some(opt => opt?.label === selected)) continue;
     const prompt = String(question.question ?? '') + ' ' + String(question.header ?? '');
     const choice = exactChoice(selected);
     if (/(?:이미지|사진|image|photo)/i.test(prompt) &&
         ['analyze','preserve','placeholder'].includes(choice)) {
       request.uiMode = choice;
+      request.uiModel = null;
       request.uiConsent = null;
       request.uiPersistentConsent = null;
+      request.uiRuntime = null;
+      request.catalogModels = null;
       continue;
     }
-    // User-selected model only, scoped to OpenRouter in the question itself.
-    if (/(?:모델|model)/i.test(prompt) && /(?:openrouter|외부 전송|external transfer)/i.test(prompt)) {
-      const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
-      if (match && (/(?:openrouter)/i.test(prompt) || /:free$/.test(match[1]) || match[1] === 'openrouter/free')) {
-        // Free model identifiers from the built-in OpenRouter chooser are
-        // tentative until a provider+model-specific transmission approval.
-        request.uiModel = {provider:'openrouter', model:match[1]};
+    // Service first, then its real model catalog. Never force OpenRouter.
+    if (/(?:플랫폼|서비스|실행 환경|provider|runtime|where.*(?:analy[sz]e|run))/i.test(prompt)) {
+      const runtime = chosenRuntime(selected);
+      if (runtime) {
+        request.uiRuntime = runtime;
+        request.uiModel = null;
         request.uiConsent = null;
-        request.uiPersistentConsent = null;
+        request.catalogModels = null;
         continue;
       }
     }
-    // Image transmission requires an additional explicit, provider+model-
-    // specific user approval. General image-mode/model selections do not grant it.
-    const selectedModel = request.uiModel;
-    if (request.uiMode === 'analyze' && selectedModel &&
-        /(?:외부|전송|upload|send|external|share)/i.test(prompt) &&
-        prompt.toLowerCase().includes(selectedModel.provider) &&
-        prompt.toLowerCase().includes(selectedModel.model.toLowerCase()) &&
-        choice === 'confirm') {
-      request.uiConsent = {...selectedModel};
-      if (/(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt)) {
-        // Explicitly scoped to future conversions, not just this one.
-        request.uiPersistentConsent = {...selectedModel};
+    if (request.uiRuntime?.runtime === 'local' &&
+        /(?:제공자|서버|local|로컬|provider)/i.test(prompt)) {
+      const provider = chosenLocalProvider(selected);
+      if (provider) {
+        request.uiRuntime = {runtime:'local',provider};
+        request.catalogModels = null;
+        continue;
       }
+    }
+    if (/(?:모델|model)/i.test(prompt) && request.uiMode === 'analyze') {
+      const hit = actualCatalogSelection(selected,request);
+      if (hit) {
+        const runtime = request.uiRuntime?.runtime ??
+          (['openrouter'].includes(hit.provider) ? 'api'
+            : ['ollama','lmstudio','openai_compatible'].includes(hit.provider) ? 'local'
+            : ['codex','claude'].includes(hit.provider) ? hit.provider : 'opencode');
+        const hostProvider = runtime === 'opencode' ? hit.provider :
+          runtime === 'local' ? request.uiRuntime?.provider || hit.provider :
+          runtime === 'api' ? 'openrouter' : runtime;
+        request.uiRuntime = {runtime,provider:hostProvider};
+        request.uiModel = {provider:runtime === 'local' ? 'local' :
+          runtime === 'opencode' ? 'opencode' : hostProvider,
+          model:runtime === 'opencode' ? hostProvider+'/'+hit.id : hit.id,
+          ...(runtime === 'local' ? {network_policy:request.catalogNetworkPolicy || 'local_only',
+            endpoint:request.catalogEndpoint} : {})};
+        const external = runtime !== 'local';
+        // The model-selection question itself can provide informed consent:
+        // disclose the service/image transfer and future default in that
+        // SAME question, rather than showing a second approval form.
+        const disclosure = /(?:외부|전송|업로드|제공자|send|upload|external)/i.test(prompt) &&
+          /(?:이미지|사진|image|photo)/i.test(prompt);
+        if (external && disclosure) {
+          request.uiConsent = {...request.uiModel};
+          if (/(?:향후|이후|앞으로|매번|항상|기본값|future|default|subsequent|remember)/i.test(prompt))
+            request.uiPersistentConsent = {...request.uiModel};
+        }
+        if (!external) request.uiConsent = {...request.uiModel};
+        continue;
+      }
+      // Older OpenRouter UI (prior to catalog paging) remains compatible.
+      if (/(?:openrouter)/i.test(prompt)) {
+        const match = selected.match(/^([\w.-]+\/[\w.:-]+)(?:\s|$)/);
+        if (match) {
+          request.uiRuntime = {runtime:'api',provider:'openrouter'};
+          request.uiModel = {provider:'openrouter',model:match[1]};
+          request.uiConsent = null;
+          request.uiPersistentConsent = null;
+          continue;
+        }
+      }
+    }
+    // Compatibility: "이번에만 허용" in the existing permission question
+    // is a FULL approval for this conversion, not another question.
+    const chosen = request.uiModel;
+    if (request.uiMode === 'analyze' && chosen &&
+        /(?:외부|전송|upload|send|external|share|허용|동의)/i.test(prompt) &&
+        (prompt.toLowerCase().includes(chosen.provider) ||
+         prompt.toLowerCase().includes(chosen.model.toLowerCase())) &&
+        choice === 'confirm') {
+      request.uiConsent = {...chosen};
+      if (/^(?:항상 허용|계속 허용)$/.test(selected) ||
+          /(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt) &&
+           !/(?:이번에만|이번 작업|one.time|only this)/i.test(selected))
+        request.uiPersistentConsent = {...chosen};
+      continue;
     }
   }
 }
@@ -861,6 +952,11 @@ export default {
           if (name === 'tokensaver_docs_search_research' && research &&
               resolve(input.project) === resolve(research.directory)) research.searched = true;
           const parsed = parseResult(result);
+          if (name === 'tokensaver_docs_list_image_models' && request?.conversion && Array.isArray(parsed?.models)) {
+            request.catalogModels=parsed.models.map(model=>({...model,provider:input.provider}));
+            request.catalogEndpoint=parsed.endpoint || input.endpoint || null;
+            request.catalogNetworkPolicy=input.network_policy || 'local_only';
+          }
           if (searchingDocument) {
             request.documentSearchStatus = parsed?.status;
           }
@@ -927,11 +1023,19 @@ export default {
           query:{type:'string'},limit:{type:'integer',minimum:1,maximum:40},
           offset:{type:'integer',minimum:0}},required:[]},
         options:{codemode:false},
-        execute:async (input) => {
+        execute:async (input,context) => {
           if (!ctx.model?.list) return {content:JSON.stringify({status:'unavailable',reason:'OpenCode model catalog API unavailable'})};
           try {
             const response=await ctx.model.list();
-            return {content:JSON.stringify(pagedOpenCodeModels(response,input))};
+            const page=pagedOpenCodeModels(response,input);
+            const request=context?.sessionID && requestBySession.get(context.sessionID);
+            if (request?.conversion && page.status === 'ready') {
+              request.catalogModels=page.models;
+              request.catalogEndpoint=null;
+              request.uiRuntime={runtime:'opencode'};
+              requestBySession.set(context.sessionID,request);
+            }
+            return {content:JSON.stringify(page)};
           } catch (error) {
             return {content:JSON.stringify({status:'unavailable',reason:'Model catalog lookup failed; no network fallback was used'})};
           }
@@ -1017,17 +1121,51 @@ export default {
         uiModel:continuing ? previous?.uiModel : undefined,
         uiConsent:continuing ? previous?.uiConsent : undefined,
         uiPersistentConsent:continuing ? previous?.uiPersistentConsent : undefined,
+        uiRuntime:continuing ? previous?.uiRuntime : undefined,
+        catalogModels:continuing ? previous?.catalogModels : undefined,
+        catalogEndpoint:continuing ? previous?.catalogEndpoint : undefined,
+        catalogNetworkPolicy:continuing ? previous?.catalogNetworkPolicy : undefined,
+        preferencesSaved:continuing ? previous?.preferencesSaved : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
       else requestBySession.delete(sessionID);
     });
-    // Persist *actual* user selections from OpenCode's question form.
-    // A cancelled/failed question never grants an image mode, model or consent.
-    await ctx.tool.hook('execute.after', event => {
+    // Completed question UI options are the user's answer, not a request to
+    // type it again. Persist the first-run choice immediately and reuse it.
+    await ctx.tool.hook('execute.after', async event => {
       const request = requestBySession.get(event.sessionID);
       if (!request?.conversion) return;
       recordQuestionAnswers(event, request);
+      if (event.tool === 'question' && event.status === 'completed' && !request.preferencesSaved) {
+        let args=null;
+        if (['preserve','placeholder'].includes(request.uiMode)) {
+          args=['preferences','--set-mode',request.uiMode];
+        } else if (request.uiMode === 'analyze' && request.uiModel && request.uiRuntime) {
+          const {runtime,provider} = request.uiRuntime;
+          const model = runtime === 'opencode'
+            ? request.uiModel.model.slice((provider+'/').length)
+            : request.uiModel.model;
+          const local = runtime === 'local';
+          if (local || (request.uiPersistentConsent?.provider === request.uiModel.provider &&
+                        request.uiPersistentConsent?.model === request.uiModel.model)) {
+            args=['preferences','--set-mode','analyze',
+              '--runtime',runtime,'--provider',provider,'--model',model,
+              '--network-policy',local ? request.catalogNetworkPolicy || 'local_only' : 'external_allowed',
+              ...(local && request.catalogEndpoint ? ['--endpoint',request.catalogEndpoint] : []),
+              ...(!local ? ['--allow-external-images'] : [])];
+          }
+        }
+        if (args) {
+          const saved=parseResult(await run(args));
+          if (saved?.status === 'configured') {
+            request.preferencesSaved=true;
+            request.pending=true;
+          } else if (saved?.status) {
+            request.preferenceError=saved;
+          }
+        }
+      }
       requestBySession.set(event.sessionID, request);
     });
     // Register the optional internal MCP bridge only when its binary is ready.
