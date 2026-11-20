@@ -363,10 +363,27 @@ def _generate_opencode(path: Path, model: str) -> dict:
         raise ConversionError('OpenCode CLI가 설치되어 있지 않습니다. 외부 모델로 변경하지 않았습니다.')
     prompt = IMAGE_PROMPT + ' 이미지를 설명하되 다른 도구를 호출하지 마세요.'
     with tempfile.TemporaryDirectory(prefix='tokensaver-opencode-vision-') as directory:
-        # The built-in plan agent does not edit normal project files. Run
-        # from a blank temporary workspace, with no project AGENTS instructions.
+        # A private, no-tools primary agent in an empty temporary workspace
+        # prevents a prompt injected into the supplied image from invoking
+        # shell, web, filesystem, MCP, or third-party plugin tools.
+        agent_dir = Path(directory) / '.opencode' / 'agents'
+        agent_dir.mkdir(parents=True, exist_ok=True)
+        (agent_dir / 'tokensaver-vision.md').write_text(
+            '---\n'
+            'description: TokenSaver image-only vision analysis; all tools denied\n'
+            'mode: primary\n'
+            'steps: 1\n'
+            'permissions:\n'
+            '  - action: "*"\n'
+            '    resource: "*"\n'
+            '    effect: deny\n'
+            '---\n'
+            'Analyze only the image attached to this request. Output JSON only.\n',
+            encoding='utf-8',
+        )
         args = [binary, 'run', '--standalone', '--archived', '--format', 'json',
-                '--agent', 'plan', '--model', model, '--file', str(path.resolve()), prompt]
+                '--agent', 'tokensaver-vision', '--model', model,
+                '--file', str(path.resolve()), prompt]
         try:
             result = subprocess.run(
                 args, cwd=directory, capture_output=True, text=True,
