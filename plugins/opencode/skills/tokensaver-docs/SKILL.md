@@ -39,6 +39,20 @@ informed decision to **persist** permission to send future document images to
 that specific provider/model; save with `allow_external_images=true`,
 `network_policy="external_allowed"` only after consent.
 
+**OpenCode runtime:** If the user chooses the OpenCode platform, query
+`tokensaver_docs_opencode_models` (not the OpenRouter/local catalog).
+Show its image-input model IDs grouped by actual provider, including user-
+configured providers and models. Then persist the user's exact selection with
+`tokensaver_docs_preferences(set_mode="analyze", runtime="opencode",
+provider=PROVIDER_ID, model=MODEL_ID, network_policy="external_allowed",
+allow_external_images=true)` **only** when the user expressly accepts
+ongoing transfer of document images to that exact OpenCode provider/model.
+Do not treat an OpenCode connection as proof of local inference. If local-only
+privacy is requested, instead select `runtime="local"` with a validated
+loopback/private endpoint. OpenCode execution needs the installed `opencode`
+CLI and may fail independently of model-list availability. Never silently
+switch providers or models if it does.
+
 Only show a model configuration UI when (a) preferences are absent and
 analysis is chosen, or (b) the user explicitly asks to change settings.
 The user's explicit request for a one-off alternative must not overwrite
