@@ -234,8 +234,8 @@ async function configuredImageProfile() {
   const pref = parseResult(await run(['preferences']));
   const saved = pref?.preferences;
   if (pref?.status === 'configured' && saved?.image_mode === 'analyze') {
-    return {provider: saved.runtime === 'local' ? 'local' : saved.provider,
-      model: saved.model,
+    return {provider: saved.runtime === 'local' ? 'local' : saved.runtime === 'opencode' ? 'opencode' : saved.provider,
+      model: saved.runtime === 'opencode' ? saved.provider + '/' + saved.model : saved.model,
       ...(saved.runtime === 'local' ? {endpoint:saved.endpoint,network_policy:saved.network_policy} : {}),
       persistentConsent: saved.runtime !== 'local' && saved.allow_external_images === true};
   }
@@ -522,7 +522,7 @@ export const TokenSaverDocsPlugin = async (ctx = {}) => {
       description: 'Read shared persistent first-use image settings or save the option explicitly selected by the user. Reuse settings automatically for later conversions; prompt only on first use or when the user asks to change. Do not set allow_external_images without explicit consent to persistent external transmission.',
       args: {set_mode:tool.schema.enum(['analyze','preserve','placeholder']).optional(),
         runtime:tool.schema.enum(['opencode','codex','claude','api','local']).optional(),
-        provider:tool.schema.enum(['openrouter','codex','claude','ollama','lmstudio','openai_compatible']).optional(),
+        provider:tool.schema.string().optional(),
         model:tool.schema.string().optional(),endpoint:tool.schema.string().optional(),
         network_policy:tool.schema.enum(['local_only','internal_only','external_allowed']).optional(),
         allow_external_images:tool.schema.boolean().optional()},
@@ -799,7 +799,7 @@ export default {
       add('tokensaver_docs_preferences', {
         set_mode:{type:'string',enum:['analyze','preserve','placeholder']},
         runtime:{type:'string',enum:['opencode','codex','claude','api','local']},
-        provider:{type:'string',enum:['openrouter','codex','claude','ollama','lmstudio','openai_compatible']},
+        provider:{type:'string'},
         model:string,endpoint:string,
         network_policy:{type:'string',enum:['local_only','internal_only','external_allowed']},
         allow_external_images:boolean
