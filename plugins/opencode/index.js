@@ -462,45 +462,53 @@ export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {})
 // Enforce the wizard at the host tool boundary. Instructions alone let agents
 // jump to their current chat-provider's model list, as shown in the report.
 // Only a real, completed service selection can move to a model question.
+// OpenCode may deep-freeze native question tool arguments. Never assign to
+// question.header/options or mutate the original array. The V2 before hook
+// permits replacing event.input with a separately constructed value instead.
 export function normalizeImageWizardQuestion(input, request) {
   if (!request?.conversion || request.uiMode !== 'analyze' ||
-      !Array.isArray(input?.questions) || !input.questions.length) return false;
+      !Array.isArray(input?.questions) || !input.questions.length) return null;
   const question = input.questions[0];
-  if (!question || !Array.isArray(question.options)) return false;
+  if (!question || !Array.isArray(question.options)) return null;
+  const replaceFirst = patch => ({
+    ...input,
+    questions:[{...question, ...patch, multiple:false}, ...input.questions.slice(1)]
+  });
   if (!request.uiRuntime?.runtime) {
-    question.header='TokenSaver 서비스';
-    question.question='이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.';
-    question.options=IMAGE_SERVICE_OPTIONS.map(o=>({...o}));
-    question.multiple=false;
-    return true;
+    return replaceFirst({
+      header:'TokenSaver 서비스',
+      question:'이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.',
+      options:IMAGE_SERVICE_OPTIONS.map(o=>({...o}))
+    });
   }
   if (request.uiRuntime.runtime === 'local' && !request.uiRuntime.provider) {
-    question.header='TokenSaver 로컬 제공자';
-    question.question='로컬 LLM 서버를 선택하세요.';
-    question.options=LOCAL_SERVICE_OPTIONS.map(o=>({...o}));
-    question.multiple=false;
-    return true;
+    return replaceFirst({
+      header:'TokenSaver 로컬 제공자',
+      question:'로컬 LLM 서버를 선택하세요.',
+      options:LOCAL_SERVICE_OPTIONS.map(o=>({...o}))
+    });
   }
   const existingModels=request.catalogModels;
   if (!Array.isArray(existingModels) || existingModels.length === 0 ||
       !/(?:모델|model|선택|choose)/i.test(String(question.question)+' '+String(question.header)))
-    return false;
-  question.header='TokenSaver 모델';
-  question.question=request.uiRuntime.runtime === 'local'
-    ? '이미지 분석 모델을 선택하세요. 로컬 서버에서 분석하며 외부 서비스로 이미지를 전송하지 않습니다. 선택한 모델은 이후 변환에도 기본값으로 저장됩니다.'
-    : '이미지 분석 모델을 선택하세요. 선택한 외부 서비스로 이미지가 전송되며, 모델은 이후 변환에도 기본값으로 저장됩니다.';
-  question.options=existingModels.map(m=>({
+    return null;
+  const options=existingModels.map(m=>({
     label:request.uiRuntime.runtime === 'opencode' ? m.provider+'/'+m.id : m.id,
     description:[m.name && m.name !== m.id ? m.name : null,
       m.vision === 'supported' ? '이미지 입력 표시' : '이미지 지원 미확인']
       .filter(Boolean).join(' · ')
   }));
   if (request.catalogPage?.offset > 0)
-    question.options.push({label:'이전 모델 보기',description:'이전 페이지'});
+    options.push({label:'이전 모델 보기',description:'이전 페이지'});
   if (request.catalogPage?.has_more)
-    question.options.push({label:'다음 모델 보기',description:'다음 페이지'});
-  question.multiple=false;
-  return true;
+    options.push({label:'다음 모델 보기',description:'다음 페이지'});
+  return replaceFirst({
+    header:'TokenSaver 모델',
+    question:request.uiRuntime.runtime === 'local'
+      ? '이미지 분석 모델을 선택하세요. 로컬 서버에서 분석하며 외부 서비스로 이미지를 전송하지 않습니다. 선택한 모델은 이후 변환에도 기본값으로 저장됩니다.'
+      : '이미지 분석 모델을 선택하세요. 선택한 외부 서비스로 이미지가 전송되며, 모델은 이후 변환에도 기본값으로 저장됩니다.',
+    options
+  });
 }
 
 // A model catalog is also a ready-to-display question-form payload. The
@@ -1286,7 +1294,8 @@ export default {
     await ctx.tool.hook('execute.before', event => {
       if (event.tool !== 'question') return;
       const request=requestBySession.get(event.sessionID);
-      normalizeImageWizardQuestion(event.input,request);
+      const replacement=normalizeImageWizardQuestion(event.input,request);
+      if (replacement) event.input=replacement;
     });
     // Completed question UI options are the user's answer, not a request to
     // type it again. Persist the first-run choice immediately and reuse it.
