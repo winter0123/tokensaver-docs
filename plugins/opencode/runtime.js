@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { homedir, platform, arch } from 'node:os';
 
-const VERSION = 'v0.5.6';
+const VERSION = 'v0.5.7';
 let pending;
 async function exists(path) { try { await access(path); return true; } catch { return false; } }
 
