@@ -981,7 +981,7 @@ export default {
           const serviceGate = requireSelectedImageService(request,
             name === 'tokensaver_docs_list_image_models' ? input.provider :
             name === 'tokensaver_docs_setup_model' ? input.provider :
-            name === 'tokensaver_docs_preferences' && input.set_mode === 'analyze' ? input.provider :
+            name === 'tokensaver_docs_preferences' && input.set_mode === 'analyze' ? null :
             name === 'tokensaver_docs_prepare' && (input.image_mode === 'analyze' || input.transcribe_images === true) ? null : null);
           if (serviceGate && (name === 'tokensaver_docs_list_image_models' ||
               name === 'tokensaver_docs_setup_model' ||
