@@ -14,7 +14,7 @@ let executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.pl
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
 const requestBySession = new Map();
 
-const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. Follow the tool’s setup and image-choice questions: without an actual user choice, stop and ask; never infer a model, defer, image mode, or provider consent. For conversion-only, report the returned Markdown paths and status without rereading the result.';
+const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. For unanswered choices, never infer a model, defer, image mode, or provider consent. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
 const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
 const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current real user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze and this model. Otherwise use OpenCode question UI for the explicit approval: the actual UI answer is remembered by the plugin. NEVER ask the user to copy it into chat. The question must identify the exact provider and model, clearly say that document images will be transmitted externally, and offer consent and decline options. Once the user selects consent, immediately retry tokensaver_docs_prepare for the same source and model. Neither model selection nor agent-written prose nor tool arguments grants consent.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
@@ -159,6 +159,7 @@ export function recordQuestionAnswers(event, request) {
         ['analyze','preserve','placeholder'].includes(choice)) {
       request.uiMode = choice;
       request.uiConsent = null;
+      request.uiPersistentConsent = null;
       continue;
     }
     // User-selected model only, scoped to OpenRouter in the question itself.
@@ -169,6 +170,7 @@ export function recordQuestionAnswers(event, request) {
         // tentative until a provider+model-specific transmission approval.
         request.uiModel = {provider:'openrouter', model:match[1]};
         request.uiConsent = null;
+        request.uiPersistentConsent = null;
         continue;
       }
     }
@@ -181,8 +183,44 @@ export function recordQuestionAnswers(event, request) {
         prompt.toLowerCase().includes(selectedModel.model.toLowerCase()) &&
         choice === 'confirm') {
       request.uiConsent = {...selectedModel};
+      if (/(?:앞으로|향후|매번|계속|항상|영구|future|always|persist|remember|default)/i.test(prompt)) {
+        // Explicitly scoped to future conversions, not just this one.
+        request.uiPersistentConsent = {...selectedModel};
+      }
     }
   }
+}
+
+// OpenCode's own catalog, including models configured by user and local
+// OpenCode providers. This is the host's live model inventory (not the
+// conversion engine's model catalog). Do not assume all entries can accept
+// image files or can be invoked by TokenSaver's Python subprocess.
+export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {}) {
+  const models = Array.isArray(response?.data) ? response.data : [];
+  const safeQuery = typeof query === 'string' ? query.slice(0,100).toLowerCase() : '';
+  const size = Number.isInteger(limit) ? Math.min(40,Math.max(1,limit)) : 20;
+  const start = Number.isInteger(offset) ? Math.max(0,offset) : 0;
+  const entries = models.filter(m =>
+    m && m.enabled !== false && (!m.type || m.type === 'chat') &&
+    typeof m.providerID === 'string' && typeof m.id === 'string' &&
+    Array.isArray(m.capabilities?.input) && m.capabilities.input.includes('image'))
+    .map(m => ({
+      provider: m.providerID,
+      id: m.id,
+      name: typeof m.name === 'string' ? m.name : m.id,
+      vision: 'supported',
+      runtime: 'opencode',
+      // Actual model output cost/provider privacy depends on the host settings.
+      // The model list alone is NOT a grant to send images.
+      network_policy: 'unknown',
+      conversion_available: true,
+      requires_installed_cli: true,
+      experimental: true,
+    }))
+    .filter(m => !safeQuery || (m.provider + '/' + m.id + ' ' + m.name).toLowerCase().includes(safeQuery))
+    .sort((a,b)=>(a.provider+'/'+a.id).localeCompare(b.provider+'/'+b.id));
+  return {status:'ready', provider:'opencode', total:entries.length,
+    offset:start, has_more:start+size<entries.length, models:entries.slice(start,start+size)};
 }
 
 function choiceError(choice) {
@@ -195,6 +233,14 @@ function parseResult(result) {
 }
 
 async function configuredImageProfile() {
+  const pref = parseResult(await run(['preferences']));
+  const saved = pref?.preferences;
+  if (pref?.status === 'configured' && saved?.image_mode === 'analyze') {
+    return {provider: saved.runtime === 'local' ? 'local' : saved.runtime === 'opencode' ? 'opencode' : saved.provider,
+      model: saved.runtime === 'opencode' ? saved.provider + '/' + saved.model : saved.model,
+      ...(saved.runtime === 'local' ? {endpoint:saved.endpoint,network_policy:saved.network_policy} : {}),
+      persistentConsent: saved.runtime !== 'local' && saved.allow_external_images === true};
+  }
   const state = parseResult(await run(['setup-model']));
   return state?.status === 'configured' ? state.model : null;
 }
@@ -232,8 +278,11 @@ function explicitChoiceError(name, input, request) {
     const consent = request?.uiConsent;
     const approvedByQuestion = request?.uiMode === 'analyze' &&
       consent?.provider === input.model_provider && consent?.model === input.model;
-    const approved = choice === 'analyze' || approvedByQuestion;
     const selected = request?.profile ?? request?.uiModel;
+    const local = selected?.provider === 'local' &&
+      ['local_only','internal_only'].includes(selected.network_policy);
+    const approved = choice === 'analyze' || approvedByQuestion ||
+      local || selected?.persistentConsent === true;
     const hasModelChoice = Boolean(input.model && input.model_provider &&
       text.toLowerCase().includes(input.model.toLowerCase()) && text.toLowerCase().includes(input.model_provider.toLowerCase()));
     const mismatch = selected && ((input.model && input.model !== selected.model) ||
@@ -471,6 +520,37 @@ export const TokenSaverDocsPlugin = async (ctx = {}) => {
       args: { source: tool.schema.string(), output: tool.schema.string().optional(), transcribe_images: tool.schema.boolean().optional(), image_mode: tool.schema.enum(['analyze','preserve','placeholder']).optional(), model_provider: tool.schema.enum(['openrouter','codex','claude']).optional(), model: tool.schema.string().optional(), allow_unverified_model: tool.schema.boolean().optional() },
       execute: ({source,output,transcribe_images,image_mode,model_provider,model,allow_unverified_model}) => run(['prepare',source,'--output',output ?? 'converted',...(transcribe_images === undefined ? [] : [transcribe_images ? '--transcribe-images' : '--skip-image-transcription']),...(image_mode ? ['--image-mode',image_mode] : []),...(model_provider ? ['--model-provider',model_provider] : []),...(model ? ['--model',model] : []),...(allow_unverified_model ? ['--allow-unverified-model'] : [])]),
     }),
+    tokensaver_docs_preferences: tool({
+      description: 'Read shared persistent first-use image settings or save the option explicitly selected by the user. Reuse settings automatically for later conversions; prompt only on first use or when the user asks to change. Do not set allow_external_images without explicit consent to persistent external transmission.',
+      args: {set_mode:tool.schema.enum(['analyze','preserve','placeholder']).optional(),
+        runtime:tool.schema.enum(['opencode','codex','claude','api','local']).optional(),
+        provider:tool.schema.string().optional(),
+        model:tool.schema.string().optional(),endpoint:tool.schema.string().optional(),
+        network_policy:tool.schema.enum(['local_only','internal_only','external_allowed']).optional(),
+        allow_external_images:tool.schema.boolean().optional()},
+      execute: ({set_mode,runtime,provider,model,endpoint,network_policy,allow_external_images}) => run([
+        'preferences',...(set_mode?['--set-mode',set_mode]:[]),
+        ...(runtime?['--runtime',runtime]:[]),...(provider?['--provider',provider]:[]),
+        ...(model?['--model',model]:[]),...(endpoint?['--endpoint',endpoint]:[]),
+        ...(network_policy?['--network-policy',network_policy]:[]),
+        ...(allow_external_images?['--allow-external-images']:[])]),
+    }),
+    tokensaver_docs_list_image_models: tool({
+      description: 'List image model IDs on a selected local/OpenRouter provider. A catalog entry does not guarantee vision capability; do not invent support.',
+      args: {provider:tool.schema.enum(['openrouter','codex','claude','ollama','lmstudio','openai_compatible']),
+        endpoint:tool.schema.string().optional(),
+        query:tool.schema.string().optional(),
+        limit:tool.schema.number().int().min(1).max(40).optional(),
+        offset:tool.schema.number().int().min(0).optional(),
+        network_policy:tool.schema.enum(['local_only','internal_only']).optional()},
+      execute: ({provider,endpoint,network_policy,query,limit,offset}) => run([
+        'list-image-models','--provider',provider,
+        ...(endpoint?['--endpoint',endpoint]:[]),
+        ...(network_policy?['--network-policy',network_policy]:[]),
+        ...(query?['--query',query]:[]),
+        ...(limit!==undefined?['--limit',String(limit)]:[]),
+        ...(offset!==undefined?['--offset',String(offset)]:[])]),
+    }),
     tokensaver_docs_setup_model: tool({
       description: 'Inspect first-use setup or a user-selected conversion model. Defer only when the user chooses later. If a question fails or is cancelled, stop and ask the user; never infer defer, model or confirmation arguments. A one-time selection does not save defaults; save_as_default requires explicit confirmation. Never request API keys in chat or assume the host chat model is the conversion model.',
       args: { provider: tool.schema.enum(['openrouter','codex','claude']).optional(), model: tool.schema.string().optional(), defer: tool.schema.boolean().optional(), save_as_default: tool.schema.boolean().optional(), confirmed: tool.schema.boolean().optional() },
@@ -591,6 +671,31 @@ export default {
             }
             request.documentSearches += 1;
           }
+          if ((name === 'tokensaver_docs_list_image_models' ||
+               name === 'tokensaver_docs_preferences') && typeof input.endpoint === 'string') {
+            // A private-network address is not permission to probe arbitrary
+            // internal services. Accept only the real user's supplied endpoint
+            // or an already saved one, not an agent-invented address.
+            const known = parseResult(await run(['preferences']))?.preferences?.endpoint;
+            if (known !== input.endpoint && !String(request.text || '').includes(input.endpoint))
+              return { content: choiceError('Ask the user to provide the exact local/internal model endpoint before querying or storing it.') };
+          }
+          if (name === 'tokensaver_docs_preferences' && input.allow_external_images === true) {
+            // Persistence is stronger than consent for a one-off operation.
+            // A model-generated argument alone must never silently authorize
+            // ongoing image uploads across future projects/sessions.
+            const prompt = String(request.text || '');
+            const explicitlyPersistent = /(?:앞으로|향후|매번|계속|항상|저장|기본값|future|always|persist|remember|default)/i.test(prompt);
+            const explicitlyExternal = /(?:이미지.{0,25}(?:외부|전송|제공자)|(?:외부|전송).{0,25}이미지|send images|upload images|image transmission)/i.test(prompt);
+            const named = typeof input.provider === 'string' &&
+              typeof input.model === 'string' && prompt.toLowerCase().includes(input.provider.toLowerCase()) &&
+              prompt.toLowerCase().includes(input.model.toLowerCase());
+            const actualQuestion = request.uiPersistentConsent &&
+              request.uiPersistentConsent.provider === input.provider &&
+              request.uiPersistentConsent.model === input.model;
+            if ((!explicitlyPersistent || !explicitlyExternal || !named) && !actualQuestion)
+              return { content: choiceError('Persistent external image transfer must be explicitly authorized by the user with the exact provider/model; a model choice alone is not consent.') };
+          }
           if (name === 'tokensaver_docs_setup_audio') {
             if (request.audioDeclined || request.completed)
               return { content: JSON.stringify({status:'stopped',next:'Do not make further audio setup calls for this request.'}) };
@@ -617,7 +722,11 @@ export default {
               return { content: choiceError('Use the selected image model or ask the user to select another model first.') };
             }
             request.profile = selected;
-            if (selected) callInput = { ...input, model_provider: selected.provider, model: selected.model };
+            if (selected) callInput = ['local', 'opencode'].includes(selected.provider)
+              // These runtime profiles include a persistent trusted transport
+              // policy and cannot be represented by legacy bare model flags.
+              ? { ...input, model_provider: undefined, model: undefined }
+              : { ...input, model_provider: selected.provider, model: selected.model };
           }
           if (name === 'tokensaver_docs_setup_model' && input.confirmed && request.defaultConfirmation) {
             if ((input.model && input.model !== request.defaultConfirmation.model) ||
@@ -691,6 +800,39 @@ export default {
         allow_unverified_model:boolean}, ['source'], legacy.tool.tokensaver_docs_prepare.execute);
       add('tokensaver_docs_setup_model', {provider:{type:'string',enum:['openrouter','codex','claude']},
         model:string,defer:boolean,save_as_default:boolean,confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_model.execute);
+      add('tokensaver_docs_preferences', {
+        set_mode:{type:'string',enum:['analyze','preserve','placeholder']},
+        runtime:{type:'string',enum:['opencode','codex','claude','api','local']},
+        provider:{type:'string'},
+        model:string,endpoint:string,
+        network_policy:{type:'string',enum:['local_only','internal_only','external_allowed']},
+        allow_external_images:boolean
+      }, [], legacy.tool.tokensaver_docs_preferences.execute);
+      add('tokensaver_docs_list_image_models', {
+        provider:{type:'string',enum:['openrouter','codex','claude','ollama','lmstudio','openai_compatible']},
+        endpoint:string,query:string,limit:{type:'integer',minimum:1,maximum:40},
+        offset:{type:'integer',minimum:0},
+        network_policy:{type:'string',enum:['local_only','internal_only']}
+      }, ['provider'], legacy.tool.tokensaver_docs_list_image_models.execute);
+      // The host catalog is accessible even when the pinned native runtime
+      // hasn't been downloaded. It does not activate image analysis by itself.
+      editor.add({
+        name:'tokensaver_docs_opencode_models',
+        description:'Show actual image-input models currently configured in OpenCode, with provider IDs. Model discovery does not imply native image-conversion availability or external data-transfer approval.',
+        input:{type:'object',additionalProperties:false,properties:{
+          query:{type:'string'},limit:{type:'integer',minimum:1,maximum:40},
+          offset:{type:'integer',minimum:0}},required:[]},
+        options:{codemode:false},
+        execute:async (input) => {
+          if (!ctx.model?.list) return {content:JSON.stringify({status:'unavailable',reason:'OpenCode model catalog API unavailable'})};
+          try {
+            const response=await ctx.model.list();
+            return {content:JSON.stringify(pagedOpenCodeModels(response,input))};
+          } catch (error) {
+            return {content:JSON.stringify({status:'unavailable',reason:'Model catalog lookup failed; no network fallback was used'})};
+          }
+        }
+      });
       add('tokensaver_docs_setup_audio', {model:{type:'string',enum:['tiny','base','small']},confirmed:boolean}, [], legacy.tool.tokensaver_docs_setup_audio.execute);
       add('tokensaver_docs_convert_audio', {source:string,output:string,confirmed:boolean}, ['source'], legacy.tool.tokensaver_docs_convert_audio.execute);
       add('tokensaver_docs_read', {file:string,start_line:{type:'integer',minimum:1}}, ['file'], legacy.tool.tokensaver_docs_read.execute);
@@ -770,6 +912,7 @@ export default {
         uiMode:continuing ? previous?.uiMode : undefined,
         uiModel:continuing ? previous?.uiModel : undefined,
         uiConsent:continuing ? previous?.uiConsent : undefined,
+        uiPersistentConsent:continuing ? previous?.uiPersistentConsent : undefined,
         defaultConfirmation:continuing ? previous?.defaultConfirmation : undefined,
       });
       else if (documentQuestion) requestBySession.set(sessionID,{text,messageID:event.messageID,documentQuestion,documentSearches:0});
@@ -809,7 +952,7 @@ export default {
       const mcpName = event.tool.startsWith('tokensaver-docs_') ? event.tool.slice('tokensaver-docs_'.length) : null;
       const nativeName = event.tool.startsWith('tokensaver_docs_') ? event.tool.slice('tokensaver_docs_'.length) : null;
       if ((mcpName !== null && !safeMcp.has(mcpName)) ||
-          (nativeName !== null && !['prepare','setup_model','setup_audio','convert_audio','read','context',...safeMcp].includes(nativeName)))
+          (nativeName !== null && !['prepare','preferences','list_image_models','opencode_models','setup_model','setup_audio','convert_audio','read','context',...safeMcp].includes(nativeName)))
         throw new Error('Use guarded native tokensaver_docs_prepare, tokensaver_docs_setup_audio, or tokensaver_docs_convert_audio; duplicate MCP conversion/settings routes are disabled.');
       const request = requestBySession.get(event.sessionID);
       if (event.tool === 'tokensaver_docs_prepare' && request?.documentQuestion &&

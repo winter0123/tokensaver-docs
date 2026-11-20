@@ -70,6 +70,14 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
     if image_mode is not None and legacy_mode is not None and image_mode != legacy_mode:
         raise ValueError('이미지 처리 선택이 서로 다릅니다.')
     mode = image_mode or legacy_mode
+    saved_preferences = None
+    if strict:
+        from .workflow import load_preferences
+        saved_preferences = load_preferences()
+        if mode is None and saved_preferences:
+            mode = saved_preferences['image_mode']
+        # A persisted model, not a fresh one-time override, is selected
+        # automatically on every future conversion.
     if bool(model_provider) != bool(model):
         raise ValueError('이번에 사용할 제공자와 모델을 함께 지정하세요.')
     override = None
@@ -79,7 +87,19 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
     selected = None
     if strict:
         from .model_setup import load_model_selection
-        selected = override or load_model_selection()
+        stored = None
+        if saved_preferences and saved_preferences['image_mode'] == 'analyze':
+            stored = {
+                'provider': ('local' if saved_preferences['runtime'] == 'local'
+                             else 'opencode' if saved_preferences['runtime'] == 'opencode'
+                             else saved_preferences['provider']),
+                'model': (saved_preferences['provider'] + '/' + saved_preferences['model']
+                          if saved_preferences['runtime'] == 'opencode'
+                          else saved_preferences['model'])}
+            if stored['provider'] == 'local':
+                stored.update(endpoint=saved_preferences['endpoint'],
+                              network_policy=saved_preferences['network_policy'])
+        selected = override or stored or load_model_selection()
         has_images = mode in (None, 'analyze') and _needs_image_choice(source, output)
         if has_images and mode == 'analyze':
             if not selected:
@@ -87,13 +107,21 @@ def prepare_documents(source, output='converted', *, transcribe_images=_UNSET,
             from .providers import inspect_image_model
             report = inspect_image_model(selected)
             metadata = {'model': selected, 'model_support': report}
-            if report['capability'] == 'unsupported':
+            # Persistent preferences are not an invitation to ask the user to
+            # reselect every time. Let the same provider handle the request;
+            # unsupported/failed calls report an error without automatic
+            # fallback or silently changing the saved preference.
+            saved_selection = bool(stored is not None and selected == stored)
+            if report['capability'] == 'unsupported' and not saved_selection:
                 return _model_choice('model_incompatible', '선택한 모델은 이미지를 읽을 수 없어요. 이미지 속 글자와 내용을 MD에 담으려면 이미지 지원 모델이 필요해요. 모델을 바꿀까요?', **metadata)
-            if report.get('reason') == 'lookup_failed':
+            if report.get('reason') == 'lookup_failed' and not saved_selection:
                 return _model_choice('model_lookup_failed', '모델 정보를 조회하지 못했어요. 이미지 지원 여부를 확인한 뒤 모델을 선택하거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
-            if report['capability'] == 'unknown' and not allow_unverified_model:
+            # The model was explicitly selected in saved user preferences.
+            # Generic local catalogs often cannot attest vision support; let
+            # the chosen local model run and report any model-side failure.
+            if report['capability'] == 'unknown' and not (allow_unverified_model or saved_selection):
                 return _model_choice('model_support_unknown', '선택한 모델의 이미지 지원 여부를 확인할 수 없어요. 확인 가능한 모델로 바꾸거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
-            if selected['provider'] == 'openrouter' and report['price'] != 'free':
+            if selected['provider'] == 'openrouter' and report['price'] != 'free' and not saved_selection:
                 return _model_choice('model_price_unverified', '선택한 모델의 무료 이용 조건이 확인되지 않아 이미지 전송을 중단했어요. 무료 이미지 모델로 바꾸거나 [이미지]로 표시하고 계속할 수 있어요.', **metadata)
         if mode is None:
             if has_images:

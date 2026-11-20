@@ -11,6 +11,56 @@ For supported local file/folder-to-Markdown requests, including “turn this pho
 
 Call `prepare_documents(source, output)` first (OpenCode v1: `tokensaver_docs_prepare`; v2: native `tokensaver_docs_prepare`). Return the tool's question and explain the result of each option. Never choose a model or image mode for the user. If no actual user choice is received, or the question tool fails or is cancelled, stop and ask the user in chat; never invent a choice or pass inferred defer, model, image-mode or consent arguments. Return actual paths/status after preparation.
 
+## First-run preferences and automatic future conversions
+
+The user should **not** answer the same conversion questions for every document.
+Always begin the **first** image-bearing conversion by calling
+`tokensaver_docs_preferences` with no arguments to inspect shared settings.
+If it returns `configured`, immediately call `tokensaver_docs_prepare`
+without specifying `image_mode`, `model_provider`, or `model`: the
+native engine automatically applies the stored mode and model. Do **not**
+repeat model selection or consent prompts, even across new sessions or tools.
+If a configured model fails, report the concrete failure; never switch to
+another service or reopen settings unless the user requests a change.
+
+If preferences return `setup_required`, show the user the image handling
+options once. **After their actual selection**, save with
+`tokensaver_docs_preferences(set_mode="preserve")` or
+`set_mode="placeholder"` and then call `tokensaver_docs_prepare`.
+Neither option sends images to any model. If analysis is selected, ask which
+runtime/provider to use (Codex, Claude Code, API/OpenRouter, or a local
+Ollama/LM Studio/OpenAI-compatible server), list models using
+`tokensaver_docs_list_image_models` where supported, and let the user select
+the exact ID. For local or internal networks, validate the literal loopback/
+private endpoint, save `runtime="local"`, `provider="ollama"|"lmstudio"|"openai_compatible"`,
+`network_policy="local_only"|"internal_only"`, and do not grant external
+transmission consent. For external Codex/Claude/OpenRouter, obtain an explicit
+informed decision to **persist** permission to send future document images to
+that specific provider/model; save with `allow_external_images=true`,
+`network_policy="external_allowed"` only after consent.
+
+**OpenCode runtime:** If the user chooses the OpenCode platform, query
+`tokensaver_docs_opencode_models` (not the OpenRouter/local catalog).
+Show its image-input model IDs grouped by actual provider, including user-
+configured providers and models. Then persist the user's exact selection with
+`tokensaver_docs_preferences(set_mode="analyze", runtime="opencode",
+provider=PROVIDER_ID, model=MODEL_ID, network_policy="external_allowed",
+allow_external_images=true)` **only** when the user expressly accepts
+ongoing transfer of document images to that exact OpenCode provider/model.
+Do not treat an OpenCode connection as proof of local inference. If local-only
+privacy is requested, instead select `runtime="local"` with a validated
+loopback/private endpoint. OpenCode execution needs the installed `opencode`
+CLI and may fail independently of model-list availability. Never silently
+switch providers or models if it does.
+
+Only show a model configuration UI when (a) preferences are absent and
+analysis is chosen, or (b) the user explicitly asks to change settings.
+The user's explicit request for a one-off alternative must not overwrite
+persisted defaults. Models exposed by OpenCode may be invoked for image analysis through the
+installed OpenCode CLI using a separate archived run. Require explicit
+persistent external-image transmission approval for the exact selected
+provider/model because the host catalog does not guarantee that it is local. Preserve original files.
+
 ## OpenCode V2 interactive choices
 
 Use OpenCode's built-in `question` tool to show selectable image modes and model options. The plugin observes **completed question-tool answers**, associates them with the current conversion session, and accepts the selected option when the native tool is retried. Once the user submits a selection in the UI, **continue in the same turn**; do not ask them to retype or copy the same answer into chat. A cancelled question, an unanswered form or arguments supplied by the model alone are not permission.

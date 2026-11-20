@@ -5,9 +5,9 @@
 <p align="center">Created by <a href="https://github.com/winter0123">winter0123</a> · <a href="https://github.com/winter0123/tokensaver-docs">Original repository</a> · <a href="AUTHORS.md">Authors</a> · <a href="LICENSE">MIT License</a></p>
 
 <p align="center">
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
-<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-win32-x64.zip?download=1"><img src="assets/readme/download-windows.svg" width="260" alt="Download Windows x64 ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-darwin-arm64.zip?download=1"><img src="assets/readme/download-macos.svg" width="260" alt="Download macOS Apple Silicon ZIP" /></a>
+<a href="https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-darwin-x64.zip?download=1"><img src="assets/readme/download-macos-intel.svg" width="260" alt="macOS Intel download" /></a>
 </p>
 <p align="center"><a href="https://github.com/winter0123/tokensaver-docs/releases">All releases</a></p>
 
@@ -19,7 +19,7 @@ Click your OS button to download, then choose your agent in the installer.
 
 <a id="download"></a>
 
-## Download and install — v0.5.6
+## Download and install — v0.5.7
 
 Extract the entire ZIP and run the installer once. Select the installed Codex, Claude Code, or OpenCode agents to register. No separate Python is needed.
 
@@ -38,13 +38,13 @@ Paste the command for your OS. It downloads and verifies the installer bundle, t
 **macOS**
 
 ```sh
-curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/install.sh' -o tokensaver-docs-install.sh && sh tokensaver-docs-install.sh --repo winter0123/tokensaver-docs --version v0.5.6
+curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/install.sh' -o tokensaver-docs-install.sh && sh tokensaver-docs-install.sh --repo winter0123/tokensaver-docs --version v0.5.7
 ```
 
 **Windows PowerShell**
 
 ```powershell
-& { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/install.ps1' -OutFile tokensaver-docs-install.ps1 -ErrorAction Stop; & .\tokensaver-docs-install.ps1 -Repo winter0123/tokensaver-docs -Version v0.5.6 }
+& { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/install.ps1' -OutFile tokensaver-docs-install.ps1 -ErrorAction Stop; & .\tokensaver-docs-install.ps1 -Repo winter0123/tokensaver-docs -Version v0.5.7 }
 ```
 
 <details>
@@ -52,9 +52,9 @@ curl -fsSL --proto '=https' 'https://github.com/winter0123/tokensaver-docs/relea
 
 | Operating system | Claude Code | Codex | OpenCode |
 | --- | --- | --- | --- |
-| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-opencode-darwin-arm64.zip) |
-| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-opencode-darwin-x64.zip) |
-| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.6/tokensaver-docs-opencode-win32-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-claude-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-codex-darwin-arm64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-opencode-darwin-arm64.zip) |
+| macOS Intel | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-claude-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-codex-darwin-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-opencode-darwin-x64.zip) |
+| Windows x64 | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-claude-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-codex-win32-x64.zip) | [ZIP](https://github.com/winter0123/tokensaver-docs/releases/download/v0.5.7/tokensaver-docs-opencode-win32-x64.zip) |
 
 </details>
 
@@ -70,13 +70,54 @@ When your agent can open the attachment, the tool uses the original name and a d
 
 ## Automatic project research archive
 
-Since v0.5.6, you can enable the archive once per project using the command printed by the installer. After that, ask normally.
+Since v0.5.7, you can enable the archive once per project using the command printed by the installer. After that, ask normally.
 
 > Look up the return policy and summarize it in this project.
 
 When an enabled agent saves research materials, TokenSaver keeps **versioned originals, searchable Markdown and a summary for readers** in the project. Reports link to available originals and evidence lines. References with only a URL are recorded as links. In a new session, ask about the saved research to find relevant excerpts within the default 500-token budget.
 
 Public web snapshots from approved sites, local audio transcription, and automatic image analysis are optional per project. [Setup and advanced usage](docs/advanced-usage.md#project-research-archive) · [Verification results](docs/current-status.md#v051-public-preview)
+
+## First-run image preferences (development source; not in v0.5.7 binaries)
+
+The forthcoming native CLI can save conversion preferences once in a shared user
+configuration file (`conversion-preferences.json` next to the existing TokenSaver
+configuration). Subsequent `prepare FILE` requests reuse the selected image mode
+and model automatically, regardless of project or whether the host is Codex,
+Claude Code, or OpenCode. The user changes these preferences only when requested.
+A text-only document never requires a model call.
+
+```sh
+tokensaver-docs preferences
+tokensaver-docs preferences --set-mode preserve
+tokensaver-docs preferences --set-mode placeholder
+tokensaver-docs list-image-models --provider ollama
+tokensaver-docs preferences --set-mode analyze --runtime local --provider ollama --model YOUR_MODEL --network-policy local_only
+tokensaver-docs prepare /path/to/document.html
+```
+
+The local model must already be installed and expose an OpenAI-compatible
+`/v1/models` and `/v1/chat/completions` interface. For LM Studio use
+`--provider lmstudio`. Use `--provider openai_compatible --endpoint
+http://10.0.0.5:8000/v1 --network-policy internal_only` for approved private-IP
+servers; the default `local_only` permits only loopback. No proxy, redirect,
+unapproved DNS endpoint or external-model fallback is allowed. Network-policy
+validation does not independently certify the entire local server's behavior.
+
+For OpenRouter API, first select its exact model and explicitly authorize
+**persistent future image transmissions to that provider/model** before saving
+`--set-mode analyze --runtime api --provider openrouter --model MODEL
+--network-policy external_allowed --allow-external-images`. Codex/Claude CLIs
+remain separately supported. OpenCode model catalog entries can be selected for native image analysis through
+`opencode run --standalone --archived --file ... --model ...`; the specific
+provider/model must be authorized for persistent image transfer. Local-only
+mode instead uses a validated loopback/private API endpoint. A model catalog can report unknown vision
+support and must not be treated as proof.
+
+**Release limitation:** the marketplace launcher and native ZIP downloads
+currently pin v0.5.7. These development-source commands will not become
+available to plugin installs until new native binaries are released and the
+launchers are updated. Updating only the OpenCode Git plugin is insufficient.
 
 ## Choose or change a model
 

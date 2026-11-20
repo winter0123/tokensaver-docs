@@ -1,0 +1,30 @@
+name: Native bundle preview
+
+on:
+  push:
+    branches: ['feat/first-run-conversion-preferences']
+  pull_request:
+    paths:
+      - 'tokensaver_docs/**'
+      - 'plugins/**'
+      - 'marketplace-plugin/**'
+      - 'skills/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/plugin-build.yml'
+      - '.github/workflows/native-preview.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: native-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-build:
+    uses: ./.github/workflows/plugin-build.yml
+    with:
+      ref: ''

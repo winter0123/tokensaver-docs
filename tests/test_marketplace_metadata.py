@@ -91,17 +91,69 @@ assert.equal(request.uiConsent,null);
 answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
   ['분석 동의','동의 안 함'],'분석 동의');
 assert.deepEqual(request.uiConsent,request.uiModel);
+assert.equal(request.uiPersistentConsent,null);
+answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 앞으로 모든 변환 이미지를 외부 전송하는 데 계속 동의하나요?',
+  ['분석 동의','동의 안 함'],'분석 동의');
+assert.deepEqual(request.uiPersistentConsent,request.uiModel);
 answer('test.html 안의 이미지를 Markdown에 어떻게 넣을까요?',
   ['이미지 링크만 넣기 (Recommended)','이미지·글자·설명 넣기'],
   '이미지 링크만 넣기 (Recommended)');
 assert.equal(request.uiMode,'preserve');
 assert.equal(request.uiConsent,null);
+assert.equal(request.uiPersistentConsent,null);
 answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
   ['분석 동의','동의 안 함'],'분석 동의','error');
 assert.equal(request.uiConsent,null);
 answer('OpenRouter nvidia/nemotron-3.5-super-vl:free 모델로 이미지를 외부 전송하여 분석해도 될까요?',
   ['동의 안 함'],'분석 동의');
 assert.equal(request.uiConsent,null);
+"""
+            run = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(root / "index.js")],
+                cwd=root, env=dict(os.environ, XDG_CONFIG_HOME=temp),
+                capture_output=True, text=True, timeout=20)
+            self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_opencode_catalog_lists_configured_vision_models_without_inventing_support(self):
+        """The host catalog is distinct from the external/local Python engines."""
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            from pathlib import Path
+            root = Path(temp)
+            for name in ("index.js", "runtime.js", "research-routing.json"):
+                shutil.copy2(OPENCODE / name, root / name)
+            (root / "package.json").write_text('{"type":"module"}')
+            stub = root / "node_modules" / "@opencode-ai" / "plugin"
+            stub.mkdir(parents=True)
+            (stub / "package.json").write_text('{"type":"module","exports":"./index.js"}')
+            (stub / "index.js").write_text("export const tool = () => ({});")
+            script = """
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {pagedOpenCodeModels}=await import(pathToFileURL(process.argv[1]));
+const example={data:[
+  {id:'vl-2',providerID:'intranet',name:'Internal VL',enabled:true,
+   capabilities:{input:['image','text']}},
+  {id:'vision-free',providerID:'openrouter',name:'Vision Free',enabled:true,
+   capabilities:{input:['image','text']}},
+  {id:'text-only',providerID:'openrouter',name:'No images',enabled:true,
+   capabilities:{input:['text']}},
+  {id:'disabled-vl',providerID:'intranet',enabled:false,
+   capabilities:{input:['image']}}
+]};
+const all=pagedOpenCodeModels(example);
+assert.equal(all.total,2);
+assert.deepEqual(all.models.map(x=>x.provider),['intranet','openrouter']);
+assert.equal(all.models[0].conversion_available,true);
+assert.equal(all.models[0].requires_installed_cli,true);
+assert.equal(all.models[0].network_policy,'unknown');
+const page=pagedOpenCodeModels(example,{query:'vision',limit:1});
+assert.equal(page.total,1);
+assert.equal(page.models[0].id,'vision-free');
+console.log('PASS: host vision catalog');
 """
             run = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(root / "index.js")],

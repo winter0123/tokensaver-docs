@@ -98,15 +98,38 @@ def eligible(model: dict, kind: str) -> bool:
 
 
 def validate_image_profile(profile: dict) -> dict:
-    if (not isinstance(profile, dict) or set(profile) != {'provider', 'model'}
-            or profile.get('provider') not in ('openrouter', 'codex', 'claude')
-            or not isinstance(profile.get('model'), str) or not profile['model'].strip()):
-        raise ValueError('제공자와 모델만 지정하세요. API 키는 환경변수로 설정하세요.')
-    return {'provider': profile['provider'], 'model': profile['model'].strip()}
+    if not isinstance(profile, dict):
+        raise ValueError('이미지 제공자와 모델을 선택하세요.')
+    provider, model = profile.get('provider'), profile.get('model')
+    if not isinstance(model, str) or not model.strip() or len(model) > 200:
+        raise ValueError('유효한 이미지 모델 ID를 선택하세요.')
+    if provider == 'local':
+        if set(profile) != {'provider', 'model', 'endpoint', 'network_policy'}:
+            raise ValueError('로컬 모델은 서버 주소와 네트워크 정책이 필요합니다.')
+        from .workflow import _trusted_endpoint
+        policy = profile['network_policy']
+        if policy not in ('local_only', 'internal_only'):
+            raise ValueError('로컬 모델은 외부 전송을 허용하지 않습니다.')
+        return {'provider': provider, 'model': model.strip(),
+                'endpoint': _trusted_endpoint(profile['endpoint'], policy),
+                'network_policy': policy}
+    if set(profile) != {'provider', 'model'} or provider not in ('openrouter', 'codex', 'claude', 'opencode'):
+        raise ValueError('이미지 제공자 및 모델만 지정하세요. API 키는 환경변수로 설정하세요.')
+    return {'provider': provider, 'model': model.strip()}
 
 
 def inspect_image_model(profile: dict) -> dict:
     profile = validate_image_profile(profile)
+    if profile['provider'] == 'local':
+        try:
+            catalog = catalog_image_models('openai_compatible', endpoint=profile['endpoint'],
+                                           network_policy=profile['network_policy'])
+        except ConversionError:
+            return {'capability': 'unknown', 'price': 'local', 'reason': 'lookup_failed'}
+        candidate = next((x for x in catalog['models'] if x['id'] == profile['model']), None)
+        if candidate is None:
+            return {'capability': 'unknown', 'price': 'local', 'reason': 'model_not_found'}
+        return {'capability': candidate['vision'], 'price': 'local', 'reason': 'local_catalog'}
     if profile['provider'] != 'openrouter':
         return {'capability': 'unknown', 'price': 'unknown', 'reason': 'capability_unavailable'}
     try:
@@ -124,6 +147,157 @@ def list_models() -> list[dict]:
     if not isinstance(models, list):
         raise ConversionError('모델 목록 형식을 확인할 수 없습니다.')
     return [m for m in models if isinstance(m, dict)]
+
+
+def _local_request(url, payload=None):
+    # No environment proxy, redirects or DNS names; the endpoint is a
+    # literal, validated loopback/private IP chosen in persisted settings.
+    import urllib.parse
+    from .workflow import _trusted_endpoint
+    base = url.rsplit('/models', 1)[0] if url.endswith('/models') else url.rsplit('/chat/completions', 1)[0]
+    _trusted_endpoint(base, 'internal_only')
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            raise ConversionError('모델 서버 리다이렉트는 허용하지 않습니다.')
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect)
+    data = None if payload is None else json.dumps(payload).encode('utf-8')
+    request = urllib.request.Request(url, data=data, headers={'Accept': 'application/json',
+                                     'Content-Type': 'application/json'})
+    try:
+        with opener.open(request, timeout=60 if payload is None else 180) as response:
+            raw = response.read(20 * 1024 * 1024 + 1)
+        if len(raw) > 20 * 1024 * 1024:
+            raise ConversionError('로컬 모델 응답 제한을 초과했습니다.')
+        result = json.loads(raw)
+        if not isinstance(result, dict):
+            raise ValueError()
+        return result
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        raise ConversionError(f'로컬 모델 서버 HTTP {exc.code}. 서버/모델을 확인하세요.') from None
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise ConversionError('로컬 모델 서버에 연결할 수 없습니다. 외부 모델로 전환하지 않았습니다.') from None
+    except (ValueError, TypeError):
+        raise ConversionError('로컬 모델 서버가 유효한 JSON을 반환하지 않았습니다.') from None
+
+
+def _cli_model_catalog(provider):
+    # Codex's experimental debug command prints raw instruction templates.
+    # Never return those: isolate only public-facing model names and slugs.
+    if provider == 'codex':
+        try:
+            result = subprocess.run(
+                ['codex', 'debug', 'models', '--bundled'], capture_output=True,
+                encoding='utf-8', errors='replace', timeout=20, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            raise ConversionError('Codex 모델 카탈로그를 읽을 수 없습니다. 설치 버전 또는 인증 상태를 확인하세요.') from None
+        if result.returncode:
+            raise ConversionError('현재 Codex CLI에서 모델 목록을 확인할 수 없습니다.') 
+        try:
+            raw = json.loads(result.stdout)
+        except (ValueError, TypeError):
+            raise ConversionError('Codex 모델 카탈로그 형식이 예상과 다릅니다.') from None
+        rows = raw if isinstance(raw, list) else raw.get('models', []) if isinstance(raw, dict) else []
+        if not isinstance(rows, list):
+            raise ConversionError('Codex 모델 목록 형식이 올바르지 않습니다.')
+        return [{'id': m['slug'], 'name': m.get('display_name', m['slug']),
+                 'vision':'unknown', 'availability':'bundled_not_account_verified'}
+                for m in rows if isinstance(m, dict) and isinstance(m.get('slug'), str)]
+    if provider == 'claude':
+        # Claude Code has a TUI /model picker but no stable machine-readable
+        # local CLI catalog. Return documented aliases as unverified choices,
+        # never claim access, quotas, image support or a live account list.
+        return [{'id': name, 'name': name,
+                 'vision':'unknown', 'availability':'alias_not_account_verified'}
+                for name in ('opus','sonnet','haiku')]
+    raise ConversionError('지원하지 않는 CLI 모델 제공자입니다.')
+
+
+def catalog_image_models(provider, *, endpoint=None, network_policy='local_only', query=None, limit=20, offset=0):
+    if not isinstance(limit, int) or not 1 <= limit <= 40 or not isinstance(offset, int) or offset < 0:
+        raise ConversionError('모델 목록은 최대 40개씩 조회할 수 있습니다.')
+    if query is not None and (not isinstance(query, str) or len(query) > 100):
+        raise ConversionError('모델 검색어가 너무 깁니다.')
+    if provider in ('codex','claude'):
+        entries = _cli_model_catalog(provider)
+        if query:
+            entries = [m for m in entries if query.casefold() in m['id'].casefold()]
+        entries.sort(key=lambda m: m['id'])
+        return {'provider': provider, 'source': 'cli_bundled' if provider=='codex' else 'documented_aliases',
+                'account_verified': False, 'total': len(entries), 'offset': offset,
+                'has_more': offset + limit < len(entries),
+                'models': entries[offset:offset+limit]}
+    if provider == 'openrouter':
+        models = [{'id': m['id'], 'vision': _model_capability(m, 'image'), 'price': _model_price(m)}
+                  for m in list_models() if isinstance(m.get('id'), str)
+                  and _model_capability(m, 'image') == 'supported']
+        if query:
+            models = [m for m in models if query.casefold() in m['id'].casefold()]
+        models.sort(key=lambda m: m['id'])
+        return {'provider': provider, 'total': len(models), 'offset': offset,
+                'has_more': offset + limit < len(models), 'models': models[offset:offset + limit]}
+    if provider not in ('ollama', 'lmstudio', 'openai_compatible'):
+        raise ConversionError('지원하지 않는 모델 제공자입니다.')
+    from .workflow import _trusted_endpoint, ENDPOINTS
+    if network_policy not in ('local_only', 'internal_only'):
+        raise ConversionError('로컬 카탈로그는 로컬/내부망만 조회합니다.')
+    base = _trusted_endpoint(endpoint or ENDPOINTS.get(provider), network_policy)
+    result = _local_request(base + '/models')
+    models = result.get('data')
+    if not isinstance(models, list):
+        raise ConversionError('모델 목록 형식이 올바르지 않습니다.')
+    # Generic OpenAI-compatible /v1/models does not guarantee a vision flag.
+    # Never invent image support from a model name.
+    entries = [{'id': m['id'], 'vision': 'unknown', 'price': 'local'}
+               for m in models if isinstance(m, dict) and isinstance(m.get('id'), str)]
+    if query:
+        entries = [m for m in entries if query.casefold() in m['id'].casefold()]
+    entries.sort(key=lambda m: m['id'])
+    return {'provider': provider, 'endpoint': base, 'total': len(entries),
+            'offset': offset, 'has_more': offset + limit < len(entries),
+            'models': entries[offset:offset + limit]}
+
+
+def _generate_local(path: Path, model: str, profile: dict) -> dict:
+    from .workflow import _trusted_endpoint
+    endpoint = _trusted_endpoint(profile['endpoint'], profile['network_policy'])
+    if path.stat().st_size > 15 * 1024 * 1024:
+        raise ConversionError('로컬 이미지 입력이 15 MiB를 초과합니다.')
+    data = path.read_bytes()
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        mime = 'image/png'
+    elif data.startswith(b'\xff\xd8\xff'):
+        mime = 'image/jpeg'
+    elif len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        mime = 'image/webp'
+    else:
+        # Extractors can produce other image formats; normalize to a
+        # widely supported PNG rather than pretending the bytes are PNG.
+        from PIL import Image
+        try:
+            with Image.open(path) as image:
+                output = io.BytesIO()
+                image.save(output, 'PNG')
+                data = output.getvalue()
+            mime = 'image/png'
+        except (OSError, ValueError):
+            raise ConversionError('로컬 이미지 형식을 읽을 수 없습니다.') from None
+    if len(data) > 15 * 1024 * 1024:
+        raise ConversionError('로컬 이미지 정규화 후 크기가 15 MiB를 초과합니다.')
+    payload = {'model': model, 'max_tokens': 8192,
+               'messages': [{'role': 'user', 'content': [
+                   {'type': 'text', 'text': IMAGE_PROMPT},
+                   {'type': 'image_url', 'image_url': {
+                       'url': 'data:' + mime + ';base64,' +
+                       base64.b64encode(data).decode('ascii')}}]}]}
+    response = _local_request(endpoint + '/chat/completions', payload)
+    choices = response.get('choices')
+    if (not isinstance(choices, list) or not choices
+            or not isinstance(choices[0], dict)
+            or choices[0].get('finish_reason') != 'stop'):
+        raise ConversionError('로컬 모델 응답이 불완전합니다.')
+    content = choices[0].get('message', {}).get('content')
+    return {'text': checked_text(content), 'usage': response.get('usage', {})}
 
 
 def checked_text(text) -> str:
@@ -167,10 +341,95 @@ def whisper_generate(path: Path, model: str) -> dict:
         return {'text': checked_text(transcript.read_text(encoding='utf-8')), 'usage': {}}
 
 
+def _generate_opencode(path: Path, model: str) -> dict:
+    """Analyze an image with an explicitly selected OpenCode model.
+
+    This launches an isolated archived CLI run; it does not use the current
+    conversational agent, silently select another provider, or transmit
+    images to a TokenSaver-owned remote endpoint. External transmission
+    authorization is checked by the persistent preference validator.
+    """
+    if not isinstance(model, str) or '/' not in model or len(model) > 260:
+        raise ConversionError('OpenCode 모델은 provider/model 형식으로 지정하세요.')
+    provider_id, model_id = model.split('/', 1)
+    import re
+    if (not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,100}', provider_id)
+            or not model_id or any(c in model_id for c in '\r\n\x00')):
+        raise ConversionError('잘못된 OpenCode 모델 ID입니다.')
+    if not path.is_file() or path.stat().st_size > 15 * 1024 * 1024:
+        raise ConversionError('OpenCode에 보낼 이미지를 찾을 수 없거나 15 MiB를 초과합니다.')
+    binary = shutil.which('opencode')
+    if not binary:
+        raise ConversionError('OpenCode CLI가 설치되어 있지 않습니다. 외부 모델로 변경하지 않았습니다.')
+    prompt = IMAGE_PROMPT + ' 이미지를 설명하되 다른 도구를 호출하지 마세요.'
+    with tempfile.TemporaryDirectory(prefix='tokensaver-opencode-vision-') as directory:
+        # A private, no-tools primary agent in an empty temporary workspace
+        # prevents a prompt injected into the supplied image from invoking
+        # shell, web, filesystem, MCP, or third-party plugin tools.
+        agent_dir = Path(directory) / '.opencode' / 'agents'
+        agent_dir.mkdir(parents=True, exist_ok=True)
+        (agent_dir / 'tokensaver-vision.md').write_text(
+            '---\n'
+            'description: TokenSaver image-only vision analysis; all tools denied\n'
+            'mode: primary\n'
+            'steps: 1\n'
+            'permissions:\n'
+            '  - action: "*"\n'
+            '    resource: "*"\n'
+            '    effect: deny\n'
+            '---\n'
+            'Analyze only the image attached to this request. Output JSON only.\n',
+            encoding='utf-8',
+        )
+        args = [binary, 'run', '--standalone', '--archived', '--format', 'json',
+                '--agent', 'tokensaver-vision', '--model', model,
+                '--file', str(path.resolve()), prompt]
+        try:
+            result = subprocess.run(
+                args, cwd=directory, capture_output=True, text=True,
+                encoding='utf-8', errors='replace', timeout=240, check=False)
+        except subprocess.TimeoutExpired:
+            raise ConversionError('OpenCode 이미지 분석 시간이 초과됐습니다. 다른 모델로 전환하지 않았습니다.') from None
+        except OSError:
+            raise ConversionError('OpenCode 이미지 분석을 시작할 수 없습니다.') from None
+    if result.returncode:
+        # Do not forward stderr: provider exceptions may include credentials,
+        # image URLs, or user-private context.
+        raise ConversionError('선택한 OpenCode 모델의 이미지 분석이 실패했습니다. 모델 연결과 로그를 확인하세요.')
+    if len(result.stdout) > 8 * 1024 * 1024:
+        raise ConversionError('OpenCode 이미지 분석 출력이 너무 큽니다.')
+    parts = []
+    failed = False
+    for line in result.stdout.splitlines():
+        try:
+            record = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(record, dict):
+            continue
+        if record.get('type') == 'error':
+            failed = True
+        if record.get('type') == 'text':
+            part = record.get('part')
+            if isinstance(part, dict) and isinstance(part.get('text'), str):
+                parts.append(part['text'])
+    if failed or not parts:
+        raise ConversionError('OpenCode가 유효한 이미지 분석 결과를 반환하지 않았습니다.')
+    return {'text': checked_text(''.join(parts)), 'usage': {}}
+
+
 def generate(path: Path, kind: str, profile: dict) -> dict:
     provider, model = profile.get('provider'), profile.get('model')
-    if not isinstance(model, str) or not model.strip() or provider not in ('openrouter', 'codex', 'claude', 'whisper.cpp'):
+    if not isinstance(model, str) or not model.strip() or provider not in ('openrouter', 'codex', 'claude', 'whisper.cpp', 'local', 'opencode'):
         raise ConversionError('제공자와 모델을 직접 선택해 주세요.')
+    if provider == 'opencode':
+        if kind != 'image':
+            raise ConversionError('OpenCode CLI 이미지 연결은 이미지 입력만 지원합니다.')
+        return _generate_opencode(path, model)
+    if provider == 'local':
+        if kind != 'image':
+            raise ConversionError('로컬 OpenAI 호환 연결은 이미지 입력만 지원합니다.')
+        return _generate_local(path, model, validate_image_profile(profile))
     if provider == 'whisper.cpp':
         if kind != 'audio':
             raise ConversionError('whisper.cpp는 음성 입력에만 사용할 수 있습니다.')

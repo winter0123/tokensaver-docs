@@ -5,6 +5,12 @@ description: 로컬 PDF·DOCX·XLSX·HTML·Markdown에서 질문의 답과 근�
 
 문서 내용에 대한 질문에는 OpenCode의 `tokensaver_docs_context` 또는 MCP의 `context_documents`를 먼저 사용한다. Markdown 파일 생성을 요청받으면 준비 도구를 사용한다. 사용자가 도구를 명시하면 해당 도구를 사용한다.
 
+## 최초 1회 이미지 변환 설정
+
+사용자별 공통 설정을 `tokensaver-docs preferences`로 먼저 확인한다. 최초 이미지 포함 문서 변환에서 `setup_required`이면 이미지 처리 방식(analyze/preserve/placeholder)을 한 번만 묻고 `preferences --set-mode preserve` 또는 `--set-mode placeholder`로 저장한다. 이후 다른 프로젝트·새 세션에서도 설정된 방식을 재사용하므로 재질문하지 않는다. 변경은 사용자가 명시적으로 요청했을 때만 한다. 이미지는 외부 전송하지 않는 두 방식은 모델 설정이 필요 없다.
+
+분석을 선택하면 실행 환경(Codex, Claude Code, OpenRouter API, Ollama/LM Studio/로컬 OpenAI 호환)을 먼저 고르고, 가능한 경우 `list-image-models --provider PROVIDER`로 실제 모델 목록을 조회한다. 로컬 모델에는 `preferences --set-mode analyze --runtime local --provider ollama --model MODEL --network-policy local_only`처럼 설정한다. 사내망은 승인된 사설 IP 주소와 `internal_only`를 사용한다. 외부 분석은 정확한 서비스와 모델, 향후 변환 이미지 전송에 대한 별도 동의를 받은 후에만 `--allow-external-images --network-policy external_allowed`로 저장한다. 로컬 모델은 외부로 자동 전환하지 않는다. OpenCode 연결 모델은 실제 OpenCode 모델 목록에서 선택한 정확한 제공자·모델 ID를 사용하여 별도의 비대화형 분석으로 호출한다. OpenCode의 모델 전송 경로는 자동으로 내부망이라고 가정하지 않고 외부 전송 동의가 필요하다. `prepare`는 저장한 방식을 자동 적용하며 설정값을 다시 물으면 안 된다. 실패 시 사용자가 변경을 요청하지 않는 한 모델 선택을 다시 시작하지 않는다.
+
 # 파일을 직접 읽기 전에 도구 호출
 
 지원하는 로컬 파일·폴더를 Markdown으로 변환하는 요청, 특히 “사진/이미지/스크린샷의 글자와 설명을 MD 파일로 정리” 요청이면 원문 읽기나 변환 명령 작성보다 준비 도구를 우선 사용한다. 이는 변환 요청에 적용하며 일반적인 이미지 보기나 이미지 질문은 이미지 작업으로 처리한다. 사용자가 다른 도구나 명령을 명시하면 그 선택을 존중한다. 원본 편집·웹 디자인·기존 Markdown 수정·미지원 형식에는 이 흐름을 적용하지 않는다. 대상 경로가 없거나 모호하면 정확한 경로를 묻는다. `output`은 파일명이 아닌 디렉터리다. 안전한 기본값을 쓰려면 생략하고 파일명을 추측하지 않는다. 변환만 요청했다면 실제 MD 경로와 상태를 전달하고 도구의 선택 흐름에 필요한 경우 외에는 검색·추가 본문 읽기·모델 호출을 붙이지 않는다.
