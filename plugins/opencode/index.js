@@ -946,7 +946,8 @@ export default {
             const project = context?.directory ?? session?.location?.directory ??
               session?.directory ?? ctx.location?.directory;
             const found = await resolveProjectSource(callInput.source, project);
-            if (found.status !== 'ready' && found.status !== 'source_not_found')
+            if (found.status !== 'ready' && found.status !== 'source_not_found' &&
+                found.status !== 'project_required')
               return { content: JSON.stringify(found) };
             if (found.status === 'ready') {
               // The native binary runs in the service's cwd. Use the exact
