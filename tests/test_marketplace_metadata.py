@@ -54,6 +54,54 @@ class MarketplaceMetadataTests(unittest.TestCase):
         self.assertIn("ensureTokenSaverExecutable", source)
         self.assertIn("./research-routing.json", source)
 
+    def test_model_catalog_is_blocked_until_explicit_service_choice(self):
+        """The original screenshot's model-first flow must not be possible anymore."""
+        if not shutil.which("node"):
+            self.skipTest("Node.js unavailable")
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            for name in ("index.js","runtime.js","research-routing.json"):
+                shutil.copy2(OPENCODE / name,root / name)
+            (root / "package.json").write_text('{"type":"module"}')
+            stub=root / "node_modules" / "@opencode-ai" / "plugin"
+            stub.mkdir(parents=True)
+            (stub / "package.json").write_text('{"type":"module","exports":"./index.js"}')
+            (stub / "index.js").write_text("export const tool = () => ({});")
+            script=r"""
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {requireSelectedImageService,recordQuestionAnswers}=await import(pathToFileURL(process.argv[1]));
+const req={conversion:true,uiMode:'analyze'};
+assert.equal(requireSelectedImageService(req,'opencode').stage,'service');
+assert.deepEqual(requireSelectedImageService(req,'opencode').selection_ui.options.map(x=>x.label),
+ ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter']);
+const answer=(prompt,labels,selected,status='completed')=>recordQuestionAnswers({
+  tool:'question',status,
+  input:{questions:[{question:prompt,header:'TokenSaver 서비스',
+    options:labels.map(label=>({label}))}]},
+  result:{output:{answers:[[selected]]}}
+},req);
+answer('이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.',
+  ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter'],'로컬 LLM');
+assert.equal(req.uiRuntime.runtime,'local');
+assert.equal(requireSelectedImageService(req,'ollama').stage,'local_provider');
+answer('로컬 서버 제공자를 선택하세요.',
+  ['Ollama','LM Studio','OpenAI 호환 서버'],'Ollama');
+assert.deepEqual(req.uiRuntime,{runtime:'local',provider:'ollama'});
+assert.equal(requireSelectedImageService(req,'ollama'),null);
+assert.equal(requireSelectedImageService(req,'openrouter').stage,'service_mismatch');
+req.uiRuntime=null;
+answer('이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.',
+  ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter'],'OpenCode','error');
+assert.equal(req.uiRuntime,null);
+console.log('PASS mandatory runtime choice before catalog');
+"""
+            run=subprocess.run(['node','--input-type=module','-e',script,str(root/'index.js')],
+                cwd=root,env=dict(os.environ),capture_output=True,text=True,timeout=25)
+            self.assertEqual(run.returncode,0,run.stdout+run.stderr)
+
     def test_tui_model_search_picker_and_form_submission(self):
         """The separate TUI part provides native fuzzy-like search and replies to its own forms only."""
         if not shutil.which("node"):
