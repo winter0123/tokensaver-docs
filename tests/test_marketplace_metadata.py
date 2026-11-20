@@ -147,7 +147,8 @@ const example={data:[
 const all=pagedOpenCodeModels(example);
 assert.equal(all.total,2);
 assert.deepEqual(all.models.map(x=>x.provider),['intranet','openrouter']);
-assert.equal(all.models[0].conversion_available,false);
+assert.equal(all.models[0].conversion_available,true);
+assert.equal(all.models[0].requires_installed_cli,true);
 assert.equal(all.models[0].network_policy,'unknown');
 const page=pagedOpenCodeModels(example,{query:'vision',limit:1});
 assert.equal(page.total,1);
