@@ -28,7 +28,7 @@ source and NO `image_mode` or `model_provider` override immediately.
 Do not reopen any mode, platform, model, or confirmation UI unless the user
 specifically requests a change. Text-only documents need no model setup.
 
-If `setup_required`, use the OpenCode `question` tool and display this sequence.
+If `setup_required`, use the OpenCode `question` tool and display this mandatory sequence. The TokenSaver native tool rejects every model catalog call until an actual completed service-selection question has been recorded; do not retry different model providers to bypass the choice.
 Ask ONE form per step; advance immediately after every choice:
 
 1. **Image handling** — question "이미지를 Markdown에 어떻게 넣을까요?" with
@@ -38,13 +38,15 @@ Ask ONE form per step; advance immediately after every choice:
    `tokensaver_docs_prepare` immediately. Do not show a model list or a
    permission form.
 2. **Analysis service** — only for the first `이미지·글자·설명 넣기`.
-   Question: "이미지 분석에 사용할 서비스(플랫폼)를 선택하세요."
-   Options: `Codex / GPT`, `Claude Code`, `OpenCode`,
-   `API / OpenRouter`, `로컬 LLM`. Never show a specific provider's model
+   Use `question` with header **`TokenSaver 서비스`** and question
+   "이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요."
+   Options: `GPT / Codex`, `Claude Code`, `OpenCode`,
+   `로컬 LLM`, `API / OpenRouter`. Never show a specific provider's model
    list before this selection. The conversion model is independent of the
    chat model and from any account subscription.
 3. **Local service** — only when `로컬 LLM` was chosen. Show options
-   `Ollama`, `LM Studio`, `OpenAI 호환 서버`.
+   `Ollama`, `LM Studio`, `OpenAI 호환 서버` using header
+   `TokenSaver 로컬 제공자`.
    Ollama/LM Studio use their validated local defaults; for an OpenAI-
    compatible LAN service, request a user-supplied validated URL when one
    is not already configured. Do not invent endpoints or contact unknown
@@ -61,8 +63,20 @@ Ask ONE form per step; advance immediately after every choice:
    Use `query`, `limit` and `offset` to support search and page changes.
    Include `다음 모델 보기` / `이전 모델 보기` navigation options
    as needed; selecting these must fetch another page, not choose a model.
+   Set the question header to exactly **`TokenSaver 모델`** so that the
+   companion terminal-UI picker can detect the model form.
    The user should NEVER need to type a model ID manually. Search terms
    are optional.
+
+   **Search UI:** The OpenCode TUI package now exports `./tui`. When the
+   terminal host loads it, the `TokenSaver 모델` question opens an
+   independent, searchable native `ui.dialog.select` list (as in `/model`)
+   and submits that selected option to the original question form. The
+   selected model does NOT alter OpenCode's conversation model. Do not
+   ask the user to run `/model` or `/tokensaver-model`.
+   If the TUI part is unavailable, the ordinary native question form with
+   actual model options and next/previous pages still works; never require
+   a manually typed model ID.
 5. **Choose a model and proceed**. Put a disclosure IN THE MODEL SELECTION
    QUESTION ITSELF: "이미지 분석 모델을 선택하세요. 선택한 모델은 이후 변환에도
    기본값으로 저장됩니다. 외부 서비스를 선택하면 해당 서비스로 이미지가 전송됩니다."
@@ -91,6 +105,9 @@ bytes merely to enumerate models.
 
 The OpenCode question tool may display a built-in "Type your own answer"
 fallback, but the user should not HAVE to use it to choose a listed model.
+Do not treat an arbitrary free-text model/service name as an option selection.
+The service-picker stage is mandatory: never show the currently active chat
+model provider's models just because they are easiest to enumerate.
 Keep form selection, page navigation and optional search sufficient for normal
 operation. The plugin and the native runtime own the conversion; never
 write custom shell scripts or read raw HTML/Base64 to work around a failure.
