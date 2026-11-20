@@ -75,11 +75,17 @@ import {pathToFileURL} from 'node:url';
 const {requireSelectedImageService,recordQuestionAnswers,normalizeImageWizardQuestion}=await import(pathToFileURL(process.argv[1]));
 const req={conversion:true,uiMode:'analyze'};
 assert.equal(requireSelectedImageService(req,'opencode').stage,'service');
-const premature={questions:[{header:'AI 모델',question:'이미지 분석 모델을 선택하세요.',
-  options:[{label:'openrouter/one'},{label:'local llm api 연결'}]}]};
-assert.equal(normalizeImageWizardQuestion(premature,req),true);
-assert.equal(premature.questions[0].header,'TokenSaver 서비스');
-assert.deepEqual(premature.questions[0].options.map(x=>x.label),
+const original=Object.freeze({header:'AI 모델',question:'이미지 분석 모델을 선택하세요.',
+  options:Object.freeze([Object.freeze({label:'openrouter/one'}),
+    Object.freeze({label:'local llm api 연결'})])});
+const premature=Object.freeze({questions:Object.freeze([original])});
+const rewritten=normalizeImageWizardQuestion(premature,req);
+assert.equal(rewritten.questions[0].header,'TokenSaver 서비스');
+assert.equal(original.header,'AI 모델');
+assert.equal(original.options[0].label,'openrouter/one');
+assert.notEqual(rewritten.questions[0],original);
+assert.notEqual(rewritten.questions,premature.questions);
+assert.deepEqual(rewritten.questions[0].options.map(x=>x.label),
  ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter']);
 assert.deepEqual(requireSelectedImageService(req,'opencode').selection_ui.options.map(x=>x.label),
  ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter']);
@@ -93,19 +99,33 @@ answer('이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하�
   ['GPT / Codex','Claude Code','OpenCode','로컬 LLM','API / OpenRouter'],'로컬 LLM');
 assert.equal(req.uiRuntime.runtime,'local');
 assert.equal(requireSelectedImageService(req,'ollama').stage,'local_provider');
-const wrongSecond={questions:[{question:'Which model?',options:[{label:'openrouter/free'}]}]};
-normalizeImageWizardQuestion(wrongSecond,req);
-assert.equal(wrongSecond.questions[0].header,'TokenSaver 로컬 제공자');
+const wrongSecond=Object.freeze({questions:Object.freeze([
+  Object.freeze({question:'Which model?',
+    options:Object.freeze([Object.freeze({label:'openrouter/free'})])})
+])});
+const localQuestion=normalizeImageWizardQuestion(wrongSecond,req);
+assert.equal(localQuestion.questions[0].header,'TokenSaver 로컬 제공자');
+assert.equal(wrongSecond.questions[0].question,'Which model?');
 answer('로컬 서버 제공자를 선택하세요.',
   ['Ollama','LM Studio','OpenAI 호환 서버'],'Ollama');
 assert.deepEqual(req.uiRuntime,{runtime:'local',provider:'ollama'});
 assert.equal(requireSelectedImageService(req,'ollama'),null);
 req.catalogModels=[{id:'qwen2.5-vl:latest',provider:'ollama'}];
-const modelQuestion={questions:[{question:'Choose model',options:[{label:'fake cloud model'}]}]};
-assert.equal(normalizeImageWizardQuestion(modelQuestion,req),true);
-assert.equal(modelQuestion.questions[0].header,'TokenSaver 모델');
-assert.deepEqual(modelQuestion.questions[0].options.map(o=>o.label),['qwen2.5-vl:latest']);
-assert.match(modelQuestion.questions[0].question,/외부 서비스로 이미지를 전송하지/);
+const modelQuestion=Object.freeze({questions:Object.freeze([
+  Object.freeze({question:'Choose model',
+    options:Object.freeze([Object.freeze({label:'fake cloud model'})])})
+])});
+const modelRewritten=normalizeImageWizardQuestion(modelQuestion,req);
+assert.equal(modelRewritten.questions[0].header,'TokenSaver 모델');
+assert.deepEqual(modelRewritten.questions[0].options.map(o=>o.label),['qwen2.5-vl:latest']);
+assert.match(modelRewritten.questions[0].question,/외부 서비스로 이미지를 전송하지/);
+assert.equal(modelQuestion.questions[0].options[0].label,'fake cloud model');
+// V2 host's event.input is the writable replacement point, while its nested
+// original question objects and arrays may be deeply frozen.
+const beforeEvent={tool:'question',input:premature};
+beforeEvent.input=normalizeImageWizardQuestion(beforeEvent.input,{conversion:true,uiMode:'analyze'});
+assert.equal(beforeEvent.input.questions[0].header,'TokenSaver 서비스');
+assert.equal(premature.questions[0].header,'AI 모델');
 assert.equal(requireSelectedImageService(req,'openrouter').stage,'service_mismatch');
 req.uiRuntime=null;
 answer('이미지 분석에 사용할 서비스(플랫폼)를 먼저 선택하세요.',
