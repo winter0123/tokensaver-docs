@@ -213,7 +213,9 @@ export function pagedOpenCodeModels(response, {query='',limit=20,offset=0} = {})
       // Actual model output cost/provider privacy depends on the host settings.
       // The model list alone is NOT a grant to send images.
       network_policy: 'unknown',
-      conversion_available: false,
+      conversion_available: true,
+      requires_installed_cli: true,
+      experimental: true,
     }))
     .filter(m => !safeQuery || (m.provider + '/' + m.id + ' ' + m.name).toLowerCase().includes(safeQuery))
     .sort((a,b)=>(a.provider+'/'+a.id).localeCompare(b.provider+'/'+b.id));
