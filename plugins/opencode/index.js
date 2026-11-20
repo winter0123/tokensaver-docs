@@ -36,6 +36,11 @@ function sourceLookupError(status, project, source, extra = {}) {
 export async function resolveProjectSource(source, project) {
   if (typeof source !== 'string' || !source.trim())
     return sourceLookupError('source_invalid', project, source);
+  // Finder/browser file:/// links are explicit local paths, not filenames.
+  if (/^file:\/\//i.test(source)) {
+    try { source = fileURLToPath(source); }
+    catch { return sourceLookupError('source_invalid', project, source); }
+  }
   const projectRoot = typeof project === 'string' && project.trim() ? resolve(project) : null;
   if (!projectRoot && !isAbsolute(source))
     return sourceLookupError('project_required', project, source);
