@@ -160,7 +160,7 @@ class WorkflowPreferencesTests(unittest.TestCase):
             image=Path(folder)/'frame.png'
             from PIL import Image
             Image.new('RGB',(2,2)).save(image)
-            sample = json.dumps({'type':'text', 'part':{'type':'text', 'text':json.dumps({'image_text':'A','image_description':'B'})}}) + '\\n'
+            sample = json.dumps({'type':'text', 'part':{'type':'text', 'text':json.dumps({'image_text':'A','image_description':'B'})}}) + '\n'
             with patch.object(providers.shutil,'which',return_value='/usr/bin/opencode'), \
                  patch.object(providers.subprocess,'run',return_value=Mock(
                      returncode=0,stdout=sample,stderr='')) as cli:
