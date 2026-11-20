@@ -263,12 +263,33 @@ def _generate_local(path: Path, model: str, profile: dict) -> dict:
     endpoint = _trusted_endpoint(profile['endpoint'], profile['network_policy'])
     if path.stat().st_size > 15 * 1024 * 1024:
         raise ConversionError('로컬 이미지 입력이 15 MiB를 초과합니다.')
+    data = path.read_bytes()
+    if data.startswith(b'\\x89PNG\\r\\n\\x1a\\n'):
+        mime = 'image/png'
+    elif data.startswith(b'\\xff\\xd8\\xff'):
+        mime = 'image/jpeg'
+    elif len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        mime = 'image/webp'
+    else:
+        # Extractors can produce other image formats; normalize to a
+        # widely supported PNG rather than pretending the bytes are PNG.
+        from PIL import Image
+        try:
+            with Image.open(path) as image:
+                output = io.BytesIO()
+                image.save(output, 'PNG')
+                data = output.getvalue()
+            mime = 'image/png'
+        except (OSError, ValueError):
+            raise ConversionError('로컬 이미지 형식을 읽을 수 없습니다.') from None
+    if len(data) > 15 * 1024 * 1024:
+        raise ConversionError('로컬 이미지 정규화 후 크기가 15 MiB를 초과합니다.')
     payload = {'model': model, 'max_tokens': 8192,
                'messages': [{'role': 'user', 'content': [
                    {'type': 'text', 'text': IMAGE_PROMPT},
                    {'type': 'image_url', 'image_url': {
-                       'url': 'data:image/png;base64,' +
-                       base64.b64encode(path.read_bytes()).decode('ascii')}}]}]}
+                       'url': 'data:' + mime + ';base64,' +
+                       base64.b64encode(data).decode('ascii')}}]}]}
     response = _local_request(endpoint + '/chat/completions', payload)
     choices = response.get('choices')
     if (not isinstance(choices, list) or not choices
