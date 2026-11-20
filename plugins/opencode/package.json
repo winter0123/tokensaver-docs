@@ -6,6 +6,7 @@
   "main": "index.js",
   "files": [
     "index.js",
+    "tui.js",
     "research-routing.json",
     "bin",
     "skills",
@@ -28,5 +29,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/winter0123/tokensaver-docs.git"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./tui": "./tui.js"
   }
 }
