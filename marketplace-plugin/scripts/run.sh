@@ -1,7 +1,7 @@
 #!/bin/sh
 # Native TokenSaver Docs launcher; never installs agent settings.
 set -eu
-version=v0.5.6
+version=v0.5.7
 [ "$(uname -s)" = Darwin ] || { echo 'Only macOS binaries available; Linux needs source installation.' >&2; exit 2; }
 case "$(uname -m)" in arm64) cpu=arm64;; x86_64) cpu=x64;; *) echo 'Unsupported CPU' >&2; exit 2;; esac
 for tool in curl shasum unzip awk mktemp; do command -v "$tool" >/dev/null || exit 2; done
