@@ -945,11 +945,17 @@ export default {
             const project = context?.directory ?? session?.location?.directory ??
               session?.directory ?? ctx.location?.directory;
             const found = await resolveProjectSource(callInput.source, project);
-            if (found.status !== 'ready') return { content: JSON.stringify(found) };
-            // The native binary runs as a separate process with the OpenCode
-            // service's cwd. Make both input and default output project-aware.
-            callInput = {...callInput, source:found.source,
-              output:resolve(project || dirname(found.source),callInput.output ?? 'converted')};
+            if (found.status !== 'ready' && found.status !== 'source_not_found')
+              return { content: JSON.stringify(found) };
+            if (found.status === 'ready') {
+              // The native binary runs in the service's cwd. Use the exact
+              // project-resolved path; do not move results to another project.
+              callInput = {...callInput, source:found.source,
+                output:resolve(project || dirname(found.source),callInput.output ?? 'converted')};
+            }
+            // For an absent file, preserve the existing native CLI's explicit
+            // missing-file error (and compatibility with virtual/mock CLI
+            // inputs). Never substitute a similarly named file outside scope.
           }
           const result = await execute(callInput);
           const research = researchSessions.get(sessionID);
