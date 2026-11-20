@@ -171,6 +171,7 @@ class WorkflowPreferencesTests(unittest.TestCase):
             self.assertEqual(args[:6],['/usr/bin/opencode','run','--standalone','--archived',
                                         '--format','json'])
             self.assertEqual(args[args.index('--model')+1],'anthropic/model-vl')
+            self.assertEqual(args[args.index('--agent')+1],'tokensaver-vision')
             self.assertEqual(args[args.index('--file')+1],str(image.resolve()))
             with patch.object(providers.shutil,'which',return_value='/usr/bin/opencode'), \
                  patch.object(providers.subprocess,'run',return_value=Mock(
