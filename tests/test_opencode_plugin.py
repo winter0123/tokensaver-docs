@@ -85,6 +85,15 @@ assert.equal(oneTime.uiPersistentConsent,undefined);
 oneTime.uiConsent=null;
 oldSend('이번에만 허용','error');
 assert.equal(oneTime.uiConsent,null);
+const alreadyConfigured={conversion:true,profile:{provider:'openrouter',model:'anthropic/vision-test'}};
+recordQuestionAnswers({
+  tool:'question',status:'completed',
+  input:{questions:[{question:'이미지를 OpenRouter anthropic/vision-test 모델로 전송할까요?',
+    options:[{label:'이번에만 허용'},{label:'동의 안 함'}]}]},
+  result:{output:{answers:[['이번에만 허용']]}}
+},alreadyConfigured);
+assert.deepEqual(alreadyConfigured.uiConsent,alreadyConfigured.profile);
+assert.equal(alreadyConfigured.uiPersistentConsent,undefined);
 send('이미지를 Markdown에 어떻게 넣을까요?',
   ['이미지·글자·설명 넣기','이미지만 넣기'],'이미지·글자·설명 넣기');
 send('이미지 분석에 사용할 서비스(플랫폼)를 선택하세요.',
