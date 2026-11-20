@@ -238,7 +238,8 @@ for(const text of ['"이미지·글자·설명 넣기"','이미지·글자·설�
  await userPrompt('s','reply',text);
  for(const mode of ['analyze','preserve','placeholder']) {
   const result=JSON.parse((await prepare.execute({source:'photo.png',image_mode:mode},{sessionID:'s'})).content);
-  assert.notEqual(result.status,'ready',text);
+  // Purely local processing requires no external-image consent.
+  assert.equal(result.status,mode==='analyze'?'choice_required':'ready',text);
  }
 }
 await userPrompt('s','request2','Convert photo.png to Markdown.');await prepare.execute({source:'photo.png'},{sessionID:'s'});
@@ -541,6 +542,32 @@ const result=JSON.parse((await prepare.execute({source:'photo.png',image_mode:'a
 assert.equal(result.status,'ready');
 assert.ok(result.args.includes('nvidia/nemotron-3.5-super-vl:free'));
 ''',{'provider':'openrouter','model':'nvidia/nemotron-3.5-super-vl:free'})
+
+    def test_v2_local_modes_do_not_deadlock_without_question_hook(self):
+        # Reproduces OpenCode 2.3.2 where a completed question form answer
+        # does not reach the plugin's session state. Local modes have no
+        # outbound image transfer and should not require an approval gate.
+        self.run_v2_plugin('''
+const request='Convert AWS deployment.html to Markdown.';
+await userPrompt('local-no-ui','initial',request);
+let preserve=JSON.parse((await prepare.execute({
+    source:'AWS deployment.html',image_mode:'preserve'
+},{sessionID:'local-no-ui'})).content);
+assert.equal(preserve.status,'ready');
+assert.ok(preserve.args.includes('preserve'));
+await userPrompt('local-placeholder','initial',request);
+const placeholder=JSON.parse((await prepare.execute({
+    source:'AWS deployment.html',image_mode:'placeholder'
+},{sessionID:'local-placeholder'})).content);
+assert.equal(placeholder.status,'ready');
+assert.ok(placeholder.args.includes('placeholder'));
+await userPrompt('still-secure','initial',request);
+const external=JSON.parse((await prepare.execute({
+    source:'AWS deployment.html',image_mode:'analyze',
+    model_provider:'openrouter',model:'nvidia/nemotron-3.5-super-vl:free'
+},{sessionID:'still-secure'})).content);
+assert.equal(external.status,'choice_required');
+''')
 
     def test_v2_direct_preserve_and_defer_choices_do_not_need_prepare_first(self):
         self.run_v2_plugin('''
