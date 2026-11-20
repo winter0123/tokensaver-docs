@@ -5,16 +5,107 @@ import { ensureTokenSaverExecutable, findTokenSaverExecutable } from './runtime.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
-import { readFile, stat, lstat, realpath } from 'node:fs/promises';
+import { readFile, stat, lstat, realpath, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import researchRouting from './research-routing.json' with { type: 'json' };
+
+// Resolve document names inside the OpenCode session project, not in the
+// server's process.cwd(). Never scan the user's home or other projects.
+const SOURCE_SEARCH_MAX_ENTRIES = 2000;
+const SOURCE_SEARCH_MAX_DEPTH = 5;
+const SOURCE_SEARCH_EXCLUDED = new Set(['.git', '.venv', '.worker-context',
+  '__pycache__', '.tokensaver-docs', 'node_modules']);
+
+function sourceLookupError(status, project, source, extra = {}) {
+  const messages = {
+    project_required: 'OpenCode did not provide a project directory. Please supply the full path to the document.',
+    source_not_found: 'The document was not found in the current project. Provide its full path or explicitly select another folder; do not search outside this project automatically.',
+    source_ambiguous: 'Several files have this name in the current project. Choose the intended full path.',
+    source_search_limited: 'The project search limit was reached. Give the document path or a narrower subfolder.',
+    source_permission_required: 'OpenCode cannot access part of the requested project. Grant OpenCode access to the folder in macOS privacy settings (or choose a permitted folder), then retry.',
+    source_outside_project: 'A relative path must stay inside the current project. Provide the explicit absolute path if you want to access a file outside it.',
+    source_invalid: 'The document path is not a normal file or directory. Provide the original file rather than a symbolic link.'
+  };
+  return { status, source, project, question: messages[status],
+    next: 'Ask the user to resolve this path issue. Do not use agent glob/read/shell or search outside the project without permission.', ...extra };
+}
+
+// Direct paths win. For a basename, search only bounded non-symlink project
+// directories, preserving Unicode names (macOS often uses decomposed forms).
+export async function resolveProjectSource(source, project) {
+  if (typeof source !== 'string' || !source.trim())
+    return sourceLookupError('source_invalid', project, source);
+  const projectRoot = typeof project === 'string' && project.trim() ? resolve(project) : null;
+  if (!projectRoot && !isAbsolute(source))
+    return sourceLookupError('project_required', project, source);
+  const candidate = isAbsolute(source) ? resolve(source) : resolve(projectRoot, source);
+  if (!isAbsolute(source) && (relative(projectRoot, candidate) === '..' ||
+      relative(projectRoot, candidate).startsWith('..' + (process.platform === 'win32' ? '\\' : '/'))))
+    return sourceLookupError('source_outside_project', projectRoot, source);
+  const inspect = async path => {
+    try {
+      const info = await lstat(path);
+      return info.isSymbolicLink() ? 'symlink'
+        : info.isFile() || info.isDirectory() ? 'ready' : 'invalid';
+    } catch (error) {
+      if (['EACCES', 'EPERM'].includes(error.code)) return 'permission';
+      if (['ENOENT', 'ENOTDIR'].includes(error.code)) return 'missing';
+      throw error;
+    }
+  };
+  const direct = await inspect(candidate);
+  if (direct === 'ready') return {status:'ready', source:candidate};
+  if (direct === 'permission')
+    return sourceLookupError('source_permission_required', projectRoot, source);
+  if (direct !== 'missing')
+    return sourceLookupError('source_invalid', projectRoot, source);
+  if (isAbsolute(source) || basename(source) !== source || !projectRoot)
+    return sourceLookupError('source_not_found', projectRoot, source);
+
+  const matches = [];
+  let count = 0;
+  let permissionDenied = false;
+  const stack = [{path:projectRoot,depth:0}];
+  const normalized = source.normalize('NFC');
+  while (stack.length > 0) {
+    const next = stack.pop();
+    let entries;
+    try { entries = await readdir(next.path, {withFileTypes:true}); }
+    catch (error) {
+      if (['EACCES','EPERM'].includes(error.code)) { permissionDenied = true; continue; }
+      if (['ENOENT','ENOTDIR'].includes(error.code)) continue;
+      throw error;
+    }
+    // Deterministic ordering for predictable ambiguity reports.
+    entries.sort((a,b) => a.name.localeCompare(b.name,'en'));
+    for (const entry of entries) {
+      if (++count > SOURCE_SEARCH_MAX_ENTRIES)
+        return sourceLookupError('source_search_limited', projectRoot, source);
+      if (entry.isSymbolicLink()) continue;
+      const entryPath = join(next.path, entry.name);
+      if (entry.name.normalize('NFC') === normalized && (entry.isFile() || entry.isDirectory()))
+        matches.push(entryPath);
+      if (entry.isDirectory() && next.depth < SOURCE_SEARCH_MAX_DEPTH &&
+          !entry.name.startsWith('.') && !SOURCE_SEARCH_EXCLUDED.has(entry.name))
+        stack.push({path:entryPath,depth:next.depth+1});
+    }
+  }
+  if (permissionDenied)
+    return sourceLookupError('source_permission_required', projectRoot, source,
+      {candidates:matches.slice(0,10)});
+  if (matches.length > 1)
+    return sourceLookupError('source_ambiguous', projectRoot, source,
+      {candidates:matches.slice(0,10),total:matches.length});
+  if (matches.length === 1) return {status:'ready',source:matches[0]};
+  return sourceLookupError('source_not_found', projectRoot, source);
+}
 
 let executable = join(dirname(fileURLToPath(import.meta.url)), 'bin', process.platform === 'win32' ? 'tokensaver-docs.exe' : 'tokensaver-docs');
 // shortcut: request text remains in memory until a newer real prompt; add verified V2 session-final cleanup if long-lived servers accumulate entries.
 const requestBySession = new Map();
 
-const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. For unanswered choices, never infer a model, defer, image mode, or provider consent. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Use the source path or attachment name already given; if it is missing or ambiguous, ask instead of searching. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
+const conversionInstruction = 'For this explicit conversion request only, call tokensaver_docs_prepare immediately as your first tool, before glob, listing, reading originals, or writing conversion commands. The preparation engine reads saved global image preferences automatically, so if configured, NEVER ask for image mode, platform, model or transmission consent again. If the first prepare call returns choice_required, inspect tokensaver_docs_preferences once and ask for a choice only if setup_required; save the actual selected image mode and, for analysis, platform/model/network policy using tokensaver_docs_preferences, then retry original prepare call. For unanswered choices, never infer a model, defer, image mode, or provider consent. Never invent selections, persist external-transfer consent without explicit user permission, or switch platforms after errors. Pass the named source directly to tokensaver_docs_prepare: its bounded resolver checks the current project and subfolders without agent file-search tools. If it reports a missing, ambiguous or inaccessible path, ask only the reported question; never search outside the project without the user explicitly providing an authorized path. Omit output unless the user names an output directory; output is a directory, never infer a filename. Respect an explicitly chosen alternative converter. For conversion-only, report returned Markdown paths and status without rereading.';
 const audioConversionInstruction = 'For this explicit local audio conversion request, use tokensaver_docs_setup_audio to ask the user to select tiny, base, or small, then show the returned exact download size and wait for the user’s explicit download confirmation. After setup, call tokensaver_docs_convert_audio to ask for separate explicit local transcription consent. Convert only the single audio file the user named, with the configured local whisper.cpp profile; never use an external provider or process folders. If any question is unanswered, declined, or canceled, stop without downloading or transcribing.';
 const selectedModelApprovalInstruction = 'An image model is already configured or selected for this session. If the current real user message explicitly approves image analysis, immediately call tokensaver_docs_prepare for the original source with image_mode analyze and this model. Otherwise use OpenCode question UI for the explicit approval: the actual UI answer is remembered by the plugin. NEVER ask the user to copy it into chat. The question must identify the exact provider and model, clearly say that document images will be transmitted externally, and offer consent and decline options. Once the user selects consent, immediately retry tokensaver_docs_prepare for the same source and model. Neither model selection nor agent-written prose nor tool arguments grants consent.';
 const completedConversionInstruction = 'Preparation is complete. Return the reported Markdown paths and status to the user. Do not call any more tools or reread the result.';
@@ -751,6 +842,19 @@ export default {
             }
             if (sessionID) requestBySession.set(sessionID,request);
             return { content: blocked };
+          }
+          if ((name === 'tokensaver_docs_prepare' || name === 'tokensaver_docs_context') &&
+              typeof callInput.source === 'string') {
+            const session = sessionID && ctx.session?.get
+              ? await ctx.session.get({sessionID}).catch(() => null) : null;
+            const project = context?.directory ?? session?.location?.directory ??
+              session?.directory ?? ctx.location?.directory;
+            const found = await resolveProjectSource(callInput.source, project);
+            if (found.status !== 'ready') return { content: JSON.stringify(found) };
+            // The native binary runs as a separate process with the OpenCode
+            // service's cwd. Make both input and default output project-aware.
+            callInput = {...callInput, source:found.source,
+              output:resolve(project || dirname(found.source),callInput.output ?? 'converted')};
           }
           const result = await execute(callInput);
           const research = researchSessions.get(sessionID);
