@@ -11,6 +11,31 @@ For the GitHub `::path:plugins/opencode` package, **server plugin activation doe
 
 The original ZIP bundle carries its own executable, so its previous activation and internal MCP behavior are preserved. This fix does not modify other plugins in `~/.opencode/plugins/`; errors about unrelated local plugins exporting an invalid default V2 definition need separate diagnosis.
 
+## First-run image model chooser
+
+For an image-bearing document, choose the image handling method once.
+If analysis is selected, the next form **must** choose one service:
+GPT / Codex, Claude Code, OpenCode, local LLM, or API / OpenRouter.
+Local LLM then offers Ollama, LM Studio or a user-configured private
+OpenAI-compatible endpoint. Only after this real selection does the plugin
+allow model enumeration for that service.
+
+The OpenCode Git package exports a lightweight **\`./tui\`** part alongside
+its server part. In OpenCode 2 terminal UI, a \`TokenSaver 모델\` form
+is displayed with the native searchable \`ui.dialog.select\` UI. The TUI
+submits the actual chosen option to the waiting question form; the user does
+not type model IDs into chat and this does not change the chat model selected
+by OpenCode's own \`/model\` command. Model lists remain bounded/paged;
+search filters currently listed options, and a next/previous page can be
+fetched when available.
+
+If the host does not load TUI parts, the normal OpenCode question form remains
+the fallback. The service-first guard still prevents model-first prompts.
+No provider/API key or external images are sent to search the displayed list.
+Local backends must remain loopback/private as configured. Future-use
+preferences are saved only after the model selector has explained the data
+destination and persistence scope.
+
 ## OpenCode v2
 
 The bundle exposes a v2 plugin definition alongside the compatibility MCP server.
