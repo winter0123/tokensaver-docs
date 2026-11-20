@@ -1,6 +1,6 @@
 # TokenSaver Docs native Windows launcher. Does not change any agent configuration.
 $ErrorActionPreference = 'Stop'
-$version = 'v0.5.6'
+$version = 'v0.5.7'
 if (-not [Environment]::Is64BitOperatingSystem) { throw 'Windows x64 is required.' }
 $homeDir = if ($env:TOKENSAVER_DOCS_RUNTIME_HOME) { $env:TOKENSAVER_DOCS_RUNTIME_HOME } else { Join-Path $env:LOCALAPPDATA 'tokensaver-docs\marketplace-runtime' }
 $parent = Join-Path $homeDir $version
