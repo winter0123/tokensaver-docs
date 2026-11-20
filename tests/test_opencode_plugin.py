@@ -22,6 +22,8 @@ await mkdir(join(root,'하위 폴더'));
 await writeFile(join(root,'하위 폴더','test.html'),'<p>ok</p>');
 assert.deepEqual(await resolveProjectSource('test.html',root),
   {status:'ready',source:join(root,'하위 폴더','test.html')});
+assert.equal((await resolveProjectSource(pathToFileURL(join(root,'하위 폴더','test.html')).href,root)).source,
+  join(root,'하위 폴더','test.html'));
 await writeFile(join(root,'하위 폴더','한글.html'.normalize('NFD')),'x');
 const unicode=await resolveProjectSource('한글.html',root);
 assert.equal(unicode.status,'ready');
