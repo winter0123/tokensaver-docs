@@ -19,8 +19,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@opencode-ai/plugin": "^1.0.0",
-    "@opencode/plugin": "^2.0.0"
+    "@opencode-ai/plugin": "^1.0.0"
   },
   "author": {
     "name": "winter0123",
