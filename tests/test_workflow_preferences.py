@@ -33,6 +33,25 @@ class WorkflowPreferencesTests(unittest.TestCase):
         self.assertTrue(all(call.kwargs['image_mode'] == 'preserve'
                             for call in convert.call_args_list))
 
+    def test_korean_folder_and_html_name_with_saved_preserve(self):
+        # Reproduce a macOS path containing Hangul, spaces and a numeric prefix.
+        configure_preferences('preserve')
+        root=Path(self.temp.name)
+        folder=root/'글로벌_트루베라'
+        folder.mkdir()
+        source=folder/'0. 그림으로 보는 AWS 배포.html'
+        source.write_text('<html><body><h1>배포 지침</h1><p>이미지 포함</p>'
+                          '<img alt="도표" src="figure.png"></body></html>',
+                          encoding='utf-8')
+        (folder/'figure.png').write_bytes(b'png fixture')
+        output=root/'converted'
+        with patch.object(preparation, 'cache_root',return_value=root/'cache'):
+            result=preparation.prepare_documents(source,output,onboarding=True)
+        self.assertIn(result['status'], ('ready','needs_review'))
+        self.assertTrue(result['files'])
+        self.assertTrue(Path(result['files'][0]['output']).exists())
+        self.assertEqual(result['files'][0]['ai_calls'],0)
+
     def test_placeholder_reused_and_change_only_on_user_request(self):
         configure_preferences('placeholder')
         self.assertEqual(load_preferences()['image_mode'], 'placeholder')
