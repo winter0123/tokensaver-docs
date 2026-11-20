@@ -354,7 +354,7 @@ def _generate_opencode(path: Path, model: str) -> dict:
     provider_id, model_id = model.split('/', 1)
     import re
     if (not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,100}', provider_id)
-            or not model_id or any(c in model_id for c in '\\r\\n\\x00')):
+            or not model_id or any(c in model_id for c in '\r\n\x00')):
         raise ConversionError('잘못된 OpenCode 모델 ID입니다.')
     if not path.is_file() or path.stat().st_size > 15 * 1024 * 1024:
         raise ConversionError('OpenCode에 보낼 이미지를 찾을 수 없거나 15 MiB를 초과합니다.')
