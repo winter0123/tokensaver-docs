@@ -1,4 +1,4 @@
-name: Build verified draft on native version bump
+name: Build verified prerelease on native version bump
 
 on:
   push:
@@ -67,7 +67,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.check-version.outputs.tag }}
         run: python scripts/prepare_release.py --artifacts dist/artifacts --output dist/release --tag "$RELEASE_TAG"
-      - name: Create tag and unpublished draft
+      - name: Create tag and verified prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.check-version.outputs.tag }}
@@ -80,10 +80,10 @@ jobs:
           fi
           git tag "$RELEASE_TAG" "$GITHUB_SHA"
           git push origin "refs/tags/$RELEASE_TAG"
-          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease \
+          gh release create "$RELEASE_TAG" --verify-tag --prerelease \
             --title "TokenSaver Docs $RELEASE_TAG" \
             --notes-file dist/release/release-notes.md \
             dist/release/*.zip dist/release/checksums.txt \
             dist/release/install.sh dist/release/install.ps1 \
             dist/release/LICENSE dist/release/NOTICE dist/release/AUTHORS.md
-          echo "Created draft: $RELEASE_TAG (NOT published)"
+          echo "Published verified preview: $RELEASE_TAG (prerelease)"
