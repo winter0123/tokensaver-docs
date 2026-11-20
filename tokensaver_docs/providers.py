@@ -181,11 +181,52 @@ def _local_request(url, payload=None):
         raise ConversionError('로컬 모델 서버가 유효한 JSON을 반환하지 않았습니다.') from None
 
 
+def _cli_model_catalog(provider):
+    # Codex's experimental debug command prints raw instruction templates.
+    # Never return those: isolate only public-facing model names and slugs.
+    if provider == 'codex':
+        try:
+            result = subprocess.run(
+                ['codex', 'debug', 'models', '--bundled'], capture_output=True,
+                encoding='utf-8', errors='replace', timeout=20, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            raise ConversionError('Codex 모델 카탈로그를 읽을 수 없습니다. 설치 버전 또는 인증 상태를 확인하세요.') from None
+        if result.returncode:
+            raise ConversionError('현재 Codex CLI에서 모델 목록을 확인할 수 없습니다.') 
+        try:
+            raw = json.loads(result.stdout)
+        except (ValueError, TypeError):
+            raise ConversionError('Codex 모델 카탈로그 형식이 예상과 다릅니다.') from None
+        rows = raw if isinstance(raw, list) else raw.get('models', []) if isinstance(raw, dict) else []
+        if not isinstance(rows, list):
+            raise ConversionError('Codex 모델 목록 형식이 올바르지 않습니다.')
+        return [{'id': m['slug'], 'name': m.get('display_name', m['slug']),
+                 'vision':'unknown', 'availability':'bundled_not_account_verified'}
+                for m in rows if isinstance(m, dict) and isinstance(m.get('slug'), str)]
+    if provider == 'claude':
+        # Claude Code has a TUI /model picker but no stable machine-readable
+        # local CLI catalog. Return documented aliases as unverified choices,
+        # never claim access, quotas, image support or a live account list.
+        return [{'id': name, 'name': name,
+                 'vision':'unknown', 'availability':'alias_not_account_verified'}
+                for name in ('opus','sonnet','haiku')]
+    raise ConversionError('지원하지 않는 CLI 모델 제공자입니다.')
+
+
 def catalog_image_models(provider, *, endpoint=None, network_policy='local_only', query=None, limit=20, offset=0):
     if not isinstance(limit, int) or not 1 <= limit <= 40 or not isinstance(offset, int) or offset < 0:
         raise ConversionError('모델 목록은 최대 40개씩 조회할 수 있습니다.')
     if query is not None and (not isinstance(query, str) or len(query) > 100):
         raise ConversionError('모델 검색어가 너무 깁니다.')
+    if provider in ('codex','claude'):
+        entries = _cli_model_catalog(provider)
+        if query:
+            entries = [m for m in entries if query.casefold() in m['id'].casefold()]
+        entries.sort(key=lambda m: m['id'])
+        return {'provider': provider, 'source': 'cli_bundled' if provider=='codex' else 'documented_aliases',
+                'account_verified': False, 'total': len(entries), 'offset': offset,
+                'has_more': offset + limit < len(entries),
+                'models': entries[offset:offset+limit]}
     if provider == 'openrouter':
         models = [{'id': m['id'], 'vision': _model_capability(m, 'image'), 'price': _model_price(m)}
                   for m in list_models() if isinstance(m.get('id'), str)
