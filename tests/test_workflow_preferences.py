@@ -136,6 +136,50 @@ class WorkflowPreferencesTests(unittest.TestCase):
         self.assertFalse(catalog['account_verified'])
         self.assertTrue(all(m['vision']=='unknown' for m in catalog['models']))
 
+    def test_saved_opencode_image_model_requires_persistent_external_permission(self):
+        with self.assertRaises(ValueError):
+            configure_preferences('analyze', runtime='opencode', provider='anthropic',
+                                  model='test-vision',network_policy='external_allowed')
+        configure_preferences('analyze',runtime='opencode',provider='anthropic',
+                              model='test-vision',network_policy='external_allowed',
+                              allow_external_images=True)
+        with patch.object(preparation, '_needs_image_choice', return_value=True), \
+             patch('tokensaver_docs.providers.inspect_image_model',
+                   return_value={'capability':'unknown','price':'unknown','reason':'capability_unavailable'}), \
+             patch.object(preparation, 'convert', return_value=[
+                 {'status':'완료','file':'source.html','output':'converted/source.md'}]) as convert:
+            result=preparation.prepare_documents('source.html',onboarding=True)
+        self.assertEqual(result['status'],'ready')
+        self.assertEqual(convert.call_args.kwargs['profiles']['image'],
+                         {'provider':'opencode','model':'anthropic/test-vision'})
+
+    def test_opencode_cli_image_generation_uses_exact_model_and_rejects_errors(self):
+        from tokensaver_docs import providers
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as folder:
+            image=Path(folder)/'frame.png'
+            from PIL import Image
+            Image.new('RGB',(2,2)).save(image)
+            sample='{"type":"text","part":{"type":"text","text":"{\\\"image_text\\\":\\\"A\\\",\\\"image_description\\\":\\\"B\\\"}"}}\\n'
+            with patch.object(providers.shutil,'which',return_value='/usr/bin/opencode'), \
+                 patch.object(providers.subprocess,'run',return_value=Mock(
+                     returncode=0,stdout=sample,stderr='')) as cli:
+                result=providers.generate(image,'image',
+                                          {'provider':'opencode','model':'anthropic/model-vl'})
+            self.assertIn('image_description',result['text'])
+            args=cli.call_args.args[0]
+            self.assertEqual(args[:6],['/usr/bin/opencode','run','--standalone','--archived',
+                                        '--format','json'])
+            self.assertEqual(args[args.index('--model')+1],'anthropic/model-vl')
+            self.assertEqual(args[args.index('--file')+1],str(image.resolve()))
+            with patch.object(providers.shutil,'which',return_value='/usr/bin/opencode'), \
+                 patch.object(providers.subprocess,'run',return_value=Mock(
+                     returncode=1,stdout='',stderr='SECRET-API-KEY')):
+                with self.assertRaisesRegex(providers.ConversionError,
+                                            '선택한 OpenCode 모델'):
+                    providers.generate(image,'image',
+                                       {'provider':'opencode','model':'anthropic/model-vl'})
+
     def test_local_catalog_never_claims_vision_from_model_name(self):
         from tokensaver_docs import providers
         response = {'data': [{'id':'vision-local'}, {'id':'text-local'}, {'not_id':'invalid'}]}
