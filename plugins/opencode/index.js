@@ -535,7 +535,7 @@ export const TokenSaverDocsPlugin = async (ctx = {}) => {
     }),
     tokensaver_docs_list_image_models: tool({
       description: 'List image model IDs on a selected local/OpenRouter provider. A catalog entry does not guarantee vision capability; do not invent support.',
-      args: {provider:tool.schema.enum(['openrouter','ollama','lmstudio','openai_compatible']),
+      args: {provider:tool.schema.enum(['openrouter','codex','claude','ollama','lmstudio','openai_compatible']),
         endpoint:tool.schema.string().optional(),
         query:tool.schema.string().optional(),
         limit:tool.schema.number().int().min(1).max(40).optional(),
@@ -805,7 +805,7 @@ export default {
         allow_external_images:boolean
       }, [], legacy.tool.tokensaver_docs_preferences.execute);
       add('tokensaver_docs_list_image_models', {
-        provider:{type:'string',enum:['openrouter','ollama','lmstudio','openai_compatible']},
+        provider:{type:'string',enum:['openrouter','codex','claude','ollama','lmstudio','openai_compatible']},
         endpoint:string,query:string,limit:{type:'integer',minimum:1,maximum:40},
         offset:{type:'integer',minimum:0},
         network_policy:{type:'string',enum:['local_only','internal_only']}
